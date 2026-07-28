@@ -934,14 +934,15 @@ body {
   <div class="header">
     <div class="header-top">
       <div class="header-title">Misiones</div>
+      <div id="quests-count" style="font-size: 13px; color: var(--text-muted);">0 activas</div>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 8px;">
+      <button class="btn btn-small btn-gold" onclick="showAvailableQuests()">+ Nueva quest</button>
     </div>
   </div>
   
   <div class="content">
-    <div id="quests-active"></div>
-    <div id="quests-empty" class="text-center text-muted" style="padding: 40px 0;">
-      No tienes misiones activas
-    </div>
+    <div id="quests-container"></div>
   </div>
 </div>
 

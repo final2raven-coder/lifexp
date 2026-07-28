@@ -1149,19 +1149,7 @@ function useConsumable(itemId) {
   closeModal('modal-item');
 }
 
-function renderQuests() {
-  const active = document.getElementById('quests-active');
-  const empty = document.getElementById('quests-empty');
-  
-  if (gameState.activeQuests.length === 0) {
-    active.innerHTML = '';
-    empty.classList.remove('hidden');
-  } else {
-    empty.classList.add('hidden');
-    // TODO: render quests
-    active.innerHTML = '<div class="card"><p>Sistema de quests en desarrollo...</p></div>';
-  }
-}
+// renderQuests() definido al final del archivo en sección QUESTS RENDERING
 
 function renderSettings() {
   const content = document.getElementById('settings-content');
@@ -2046,6 +2034,13 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderQuests() {
   const container = document.getElementById('quests-container');
   if (!container) return;
+  
+  // Update count in header
+  const countEl = document.getElementById('quests-count');
+  if (countEl) {
+    const activeCount = (gameState.activeQuests || []).length;
+    countEl.textContent = `${activeCount} activa${activeCount !== 1 ? 's' : ''}`;
+  }
   
   // Check if quests.js loaded
   if (typeof QUESTS === 'undefined') {
