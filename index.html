@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>LifeXP RPG</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --bg-dark: #0a0a12;
+  --bg-card: #12121c;
+  --bg-card-hover: #1a1a28;
+  --bg-surface: #16161f;
+  --border: #2a2a3a;
+  --text: #e8e8f0;
+  --text-muted: #8888a0;
+  --accent: #ff4d6d;
+  --accent-glow: rgba(255, 77, 109, 0.3);
+  --gold: #ffd700;
+  --gold-dim: #b8960b;
+  --green: #4ade80;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --orange: #fb923c;
+  --red: #f87171;
+  --cyan: #22d3ee;
+  
+  /* Stats colors */
+  --stat-fue: #ef4444;
+  --stat-vit: #22c55e;
+  --stat-des: #3b82f6;
+  --stat-int: #a855f7;
+  --stat-vol: #f59e0b;
+  --stat-pre: #ec4899;
+  
+  /* Category colors */
+  --cat-casa: #f87171;
+  --cat-cuerpo: #4ade80;
+  --cat-gestiones: #fbbf24;
+  --cat-social: #60a5fa;
+  --cat-personal: #a78bfa;
+  
+  /* Rarity colors */
+  --rarity-common: #9ca3af;
+  --rarity-uncommon: #4ade80;
+  --rarity-rare: #60a5fa;
+  --rarity-epic: #a855f7;
+  --rarity-legendary: #f59e0b;
+  
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  
+  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 20px var(--accent-glow);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Screens */
+.screen {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 70px;
+}
+.screen.active { display: flex; }
+
+/* Header */
+.header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.header-title span { color: var(--accent); }
+
+.header-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+.header-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.header-stat-icon { font-size: 14px; }
+.header-stat-value { font-weight: 700; color: var(--gold); }
+
+.xp-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.xp-level {
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.xp-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.xp-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Navigation */
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  height: 65px;
+  z-index: 100;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 10px;
+  transition: color 0.2s;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+.nav-item.active { color: var(--accent); }
+.nav-item-icon { font-size: 22px; }
+
+/* Scrollable content */
+.content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.card-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 20px 0 12px;
+}
+.section-title:first-child { margin-top: 0; }
+
+/* Buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s, opacity 0.2s;
+  width: 100%;
+}
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+.btn-secondary {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.btn-small {
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+/* Big CTA */
+.big-cta {
+  background: linear-gradient(135deg, var(--accent), #ff6b8a);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-glow);
+  transition: transform 0.15s;
+}
+.big-cta:active { transform: scale(0.98); }
+.big-cta-icon { font-size: 36px; }
+.big-cta-text { text-align: left; }
+.big-cta-title { font-size: 16px; font-weight: 800; color: white; }
+.big-cta-sub { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+
+/* Category grid */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.cat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, border-color 0.2s;
+}
+.cat-card:active { transform: scale(0.97); }
+.cat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.cat-card[data-cat="casa"]::before { background: var(--cat-casa); }
+.cat-card[data-cat="cuerpo"]::before { background: var(--cat-cuerpo); }
+.cat-card[data-cat="gestiones"]::before { background: var(--cat-gestiones); }
+.cat-card[data-cat="social"]::before { background: var(--cat-social); }
+.cat-card[data-cat="personal"]::before { background: var(--cat-personal); }
+
+.cat-icon { font-size: 24px; margin-bottom: 6px; }
+.cat-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.cat-pending { font-size: 11px; color: var(--text-muted); }
+.cat-overflow {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+}
+
+/* Alerts */
+.alert {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.alert-overflow {
+  border-color: var(--gold-dim);
+  background: linear-gradient(135deg, rgba(255,215,0,0.1), transparent);
+}
+.alert-icon { font-size: 18px; }
+.alert-text { font-size: 13px; flex: 1; }
+.alert-text strong { color: var(--gold); }
+.alert-saved {
+  border-color: var(--blue);
+  background: linear-gradient(135deg, rgba(96,165,250,0.1), transparent);
+}
+.alert-saved .alert-text strong { color: var(--blue); }
+
+/* Task card (main view) */
+.task-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.task-card-header {
+  padding: 4px 0;
+}
+.task-card[data-cat="casa"] .task-card-header { background: var(--cat-casa); }
+.task-card[data-cat="cuerpo"] .task-card-header { background: var(--cat-cuerpo); }
+.task-card[data-cat="gestiones"] .task-card-header { background: var(--cat-gestiones); }
+.task-card[data-cat="social"] .task-card-header { background: var(--cat-social); }
+.task-card[data-cat="personal"] .task-card-header { background: var(--cat-personal); }
+
+.task-card-body { padding: 20px; }
+.task-cat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.task-name {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.task-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.task-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.task-reward {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.task-reward.stat-fue { border-color: var(--stat-fue); color: var(--stat-fue); }
+.task-reward.stat-vit { border-color: var(--stat-vit); color: var(--stat-vit); }
+.task-reward.stat-des { border-color: var(--stat-des); color: var(--stat-des); }
+.task-reward.stat-int { border-color: var(--stat-int); color: var(--stat-int); }
+.task-reward.stat-vol { border-color: var(--stat-vol); color: var(--stat-vol); }
+.task-reward.stat-pre { border-color: var(--stat-pre); color: var(--stat-pre); }
+.task-reward.xp { border-color: var(--gold); color: var(--gold); }
+
+.task-drops {
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.task-drops-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.task-drops-list {
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Side quest box */
+.side-quest {
+  background: linear-gradient(135deg, rgba(255,215,0,0.05), transparent);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.side-quest-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.side-quest-icon { font-size: 14px; }
+.side-quest-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.side-quest-desc {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.side-quest-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.side-quest-reward {
+  background: rgba(255,215,0,0.1);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Timer */
+.timer-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.timer-display {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+}
+.timer-controls { display: flex; gap: 8px; }
+.timer-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Task actions */
+.task-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Stats display */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.stat-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+.stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.stat-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-value {
+  font-size: 18px;
+  font-weight: 800;
+}
+.stat-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stat-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.stat-item[data-stat="fue"] .stat-name,
+.stat-item[data-stat="fue"] .stat-value { color: var(--stat-fue); }
+.stat-item[data-stat="fue"] .stat-fill { background: var(--stat-fue); }
+
+.stat-item[data-stat="vit"] .stat-name,
+.stat-item[data-stat="vit"] .stat-value { color: var(--stat-vit); }
+.stat-item[data-stat="vit"] .stat-fill { background: var(--stat-vit); }
+
+.stat-item[data-stat="des"] .stat-name,
+.stat-item[data-stat="des"] .stat-value { color: var(--stat-des); }
+.stat-item[data-stat="des"] .stat-fill { background: var(--stat-des); }
+
+.stat-item[data-stat="int"] .stat-name,
+.stat-item[data-stat="int"] .stat-value { color: var(--stat-int); }
+.stat-item[data-stat="int"] .stat-fill { background: var(--stat-int); }
+
+.stat-item[data-stat="vol"] .stat-name,
+.stat-item[data-stat="vol"] .stat-value { color: var(--stat-vol); }
+.stat-item[data-stat="vol"] .stat-fill { background: var(--stat-vol); }
+
+.stat-item[data-stat="pre"] .stat-name,
+.stat-item[data-stat="pre"] .stat-value { color: var(--stat-pre); }
+.stat-item[data-stat="pre"] .stat-fill { background: var(--stat-pre); }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+/* Complete overlay */
+.complete-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,18,0.95);
+  z-index: 300;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}
+.complete-overlay.show { display: flex; }
+.complete-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: bounce 0.5s ease;
+}
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.complete-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.complete-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.complete-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.complete-reward {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.complete-reward.gold { color: var(--gold); border-color: var(--gold-dim); }
+.complete-reward.green { color: var(--green); border-color: var(--green); }
+
+.complete-drop {
+  background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(96,165,250,0.1));
+  border: 1px solid var(--purple);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 300px;
+}
+.complete-drop-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.complete-drop-item {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--purple);
+}
+
+.side-quest-prompt {
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 320px;
+}
+.side-quest-prompt-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.side-quest-prompt-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.side-quest-prompt-btns {
+  display: flex;
+  gap: 10px;
+}
+.side-quest-prompt-btns .btn {
+  flex: 1;
+  padding: 10px;
+}
+
+/* Utils */
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.text-muted { color: var(--text-muted); }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ============== HUB SCREEN ============== -->
+<div class="screen active" id="screen-hub">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">Life<span>XP</span></div>
+      <div class="header-stats">
+        <div class="header-stat">
+          <span class="header-stat-icon">🔥</span>
+          <span class="header-stat-value" id="hub-streak">0</span>
+        </div>
+        <div class="header-stat">
+          <span class="header-stat-icon">🪙</span>
+          <span class="header-stat-value" id="hub-gold">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="xp-bar">
+      <div class="xp-level">LV <span id="hub-level">1</span></div>
+      <div class="xp-track">
+        <div class="xp-fill" id="hub-xp-fill" style="width: 0%"></div>
+      </div>
+      <div class="xp-text"><span id="hub-xp">0</span>/<span id="hub-xp-next">100</span></div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <button class="big-cta" id="btn-random-task">
+      <div class="big-cta-icon">🎲</div>
+      <div class="big-cta-text">
+        <div class="big-cta-title">Dame una tarea</div>
+        <div class="big-cta-sub">Propuesta aleatoria de cualquier categoría</div>
+      </div>
+    </button>
+    
+    <div id="hub-alerts"></div>
+    
+    <div class="section-title">Categorías</div>
+    <div class="cat-grid" id="hub-categories"></div>
+  </div>
+</div>
+
+<!-- ============== TASK SCREEN ============== -->
+<div class="screen" id="screen-task">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn btn-ghost btn-small" id="btn-back-hub">← Volver</button>
+      <div id="task-cat-badge"></div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <div class="task-card" id="task-card">
+      <div class="task-card-header"></div>
+      <div class="task-card-body">
+        <div class="task-cat-label" id="task-cat-label"></div>
+        <div class="task-name" id="task-name"></div>
+        <div class="task-desc" id="task-desc"></div>
+        
+        <div class="task-rewards" id="task-rewards"></div>
+        
+        <div class="task-drops" id="task-drops-box">
+          <div class="task-drops-title">💧 Drops posibles</div>
+          <div class="task-drops-list" id="task-drops"></div>
+        </div>
+        
+        <div class="side-quest" id="side-quest-box">
+          <div class="side-quest-header">
+            <span class="side-quest-icon">⭐</span>
+            <span class="side-quest-title">SIDE QUEST</span>
+          </div>
+          <div class="side-quest-desc" id="side-quest-desc"></div>
+          <div class="side-quest-rewards" id="side-quest-rewards"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="timer-box">
+      <div class="timer-display" id="timer-display">00:00</div>
+      <div class="timer-controls">
+        <button class="timer-btn" id="timer-toggle">▶</button>
+        <button class="timer-btn" id="timer-reset">↺</button>
+      </div>
+    </div>
+    
+    <div class="task-actions">
+      <button class="btn btn-primary" id="btn-complete">✓ Completada</button>
+      <button class="btn btn-gold" id="btn-save-later">📌 Guardar para luego</button>
+      <button class="btn btn-secondary" id="btn-shuffle">🎲 Otra tarea</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== CHARACTER SCREEN ============== -->
+<div class="screen" id="screen-character">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">Personaje</div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div id="char-name" style="font-size: 18px; font-weight: 800;">Aventurero</div>
+          <div id="char-class" style="font-size: 13px; color: var(--text-muted);">Novato Lv 1</div>
+        </div>
+        <div id="char-avatar" style="font-size: 40px;">🧙</div>
+      </div>
+    </div>
+    
+    <div class="section-title">Stats</div>
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
+</div>
+
+<!-- ============== INVENTORY SCREEN ============== -->
+<div class="screen" id="screen-inventory">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">Inventario</div>
+      <div id="inv-count" style="font-size: 13px; color: var(--text-muted);">0/20</div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <div id="inventory-grid"></div>
+    <div id="inventory-empty" class="text-center text-muted" style="padding: 40px 0;">
+      Tu inventario está vacío
+    </div>
+  </div>
+</div>
+
+<!-- ============== QUESTS SCREEN ============== -->
+<div class="screen" id="screen-quests">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">Misiones</div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <div id="quests-active"></div>
+    <div id="quests-empty" class="text-center text-muted" style="padding: 40px 0;">
+      No tienes misiones activas
+    </div>
+  </div>
+</div>
+
+<!-- ============== SETTINGS SCREEN ============== -->
+<div class="screen" id="screen-settings">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">Ajustes</div>
+    </div>
+  </div>
+  
+  <div class="content" id="settings-content"></div>
+</div>
+
+<!-- ============== NAVIGATION ============== -->
+<nav class="nav">
+  <button class="nav-item active" data-screen="hub">
+    <div class="nav-item-icon">🏰</div>
+    <div>Hub</div>
+  </button>
+  <button class="nav-item" data-screen="character">
+    <div class="nav-item-icon">👤</div>
+    <div>Personaje</div>
+  </button>
+  <button class="nav-item" data-screen="inventory">
+    <div class="nav-item-icon">🎒</div>
+    <div>Inventario</div>
+  </button>
+  <button class="nav-item" data-screen="quests">
+    <div class="nav-item-icon">📜</div>
+    <div>Misiones</div>
+  </button>
+  <button class="nav-item" data-screen="settings">
+    <div class="nav-item-icon">⚙️</div>
+    <div>Ajustes</div>
+  </button>
+</nav>
+
+<!-- ============== COMPLETE OVERLAY ============== -->
+<div class="complete-overlay" id="complete-overlay">
+  <div class="complete-icon" id="complete-icon">🏆</div>
+  <div class="complete-title" id="complete-title">¡Tarea completada!</div>
+  <div class="complete-subtitle" id="complete-subtitle"></div>
+  <div class="complete-rewards" id="complete-rewards"></div>
+  <div class="complete-drop hidden" id="complete-drop">
+    <div class="complete-drop-title">🎁 ¡DROP!</div>
+    <div class="complete-drop-item" id="complete-drop-item"></div>
+  </div>
+  <div class="side-quest-prompt hidden" id="side-quest-prompt">
+    <div class="side-quest-prompt-title">⭐ ¿Completaste la Side Quest?</div>
+    <div class="side-quest-prompt-desc" id="side-quest-prompt-desc"></div>
+    <div class="side-quest-prompt-btns">
+      <button class="btn btn-gold btn-small" id="btn-side-quest-yes">Sí (+50%)</button>
+      <button class="btn btn-ghost btn-small" id="btn-side-quest-no">No</button>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="btn-complete-continue" style="max-width: 280px;">Continuar</button>
+</div>
+
+<!-- ============== MODALS ============== -->
+<div class="modal-backdrop" id="modal-tasks">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-tasks-title">Tareas</div>
+    <div id="modal-tasks-list"></div>
+    <button class="btn btn-ghost" onclick="closeModal('modal-tasks')">Cerrar</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
