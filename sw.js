@@ -1,9 +1,11 @@
-const CACHE_NAME = 'lifexp-v3';
+const CACHE_NAME = 'lifexp-v4';
 const urlsToCache = [
   '/',
   '/index.html',
   '/classes.js',
   '/items.js',
+  '/combat.js',
+  '/enemies.js',
   '/game.js',
   '/manifest.json',
   '/icon-192.png',
