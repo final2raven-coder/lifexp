@@ -720,6 +720,32 @@ body {
 .text-muted { color: var(--text-muted); }
 .mb-8 { margin-bottom: 8px; }
 .mb-16 { margin-bottom: 16px; }
+
+/* Combat */
+.combat-action-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s, transform 0.1s;
+}
+.combat-action-btn:active { transform: scale(0.98); }
+.combat-action-btn:not(.disabled):hover { border-color: var(--accent); }
+.combat-action-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.combat-action-icon { font-size: 20px; }
+.combat-action-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.combat-log-entry {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.combat-log-entry:last-child { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -1008,8 +1034,106 @@ body {
   </div>
 </div>
 
+<!-- ============== COMBAT SCREEN ============== -->
+<div class="screen" id="screen-combat">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">⚔️ Combate</div>
+      <div id="combat-phase" style="font-size: 13px; font-weight: 700;">Tu turno</div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <!-- Enemy Card -->
+    <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(255,77,109,0.1), transparent); border-color: var(--accent);">
+      <div id="combat-enemy-icon" style="font-size: 64px; margin-bottom: 8px;">🐺</div>
+      <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <span id="combat-enemy-name" style="font-size: 18px; font-weight: 800;">Enemigo</span>
+        <span id="combat-enemy-level" style="font-size: 12px; color: var(--text-muted);">Lv 1</span>
+      </div>
+      <div style="margin-top: 8px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span style="color: var(--red);">❤️ HP</span>
+          <span id="combat-enemy-hp" style="color: var(--text-muted);">100/100</span>
+        </div>
+        <div style="background: var(--border); border-radius: 4px; height: 10px; overflow: hidden;">
+          <div id="combat-enemy-hp-fill" style="background: var(--red); height: 100%; width: 100%; transition: width 0.3s;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Player Resources -->
+    <div class="card">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <!-- HP -->
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
+            <span style="color: var(--red);">❤️ HP</span>
+            <span id="combat-player-hp" style="color: var(--text-muted);">100/100</span>
+          </div>
+          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
+            <div id="combat-player-hp-fill" style="background: var(--red); height: 100%; width: 100%; transition: width 0.3s;"></div>
+          </div>
+        </div>
+        <!-- MP -->
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
+            <span style="color: var(--blue);">💧 MP</span>
+            <span id="combat-player-mp" style="color: var(--text-muted);">50/50</span>
+          </div>
+          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
+            <div id="combat-player-mp-fill" style="background: var(--blue); height: 100%; width: 100%; transition: width 0.3s;"></div>
+          </div>
+        </div>
+        <!-- SP -->
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
+            <span style="color: var(--green);">⚡ SP</span>
+            <span id="combat-player-sp" style="color: var(--text-muted);">60/60</span>
+          </div>
+          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
+            <div id="combat-player-sp-fill" style="background: var(--green); height: 100%; width: 100%; transition: width 0.3s;"></div>
+          </div>
+        </div>
+        <!-- Focus -->
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
+            <span style="color: var(--purple);">🎯 Focus</span>
+            <span id="combat-player-focus" style="color: var(--text-muted);">0/100</span>
+          </div>
+          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
+            <div id="combat-player-focus-fill" style="background: var(--purple); height: 100%; width: 0%; transition: width 0.3s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Combat Log -->
+    <div class="card" style="padding: 10px 12px; max-height: 100px; overflow-y: auto;">
+      <div id="combat-log" style="font-size: 12px; color: var(--text-muted);">
+        <div class="combat-log-entry">El combate comienza...</div>
+      </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="section-title">Acciones</div>
+    <div id="combat-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
+  </div>
+</div>
+
+<!-- Combat Result Overlay -->
+<div class="complete-overlay" id="combat-result-overlay">
+  <div id="combat-result-icon" class="complete-icon">🏆</div>
+  <div id="combat-result-title" class="complete-title">¡Victoria!</div>
+  <div id="combat-result-subtitle" class="complete-subtitle"></div>
+  <div id="combat-result-rewards" class="complete-rewards"></div>
+  <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continuar</button>
+</div>
+
 <script src="classes.js"></script>
 <script src="items.js"></script>
+<script src="enemies.js"></script>
+<script src="combat.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
