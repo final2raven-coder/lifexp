@@ -1851,8 +1851,16 @@ function openOverflowTask(taskId) {
   resetTimer();
 }
 
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.classList.add('show');
+}
+
 function closeModal(modalId) {
-  document.getElementById(modalId).classList.remove('show');
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.classList.remove('show');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2748,6 +2756,7 @@ function renderQuests() {
     
     const currentStep = quest.steps ? quest.steps[questState.stepIndex || 0] : null;
     const progress = questState.progress || {};
+    const legacyObjective = !currentStep && quest.objectives?.[0] ? quest.objectives[0] : null;
     
     // Calculate progress percentage
     let progressPct = 0;
@@ -2759,6 +2768,8 @@ function renderQuests() {
       } else if (obj.type === 'defeatEnemy') {
         progressPct = progress.enemyDefeated ? 100 : 0;
       }
+    } else if (legacyObjective) {
+      progressPct = Math.min(100, Math.round(((progress.tasksCompleted || 0) / legacyObjective.count) * 100));
     }
     
     const typeColors = {
@@ -2779,7 +2790,7 @@ function renderQuests() {
               ${quest.type}
             </div>
             <div style="font-weight: 700;">${quest.name}</div>
-            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : ''}
+            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}
           </div>
           <div style="text-align: right;">
             <div style="font-size: 20px;">${quest.icon || '📜'}</div>
@@ -2822,7 +2833,7 @@ function showAvailableQuests() {
     if (gameState.completedQuests.includes(questId) && !quest.repeatable) continue;
     
     // Check level requirement
-    if (quest.levelReq && playerLevel < quest.levelReq) continue;
+    if ((quest.levelReq || quest.minLevel) && playerLevel < (quest.levelReq || quest.minLevel)) continue;
     
     const typeColors = {
       daily: 'var(--green)',
