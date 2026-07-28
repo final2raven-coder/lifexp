@@ -1853,14 +1853,18 @@ function openOverflowTask(taskId) {
 
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (!modal) return;
+  if (!modal) return false;
   modal.classList.add('show');
+  // Fallback for cached/older CSS versions.
+  modal.style.display = 'flex';
+  return true;
 }
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
   modal.classList.remove('show');
+  modal.style.display = '';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2515,6 +2519,11 @@ function renderGuild() {
 document.addEventListener('DOMContentLoaded', () => {
   // Load game
   loadGame();
+
+  // Quest discovery buttons: explicit listeners avoid issues with inline handlers
+  // when the app is served from a PWA cache or a restrictive WebView.
+  document.getElementById('btn-show-available-quests')?.addEventListener('click', showAvailableQuests);
+  document.getElementById('btn-show-available-quests-empty')?.addEventListener('click', showAvailableQuests);
   
   // Navigation
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -2815,8 +2824,14 @@ function renderQuests() {
 }
 
 function showAvailableQuests() {
+  const modal = document.getElementById('modal-tasks');
   const list = document.getElementById('modal-tasks-list');
-  document.getElementById('modal-tasks-title').textContent = '📜 Quests disponibles';
+  const title = document.getElementById('modal-tasks-title');
+  if (!modal || !list || !title) return;
+  title.textContent = '📜 Quests disponibles';
+  
+  const activeQuests = Array.isArray(gameState.activeQuests) ? gameState.activeQuests : [];
+  const completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
   
   if (typeof QUESTS === 'undefined') {
     list.innerHTML = '<div class="text-muted">Sistema de quests no disponible</div>';
@@ -2829,8 +2844,8 @@ function showAvailableQuests() {
   
   for (const [questId, quest] of Object.entries(QUESTS)) {
     // Skip if already active or completed
-    if (gameState.activeQuests.some(q => q.questId === questId)) continue;
-    if (gameState.completedQuests.includes(questId) && !quest.repeatable) continue;
+    if (activeQuests.some(q => q.questId === questId)) continue;
+    if (completedQuests.includes(questId) && !quest.repeatable) continue;
     
     // Check level requirement
     if ((quest.levelReq || quest.minLevel) && playerLevel < (quest.levelReq || quest.minLevel)) continue;
