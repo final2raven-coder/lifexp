@@ -721,6 +721,325 @@ body {
 .mb-8 { margin-bottom: 8px; }
 .mb-16 { margin-bottom: 16px; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLOCK 7: POLISH & ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Screen transitions */
+.screen {
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Card hover/tap feedback */
+.card {
+  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card:active {
+  transform: scale(0.98);
+}
+.card[onclick]:hover, .card[style*="cursor: pointer"]:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+/* Button ripple effect */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+.btn:active::after {
+  transform: scale(2.5);
+  opacity: 1;
+  transition: transform 0s, opacity 0s;
+}
+
+/* Nav item transitions */
+.nav-item {
+  transition: color 0.2s ease, transform 0.1s ease;
+}
+.nav-item:active {
+  transform: scale(0.95);
+}
+.nav-item.active .nav-item-icon {
+  animation: popIn 0.3s ease;
+}
+@keyframes popIn {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* XP bar shine animation */
+.xp-fill {
+  position: relative;
+  overflow: hidden;
+}
+.xp-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: xpShine 3s infinite;
+}
+@keyframes xpShine {
+  0% { left: -100%; }
+  50%, 100% { left: 150%; }
+}
+
+/* Stat bar fill animation */
+.stat-fill {
+  animation: fillIn 0.6s ease-out;
+}
+@keyframes fillIn {
+  from { width: 0 !important; }
+}
+
+/* Category grid hover */
+.cat-card {
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+.cat-card:hover {
+  border-color: var(--accent);
+}
+.cat-card:active {
+  transform: scale(0.97);
+}
+
+/* Complete overlay animations */
+.complete-overlay {
+  transition: opacity 0.3s ease;
+}
+.complete-overlay.show .complete-icon {
+  animation: bounceIn 0.5s ease;
+}
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.complete-overlay.show .complete-title {
+  animation: slideUp 0.4s ease 0.1s both;
+}
+.complete-overlay.show .complete-rewards {
+  animation: slideUp 0.4s ease 0.2s both;
+}
+.complete-overlay.show .complete-drop {
+  animation: slideUp 0.4s ease 0.3s both;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal animations */
+.modal-backdrop {
+  transition: opacity 0.2s ease;
+}
+.modal-backdrop.show .modal {
+  animation: slideInUp 0.3s ease;
+}
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Alert pulse for overflow */
+.alert-overflow {
+  animation: alertPulse 2s infinite;
+}
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(251, 146, 60, 0); }
+}
+
+/* Gold shimmer for rewards */
+.complete-reward.gold {
+  position: relative;
+  overflow: hidden;
+}
+.complete-reward.gold::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,215,0,0.3), transparent);
+  animation: goldShimmer 2s infinite;
+}
+@keyframes goldShimmer {
+  0% { left: -100%; }
+  50%, 100% { left: 150%; }
+}
+
+/* Loading spinner */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 20px auto;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.toast.success { border-color: var(--green); color: var(--green); }
+.toast.error { border-color: var(--red); color: var(--red); }
+.toast.gold { border-color: var(--gold); color: var(--gold); }
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-surface) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Level up celebration */
+.level-up-effect {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+}
+.level-up-effect::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--gold) 0%, transparent 70%);
+  opacity: 0;
+  animation: levelUpFlash 1s ease;
+}
+@keyframes levelUpFlash {
+  0% { opacity: 0; transform: scale(0); }
+  30% { opacity: 0.3; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* Haptic feedback simulation (visual) */
+.haptic {
+  animation: haptic 0.1s ease;
+}
+@keyframes haptic {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.empty-state-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* Onboarding overlay */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.5s ease;
+}
+.onboarding-step {
+  max-width: 320px;
+  text-align: center;
+}
+.onboarding-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+}
+.onboarding-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  color: var(--gold);
+}
+.onboarding-text {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+.onboarding-dots {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.onboarding-dot.active {
+  background: var(--accent);
+}
+
 /* Combat */
 .combat-action-btn {
   background: var(--bg-card);
@@ -746,6 +1065,23 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .combat-log-entry:last-child { border-bottom: none; }
+
+/* Combat damage numbers */
+.damage-number {
+  position: absolute;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--red);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  animation: damageFloat 1s ease-out forwards;
+  pointer-events: none;
+}
+.damage-number.heal { color: var(--green); }
+.damage-number.crit { color: var(--gold); font-size: 32px; }
+@keyframes damageFloat {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
+}
 </style>
 </head>
 <body>

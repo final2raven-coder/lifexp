@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v5';
+const CACHE_NAME = 'lifexp-v6';
 const urlsToCache = [
   '/',
   '/index.html',
