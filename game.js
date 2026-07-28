@@ -839,29 +839,92 @@ function renderHub() {
 }
 
 function renderCharacter() {
-  document.getElementById('char-name').textContent = gameState.name;
-  document.getElementById('char-class').textContent = `Novato Lv ${gameState.level}`; // TODO: class system
+  const level = gameState.level;
+  const classId = gameState.classId;
+  const cls = classId && classId !== 'novato' ? CLASS_TREE[classId] : null;
   
-  const statsGrid = document.getElementById('stats-grid');
+  // Basic info
+  document.getElementById('char-name').textContent = gameState.name;
+  document.getElementById('char-class-icon').textContent = cls ? cls.icon : '🧑‍🌾';
+  document.getElementById('char-class-name').textContent = cls ? cls.name : 'Novato';
+  document.getElementById('char-level').textContent = level;
+  document.getElementById('char-tier-name').textContent = cls ? `Clase ${getTierName(cls.tier)}` : 'Sin clase';
+  
+  // XP bar
+  const xpProgress = getXpProgress();
+  document.getElementById('char-xp-text').textContent = `${xpProgress.current} / ${xpProgress.needed}`;
+  document.getElementById('char-xp-bar').style.width = `${xpProgress.pct}%`;
+  
+  // Class change button
+  const availableChanges = getAvailableClassChanges(classId === 'novato' ? null : classId, level);
+  const classChangeSection = document.getElementById('class-change-section');
+  if (availableChanges.length > 0) {
+    classChangeSection.classList.remove('hidden');
+  } else {
+    classChangeSection.classList.add('hidden');
+  }
+  
+  // Stats with class bonuses
+  const baseStats = gameState.stats;
+  const derivedStats = calculateDerivedStats(baseStats, classId === 'novato' ? null : classId);
+  
+  const statsGrid = document.getElementById('char-stats-grid');
   statsGrid.innerHTML = '';
   
-  const maxStat = getMaxStat();
+  const maxStat = Math.max(...Object.values(derivedStats));
   
   for (const [statId, stat] of Object.entries(STATS)) {
-    const value = gameState.stats[statId];
-    const pct = Math.round((value / maxStat) * 100);
+    const baseValue = baseStats[statId] || 0;
+    const totalValue = derivedStats[statId] || 0;
+    const bonus = totalValue - baseValue;
+    const pct = Math.round((totalValue / maxStat) * 100);
     
     statsGrid.innerHTML += `
       <div class="stat-item" data-stat="${statId}">
         <div class="stat-header">
           <div class="stat-name">${stat.abbr}</div>
-          <div class="stat-value">${value}</div>
+          <div class="stat-value">${totalValue}${bonus > 0 ? ` <span style="color: var(--green); font-size: 11px;">(+${bonus})</span>` : ''}</div>
         </div>
         <div class="stat-bar">
           <div class="stat-fill" style="width: ${pct}%"></div>
         </div>
       </div>
     `;
+  }
+  
+  // Combat resources
+  const resources = calculateResources(derivedStats);
+  document.getElementById('char-resources').innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div style="text-align: center;">
+        <div style="font-size: 24px; color: var(--red);">❤️ ${resources.hp}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">HP</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 24px; color: var(--blue);">💧 ${resources.mp}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">MP</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 24px; color: var(--green);">⚡ ${resources.sp}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">SP</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 24px; color: var(--purple);">🎯 ${resources.focusMax}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Focus Max</div>
+      </div>
+    </div>
+  `;
+  
+  // Class path
+  const classPath = document.getElementById('char-class-path');
+  if (classId && classId !== 'novato') {
+    const chain = getClassChain(classId);
+    classPath.innerHTML = chain.map((cId, i) => {
+      const c = CLASS_TREE[cId];
+      return `<span style="color: var(--gold);">${c.icon} ${c.name}</span>`;
+    }).join(' → ');
+  } else {
+    classPath.innerHTML = '<span style="color: var(--text-muted);">Aún no has elegido una clase. Alcanza nivel 10 para desbloquear la primera.</span>';
   }
 }
 
@@ -1291,6 +1354,74 @@ function updateTimerDisplay() {
   const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
   const secs = (timerSeconds % 60).toString().padStart(2, '0');
   document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLASS CHANGE SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showClassChangeModal() {
+  const classId = gameState.classId === 'novato' ? null : gameState.classId;
+  const level = gameState.level;
+  const available = getAvailableClassChanges(classId, level);
+  
+  if (available.length === 0) {
+    alert('No hay clases disponibles para cambiar.');
+    return;
+  }
+  
+  const info = document.getElementById('modal-class-info');
+  const options = document.getElementById('modal-class-options');
+  
+  if (!classId) {
+    info.textContent = `Has alcanzado nivel ${level}. ¡Es hora de elegir tu primera clase!`;
+  } else {
+    const currentCls = CLASS_TREE[classId];
+    info.textContent = `Puedes avanzar desde ${currentCls.name} a una de estas especializaciones:`;
+  }
+  
+  options.innerHTML = '';
+  
+  for (const clsId of available) {
+    const cls = CLASS_TREE[clsId];
+    const statsText = Object.entries(cls.stats).map(([s, v]) => `${STATS[s].abbr} +${v}`).join(', ');
+    
+    options.innerHTML += `
+      <div class="card" style="cursor: pointer; transition: transform 0.2s;" 
+           onclick="selectClass('${clsId}')"
+           onmouseenter="this.style.transform='scale(1.02)'" 
+           onmouseleave="this.style.transform='scale(1)'">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 40px;">${cls.icon}</div>
+          <div style="flex: 1;">
+            <div style="font-size: 16px; font-weight: 700; color: var(--gold);">${cls.name}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${cls.desc}</div>
+            <div style="font-size: 11px; color: var(--green); margin-top: 4px;">${statsText}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  document.getElementById('modal-class').classList.add('show');
+}
+
+function selectClass(classId) {
+  const cls = CLASS_TREE[classId];
+  
+  if (!confirm(`¿Quieres convertirte en ${cls.name}?\n\n${cls.desc}\n\nEsta decisión afectará tu camino de progresión.`)) {
+    return;
+  }
+  
+  gameState.classId = classId;
+  saveGame();
+  
+  closeModal('modal-class');
+  renderCharacter();
+  renderHub();
+  
+  // Show celebration
+  alert(`🎉 ¡Te has convertido en ${cls.name}!\n\nTus stats han mejorado y tienes acceso a nuevas habilidades.`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

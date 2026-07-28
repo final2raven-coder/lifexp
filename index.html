@@ -825,18 +825,47 @@ body {
   </div>
   
   <div class="content">
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div id="char-name" style="font-size: 18px; font-weight: 800;">Aventurero</div>
-          <div id="char-class" style="font-size: 13px; color: var(--text-muted);">Novato Lv 1</div>
-        </div>
-        <div id="char-avatar" style="font-size: 40px;">🧙</div>
+    <!-- Character Card -->
+    <div class="card" style="text-align: center; padding: 20px;">
+      <div id="char-class-icon" style="font-size: 64px; margin-bottom: 8px;">🧑‍🌾</div>
+      <div id="char-name" style="font-size: 20px; font-weight: 800;">Aventurero</div>
+      <div id="char-class-name" style="font-size: 14px; color: var(--gold); margin-bottom: 4px;">Novato</div>
+      <div style="display: flex; justify-content: center; gap: 16px; font-size: 13px; color: var(--text-muted);">
+        <span>Nivel <span id="char-level">1</span></span>
+        <span>•</span>
+        <span id="char-tier-name">Sin clase</span>
       </div>
     </div>
     
-    <div class="section-title">Stats</div>
-    <div class="stats-grid" id="stats-grid"></div>
+    <!-- XP Bar -->
+    <div class="card" style="padding: 12px 16px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span style="color: var(--gold);">XP</span>
+        <span id="char-xp-text" style="color: var(--text-muted);">0 / 100</span>
+      </div>
+      <div style="background: var(--border); border-radius: 4px; height: 8px; overflow: hidden;">
+        <div id="char-xp-bar" style="background: var(--gold); height: 100%; width: 0%; transition: width 0.3s;"></div>
+      </div>
+    </div>
+    
+    <!-- Class Change Button -->
+    <div id="class-change-section" class="hidden">
+      <button class="btn btn-gold" onclick="showClassChangeModal()" style="width: 100%;">
+        ⬆️ Cambiar de clase
+      </button>
+    </div>
+    
+    <!-- Stats -->
+    <div class="section-title" style="margin-top: 16px;">Stats (Base + Clase)</div>
+    <div class="stats-grid" id="char-stats-grid"></div>
+    
+    <!-- Combat Resources -->
+    <div class="section-title">Recursos de Combate</div>
+    <div class="card" id="char-resources"></div>
+    
+    <!-- Class Path -->
+    <div class="section-title">Camino de Clase</div>
+    <div class="card" id="char-class-path" style="padding: 12px 16px;"></div>
   </div>
 </div>
 
@@ -939,6 +968,18 @@ body {
   </div>
 </div>
 
+<!-- Class Change Modal -->
+<div class="modal-backdrop" id="modal-class">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⬆️ Cambiar de Clase</div>
+    <div id="modal-class-info" style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;"></div>
+    <div id="modal-class-options"></div>
+    <button class="btn btn-ghost" onclick="closeModal('modal-class')">Cancelar</button>
+  </div>
+</div>
+
+<script src="classes.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
