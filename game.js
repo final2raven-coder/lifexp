@@ -928,21 +928,225 @@ function renderCharacter() {
   }
 }
 
+let currentInventoryTab = 'inventory';
+let selectedItemId = null;
+
+function switchInventoryTab(tab) {
+  currentInventoryTab = tab;
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.inv-tab[data-tab="${tab}"]`)?.classList.add('active');
+  document.getElementById('inv-tab-inventory')?.classList.toggle('hidden', tab !== 'inventory');
+  document.getElementById('inv-tab-equipment')?.classList.toggle('hidden', tab !== 'equipment');
+  renderInventory();
+}
+
 function renderInventory() {
-  const count = gameState.inventory.length;
-  document.getElementById('inv-count').textContent = `${count}/20`;
+  const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;
+  const count = gameState.inventory.reduce((sum, i) => sum + (i.qty || 1), 0);
+  document.getElementById('inv-count').textContent = `${count}/${capacity}`;
   
+  if (currentInventoryTab === 'equipment') {
+    renderEquipment();
+  } else {
+    renderInventoryGrid();
+  }
+}
+
+function renderInventoryGrid() {
   const grid = document.getElementById('inventory-grid');
   const empty = document.getElementById('inventory-empty');
   
-  if (count === 0) {
+  if (gameState.inventory.length === 0) {
     grid.innerHTML = '';
-    empty.classList.remove('hidden');
-  } else {
-    empty.classList.add('hidden');
-    // TODO: render inventory items
-    grid.innerHTML = '<div class="card"><p>Inventario en desarrollo...</p></div>';
+    empty?.classList.remove('hidden');
+    return;
   }
+  
+  empty?.classList.add('hidden');
+  grid.innerHTML = '';
+  
+  for (const slot of gameState.inventory) {
+    const item = typeof ITEMS !== 'undefined' ? ITEMS[slot.id] : null;
+    if (!item) continue;
+    
+    const rarity = typeof RARITY !== 'undefined' ? RARITY[item.rarity] : { color: '#9ca3af' };
+    const qty = slot.qty || 1;
+    
+    grid.innerHTML += `
+      <div class="inv-slot" onclick="showItemModal('${slot.id}')" 
+           style="background: var(--bg-card); border: 2px solid ${rarity.color}; border-radius: 8px; 
+                  padding: 8px; text-align: center; cursor: pointer; position: relative;">
+        <div style="font-size: 24px;">${item.icon}</div>
+        ${qty > 1 ? `<div style="position: absolute; bottom: 2px; right: 4px; font-size: 10px; color: var(--text-muted);">x${qty}</div>` : ''}
+      </div>
+    `;
+  }
+}
+
+function renderEquipment() {
+  const slots = document.getElementById('equipment-slots');
+  const statsDiv = document.getElementById('equipment-stats');
+  if (!slots) return;
+  
+  const slotConfig = [
+    { key: 'weapon', name: 'Arma', icon: '⚔️' },
+    { key: 'armor', name: 'Armadura', icon: '🛡️' },
+    { key: 'accessory1', name: 'Accesorio 1', icon: '💍' },
+    { key: 'accessory2', name: 'Accesorio 2', icon: '💍' },
+    { key: 'artifact', name: 'Artefacto', icon: '🔮' }
+  ];
+  
+  slots.innerHTML = '';
+  
+  for (const cfg of slotConfig) {
+    const itemId = gameState.equipment[cfg.key];
+    const item = itemId && typeof ITEMS !== 'undefined' ? ITEMS[itemId] : null;
+    const rarity = item && typeof RARITY !== 'undefined' ? RARITY[item.rarity] : null;
+    
+    slots.innerHTML += `
+      <div class="equip-slot" onclick="${item ? `showEquippedItemModal('${cfg.key}')` : ''}"
+           style="background: var(--bg-surface); border: 2px solid ${rarity ? rarity.color : 'var(--border)'}; 
+                  border-radius: 8px; padding: 12px; text-align: center; cursor: ${item ? 'pointer' : 'default'};">
+        <div style="font-size: 28px;">${item ? item.icon : cfg.icon}</div>
+        <div style="font-size: 11px; color: ${item ? rarity.color : 'var(--text-muted)'}; margin-top: 4px;">
+          ${item ? item.name : cfg.name}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Equipment stats
+  if (typeof getEquipmentStats === 'function' && statsDiv) {
+    const eqStats = getEquipmentStats();
+    const hasStats = Object.values(eqStats).some(v => v > 0);
+    
+    if (hasStats) {
+      statsDiv.innerHTML = Object.entries(eqStats)
+        .filter(([_, v]) => v > 0)
+        .map(([stat, val]) => `<span style="color: var(--stat-${stat}); margin-right: 12px;">${STATS[stat].abbr} +${val}</span>`)
+        .join('');
+    } else {
+      statsDiv.innerHTML = '<span style="color: var(--text-muted);">Sin equipo</span>';
+    }
+  }
+}
+
+function showItemModal(itemId) {
+  selectedItemId = itemId;
+  const item = ITEMS[itemId];
+  if (!item) return;
+  
+  const rarity = RARITY[item.rarity];
+  const type = ITEM_TYPE[item.type];
+  const qty = getItemCount(itemId);
+  
+  let statsHtml = '';
+  if (item.stats) {
+    statsHtml = '<div style="margin-top: 8px;">' + 
+      Object.entries(item.stats).map(([s, v]) => `<span style="color: var(--stat-${s});">${STATS[s].abbr} +${v}</span>`).join(' ') +
+      '</div>';
+  }
+  
+  document.getElementById('modal-item-content').innerHTML = `
+    <div style="text-align: center; margin-bottom: 12px;">
+      <div style="font-size: 48px;">${item.icon}</div>
+      <div style="font-size: 18px; font-weight: 700; color: ${rarity.color};">${item.name}</div>
+      <div style="font-size: 12px; color: var(--text-muted);">${type.name} - ${rarity.name}${qty > 1 ? ' x' + qty : ''}</div>
+    </div>
+    <div style="font-size: 13px; color: var(--text);">${item.desc}</div>
+    ${statsHtml}
+    ${item.passive ? `<div style="margin-top: 8px; font-size: 12px; color: var(--gold);">* ${item.passive}</div>` : ''}
+    <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">Valor: ${item.value} oro</div>
+  `;
+  
+  const actionBtn = document.getElementById('btn-item-action');
+  if (type.slot) {
+    actionBtn.textContent = 'Equipar';
+    actionBtn.onclick = () => { equipItemFromInventory(itemId); };
+  } else if (item.type === 'consumable') {
+    actionBtn.textContent = 'Usar';
+    actionBtn.onclick = () => { useConsumable(itemId); };
+  } else {
+    actionBtn.textContent = 'Vender';
+    actionBtn.onclick = () => { sellItemFromInventory(itemId); };
+  }
+  
+  document.getElementById('modal-item').classList.add('show');
+}
+
+function showEquippedItemModal(slot) {
+  const itemId = gameState.equipment[slot];
+  if (!itemId) return;
+  
+  selectedItemId = itemId;
+  const item = ITEMS[itemId];
+  const rarity = RARITY[item.rarity];
+  const type = ITEM_TYPE[item.type];
+  
+  let statsHtml = '';
+  if (item.stats) {
+    statsHtml = '<div style="margin-top: 8px;">' + 
+      Object.entries(item.stats).map(([s, v]) => `<span style="color: var(--stat-${s});">${STATS[s].abbr} +${v}</span>`).join(' ') +
+      '</div>';
+  }
+  
+  document.getElementById('modal-item-content').innerHTML = `
+    <div style="text-align: center; margin-bottom: 12px;">
+      <div style="font-size: 48px;">${item.icon}</div>
+      <div style="font-size: 18px; font-weight: 700; color: ${rarity.color};">${item.name}</div>
+      <div style="font-size: 12px; color: var(--text-muted);">${type.name} - ${rarity.name} - EQUIPADO</div>
+    </div>
+    <div style="font-size: 13px; color: var(--text);">${item.desc}</div>
+    ${statsHtml}
+    ${item.passive ? `<div style="margin-top: 8px; font-size: 12px; color: var(--gold);">* ${item.passive}</div>` : ''}
+  `;
+  
+  const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.textContent = 'Desequipar';
+  actionBtn.onclick = () => { unequipItemToInventory(slot); };
+  
+  document.getElementById('modal-item').classList.add('show');
+}
+
+function equipItemFromInventory(itemId) {
+  if (equipItem(itemId)) {
+    saveGame();
+    closeModal('modal-item');
+    renderInventory();
+    renderCharacter();
+  } else {
+    alert('No se pudo equipar el item.');
+  }
+}
+
+function unequipItemToInventory(slot) {
+  if (unequipItem(slot)) {
+    saveGame();
+    closeModal('modal-item');
+    renderInventory();
+    renderCharacter();
+  } else {
+    alert('Inventario lleno.');
+  }
+}
+
+function sellItemFromInventory(itemId) {
+  const item = ITEMS[itemId];
+  if (!item) return;
+  
+  const gold = sellItem(itemId, 1);
+  if (gold > 0) {
+    saveGame();
+    closeModal('modal-item');
+    renderInventory();
+    renderHub();
+    alert('Vendido por ' + gold + ' oro.');
+  }
+}
+
+function useConsumable(itemId) {
+  alert('Sistema de consumibles disponible en combate (Block 4)');
+  closeModal('modal-item');
 }
 
 function renderQuests() {
@@ -1159,19 +1363,43 @@ function finalizeCompletion(sideQuestCompleted) {
   const goldEarned = Math.floor(task.xp / 5);
   gameState.gold += goldEarned;
   
-  // Roll for drops
-  let drop = rollDrop(task, sideQuestCompleted);
-  if (sideQuestCompleted && task.sideQuest) {
+  // Roll for drops using items.js system
+  let dropResult = null;
+  const bonusChance = sideQuestCompleted && task.sideQuest?.dropBonus ? task.sideQuest.dropBonus / 100 : 0;
+  
+  if (task.drops?.theme && typeof rollDropFromTheme === 'function') {
+    dropResult = rollDropFromTheme(task.drops.theme, bonusChance);
+  } else if (task.drops?.items) {
+    // Fallback to old system for tasks without theme
+    const drop = rollDrop(task, sideQuestCompleted);
+    if (drop) dropResult = { itemId: null, name: drop };
+  }
+  
+  // Side quest bonus drop
+  if (sideQuestCompleted && task.sideQuest?.drops && !dropResult) {
     const sqDrop = rollSideQuestDrop(task);
-    if (sqDrop && !drop) drop = sqDrop;
+    if (sqDrop) dropResult = { itemId: null, name: sqDrop };
   }
   
   // Show drop if any
-  if (drop) {
+  if (dropResult) {
     document.getElementById('complete-drop').classList.remove('hidden');
-    document.getElementById('complete-drop-item').textContent = drop;
-    // Add to inventory
-    gameState.inventory.push({ name: drop, type: 'item', obtainedAt: todayStr() });
+    
+    if (dropResult.itemId && typeof ITEMS !== 'undefined' && ITEMS[dropResult.itemId]) {
+      const item = ITEMS[dropResult.itemId];
+      const rarity = RARITY[dropResult.rarity || item.rarity];
+      document.getElementById('complete-drop-item').innerHTML = 
+        `<span style="color: ${rarity.color};">${item.icon} ${item.name}</span>`;
+      // Add to inventory using items.js system
+      if (typeof addToInventory === 'function') {
+        addToInventory(dropResult.itemId, 1);
+      } else {
+        gameState.inventory.push({ id: dropResult.itemId, qty: 1, obtainedAt: todayStr() });
+      }
+    } else {
+      document.getElementById('complete-drop-item').textContent = dropResult.name || dropResult;
+      gameState.inventory.push({ name: dropResult.name || dropResult, type: 'item', obtainedAt: todayStr() });
+    }
   }
   
   // Update task lastDone
@@ -1223,6 +1451,52 @@ function finalizeCompletion(sideQuestCompleted) {
     document.getElementById('complete-title').textContent = '¡Subiste de nivel!';
     document.getElementById('complete-icon').textContent = '🎉';
   }
+}
+
+// Drop system - connects to items.js
+function rollDrop(task, sideQuestCompleted) {
+  if (!task.drops || !task.drops.theme) return null;
+  
+  // Calculate bonus from side quest
+  const bonus = sideQuestCompleted && task.sideQuest ? (task.sideQuest.dropBonus || 0) / 100 : 0;
+  
+  // Use items.js rollDrop if available
+  if (typeof rollDrop === 'function' && typeof ITEMS !== 'undefined') {
+    const result = rollDrop(task.drops.theme, bonus);
+    if (result) {
+      // Add to inventory using items.js system
+      if (typeof addToInventory === 'function') {
+        addToInventory(result.itemId);
+      }
+      const item = ITEMS[result.itemId];
+      return item ? item.name : result.itemId;
+    }
+  }
+  
+  // Fallback: use old string-based system
+  if (task.drops.items && task.drops.items.length > 0) {
+    const dropChance = 0.4 + bonus;
+    if (Math.random() < dropChance) {
+      const dropName = task.drops.items[Math.floor(Math.random() * task.drops.items.length)];
+      return dropName;
+    }
+  }
+  
+  return null;
+}
+
+function rollSideQuestDrop(task) {
+  if (!task.sideQuest || !task.sideQuest.drops) return null;
+  
+  const drops = task.sideQuest.drops;
+  if (drops.length === 0) return null;
+  
+  // 60% chance to get side quest drop
+  if (Math.random() < 0.6) {
+    return drops[Math.floor(Math.random() * drops.length)];
+  }
+  
+  return null;
 }
 
 function dismissComplete() {
