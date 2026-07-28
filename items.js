@@ -308,6 +308,12 @@ const ITEMS = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const DROP_TABLES = {
+
+  destino: ['piedra_del_umbral', 'fragmento_del_umbral', 'esencia_de_retorno'],
+  exploracion: ['piedra_del_umbral', 'fragmento_del_umbral', 'botas_viajero'],
+  refugio: ['broche_del_refugio', 'moneda_antigua'],
+  conocimiento: ['sello_de_la_pregunta', 'grimorio_arcano'],
+  creacion: ['guantes_del_trazo', 'dado_destino'],
   agua_quimicos: ['pocion_agua', 'veneno_basico', 'frasco_vacio', 'daga_corrosiva', 'escudo_antiveneno', 'antidoto'],
   fuego: ['gema_fuego', 'skill_llamarada', 'cuchilla_llameante'],
   fuego_comida: ['racion_combate', 'gema_fuego', 'especia_rara', 'elixir_vitalidad', 'cuchilla_llameante'],

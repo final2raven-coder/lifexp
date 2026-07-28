@@ -759,6 +759,14 @@ function loadGame() {
     gameState.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
   }
   
+  // Merge official content added in later versions without touching custom task data.
+  const existingTaskIds = new Set((gameState.tasks || []).map(task => task.id));
+  for (const officialTask of DEFAULT_TASKS) {
+    if (!existingTaskIds.has(officialTask.id)) {
+      gameState.tasks.push(JSON.parse(JSON.stringify(officialTask)));
+    }
+  }
+
   // Update streak
   updateStreak();
 }

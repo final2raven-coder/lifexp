@@ -547,6 +547,9 @@ function scaleEnemy(enemy, targetLevel) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const THEME_ENEMIES = {
+  destino: ['mote_del_umbral', 'custodio_del_umbral'],
+  refugio: ['vigia_del_refugio'],
+  creacion: ['custodio_del_umbral'],
   agua_quimicos: ['rata_gigante', 'araña_domestica', 'slime_acido', 'elemental_agua'],
   fuego: ['salamandra', 'golem_horno'],
   fuego_comida: ['salamandra', 'golem_horno'],
