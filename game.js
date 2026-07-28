@@ -566,6 +566,10 @@ let gameState = {
     artifact: null
   },
   stash: [],
+  stashCapacity: 30,
+  inventoryCapacityBonus: 0,
+  pendingLoot: null,
+  saveVersion: 2,
   
   // Class (placeholder for next block)
   classId: 'novato',
@@ -749,6 +753,12 @@ function loadGame() {
     if (saved) {
       const parsed = JSON.parse(saved);
       gameState = { ...gameState, ...parsed };
+      gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
+      gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
+      gameState.stashCapacity = Number.isFinite(gameState.stashCapacity) ? gameState.stashCapacity : 30;
+      gameState.inventoryCapacityBonus = Number.isFinite(gameState.inventoryCapacityBonus) ? gameState.inventoryCapacityBonus : 0;
+      gameState.pendingLoot = gameState.pendingLoot || null;
+      gameState.saveVersion = 2;
     }
   } catch (e) {
     console.warn('Could not load game:', e);
@@ -959,6 +969,7 @@ function switchInventoryTab(tab) {
   document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.inv-tab[data-tab="${tab}"]`)?.classList.add('active');
   document.getElementById('inv-tab-inventory')?.classList.toggle('hidden', tab !== 'inventory');
+  document.getElementById('inv-tab-stash')?.classList.toggle('hidden', tab !== 'stash');
   document.getElementById('inv-tab-equipment')?.classList.toggle('hidden', tab !== 'equipment');
   renderInventory();
 }
@@ -967,8 +978,13 @@ function renderInventory() {
   const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;
   const count = gameState.inventory.reduce((sum, i) => sum + (i.qty || 1), 0);
   document.getElementById('inv-count').textContent = `${count}/${capacity}`;
+  const stashCount = (gameState.stash || []).reduce((sum, i) => sum + (i.qty || 1), 0);
+  const stashLabel = document.getElementById('stash-count');
+  if (stashLabel) stashLabel.textContent = `${stashCount}/${gameState.stashCapacity || 30}`;
   
-  if (currentInventoryTab === 'equipment') {
+  if (currentInventoryTab === 'stash') {
+    renderStashGrid();
+  } else if (currentInventoryTab === 'equipment') {
     renderEquipment();
   } else {
     renderInventoryGrid();
@@ -990,7 +1006,10 @@ function renderInventoryGrid() {
   
   for (const slot of gameState.inventory) {
     const item = typeof ITEMS !== 'undefined' ? ITEMS[slot.id] : null;
-    if (!item) continue;
+    if (!item) {
+      grid.innerHTML += `<div class="inv-slot" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;"><div style="font-size:24px;">❔</div><div style="font-size:10px;color:var(--text-muted);">Objeto desconocido</div></div>`;
+      continue;
+    }
     
     const rarity = typeof RARITY !== 'undefined' ? RARITY[item.rarity] : { color: '#9ca3af' };
     const qty = slot.qty || 1;
@@ -1004,6 +1023,46 @@ function renderInventoryGrid() {
       </div>
     `;
   }
+}
+
+function renderStashGrid() {
+  const grid = document.getElementById('stash-grid');
+  const empty = document.getElementById('stash-empty');
+  if (!grid) return;
+  const stash = Array.isArray(gameState.stash) ? gameState.stash : [];
+  if (stash.length === 0) {
+    grid.innerHTML = '';
+    empty?.classList.remove('hidden');
+    return;
+  }
+  empty?.classList.add('hidden');
+  grid.innerHTML = stash.map(slot => {
+    const item = ITEMS[slot.id];
+    if (!item) return '';
+    const rarity = RARITY[item.rarity] || RARITY.common;
+    const qty = slot.qty || 1;
+    return `<div class="inv-slot" onclick="showStashItemModal('${slot.id}')" style="background:var(--bg-card);border:2px solid ${rarity.color};border-radius:8px;padding:8px;text-align:center;cursor:pointer;position:relative;"><div style="font-size:24px;">${item.icon}</div><div style="font-size:10px;color:${rarity.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>${qty > 1 ? `<div style="position:absolute;bottom:2px;right:4px;font-size:10px;color:var(--text-muted);">x${qty}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function showStashItemModal(itemId) {
+  showItemModal(itemId, 'stash');
+}
+
+function moveItemToStash(itemId) {
+  if (!moveBetweenContainers(itemId, 'inventory', 'stash')) {
+    showToast('El baúl está lleno.', 'error');
+    return;
+  }
+  saveGame(); closeModal('modal-item'); renderInventory();
+}
+
+function moveItemToInventory(itemId) {
+  if (!moveBetweenContainers(itemId, 'stash', 'inventory')) {
+    showToast('No hay espacio en el inventario.', 'error');
+    return;
+  }
+  saveGame(); closeModal('modal-item'); renderInventory();
 }
 
 function renderEquipment() {
@@ -1054,7 +1113,7 @@ function renderEquipment() {
   }
 }
 
-function showItemModal(itemId) {
+function showItemModal(itemId, container = 'inventory') {
   selectedItemId = itemId;
   const item = ITEMS[itemId];
   if (!item) return;
@@ -1083,15 +1142,18 @@ function showItemModal(itemId) {
   `;
   
   const actionBtn = document.getElementById('btn-item-action');
-  if (type.slot) {
+  if (container === 'stash') {
+    actionBtn.textContent = 'Sacar al inventario';
+    actionBtn.onclick = () => { moveItemToInventory(itemId); };
+  } else if (type.slot) {
     actionBtn.textContent = 'Equipar';
     actionBtn.onclick = () => { equipItemFromInventory(itemId); };
   } else if (item.type === 'consumable') {
     actionBtn.textContent = 'Usar';
     actionBtn.onclick = () => { useConsumable(itemId); };
   } else {
-    actionBtn.textContent = 'Vender';
-    actionBtn.onclick = () => { sellItemFromInventory(itemId); };
+    actionBtn.textContent = 'Guardar en baúl';
+    actionBtn.onclick = () => { moveItemToStash(itemId); };
   }
   
   document.getElementById('modal-item').classList.add('show');
@@ -1411,7 +1473,7 @@ function finalizeCompletion(sideQuestCompleted) {
         `<span style="color: ${rarity.color};">${item.icon} ${item.name}</span>`;
       // Add to inventory using items.js system
       if (typeof addToInventory === 'function') {
-        addToInventory(dropResult.itemId, 1);
+        addLootSafely(dropResult.itemId, 1);
       } else {
         gameState.inventory.push({ id: dropResult.itemId, qty: 1, obtainedAt: todayStr() });
       }

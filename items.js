@@ -523,3 +523,96 @@ function sellItem(itemId, quantity = 1) {
   
   return gold;
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INVENTORY UPDATE 2: stash, capacity and safe loot handling
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getInventoryCapacity() {
+  let base = 20 + (gameState.inventoryCapacityBonus || 0);
+  const equipped = gameState.equipment || {};
+  for (const slot of Object.values(equipped)) {
+    if (slot) {
+      const item = ITEMS[slot];
+      if (item?.effect?.inventoryBonus) base += item.effect.inventoryBonus;
+    }
+  }
+  return base;
+}
+
+function containerHasSpace(container, itemId, quantity = 1) {
+  const list = container === 'stash' ? (gameState.stash || []) : (gameState.inventory || []);
+  const item = ITEMS[itemId];
+  if (!item) return false;
+  if ((item.type === 'consumable' || item.type === 'material') && list.some(i => i.id === itemId)) return true;
+  const capacity = container === 'stash' ? (gameState.stashCapacity || 30) : getInventoryCapacity();
+  return list.length < capacity;
+}
+
+function addToContainer(itemId, container = 'inventory', quantity = 1) {
+  const item = ITEMS[itemId];
+  if (!item) return { success: false, reason: 'unknown_item' };
+  const list = container === 'stash' ? (gameState.stash || (gameState.stash = [])) : (gameState.inventory || (gameState.inventory = []));
+  if (!containerHasSpace(container, itemId, quantity)) return { success: false, reason: 'full' };
+  if (item.type === 'consumable' || item.type === 'material') {
+    const existing = list.find(i => i.id === itemId);
+    if (existing) { existing.qty = (existing.qty || 1) + quantity; return { success: true, stacked: true }; }
+  }
+  list.push({ id: itemId, qty: quantity });
+  return { success: true, stacked: false };
+}
+
+function addToInventory(itemId, quantity = 1) {
+  return addToContainer(itemId, 'inventory', quantity).success;
+}
+
+function addLootSafely(itemId, quantity = 1) {
+  const result = addToContainer(itemId, 'inventory', quantity);
+  if (result.success) return { ...result, destination: 'inventory' };
+  const stashResult = addToContainer(itemId, 'stash', quantity);
+  if (stashResult.success) return { ...stashResult, destination: 'stash' };
+  gameState.pendingLoot = { itemId, quantity, reason: 'inventory_and_stash_full' };
+  return { success: false, destination: 'pending' };
+}
+
+function moveBetweenContainers(itemId, from, to, quantity = 1) {
+  const source = from === 'stash' ? gameState.stash : gameState.inventory;
+  if (!source) return false;
+  const slot = source.find(i => i.id === itemId);
+  if (!slot) return false;
+  const amount = Math.min(quantity, slot.qty || 1);
+  const result = addToContainer(itemId, to, amount);
+  if (!result.success) return false;
+  slot.qty = (slot.qty || 1) - amount;
+  if (slot.qty <= 0) source.splice(source.indexOf(slot), 1);
+  return true;
+}
+
+function upgradeStashCapacity(amount = 10) {
+  gameState.stashCapacity = (gameState.stashCapacity || 30) + amount;
+  saveGame();
+  return gameState.stashCapacity;
+}
+
+function upgradeInventoryCapacity(amount = 1) {
+  gameState.inventoryCapacityBonus = (gameState.inventoryCapacityBonus || 0) + amount;
+  saveGame();
+  return getInventoryCapacity();
+}
+
+function resolvePendingLoot(action, itemId = null) {
+  const pending = gameState.pendingLoot;
+  if (!pending) return false;
+  if (action === 'stash') {
+    const result = addToContainer(pending.itemId, 'stash', pending.quantity);
+    if (!result.success) return false;
+  } else if (action === 'discard') {
+    gameState.pendingLoot = null; saveGame(); return true;
+  } else if (action === 'replace' && itemId) {
+    if (!removeFromInventory(itemId)) return false;
+    const result = addToContainer(pending.itemId, 'inventory', pending.quantity);
+    if (!result.success) return false;
+  } else return false;
+  gameState.pendingLoot = null; saveGame(); return true;
+}

@@ -1240,6 +1240,7 @@ body {
     </div>
     <div style="display: flex; gap: 8px; margin-top: 8px;">
       <button class="btn btn-small btn-ghost inv-tab active" data-tab="inventory" onclick="switchInventoryTab('inventory')">🎒 Items</button>
+      <button class="btn btn-small btn-ghost inv-tab" data-tab="stash" onclick="switchInventoryTab('stash')">🏠 Baúl <span id="stash-count">0/30</span></button>
       <button class="btn btn-small btn-ghost inv-tab" data-tab="equipment" onclick="switchInventoryTab('equipment')">⚔️ Equipo</button>
     </div>
   </div>
@@ -1251,6 +1252,15 @@ body {
       <div id="inventory-empty" class="text-center text-muted" style="padding: 40px 0;">
         Tu inventario está vacío
       </div>
+    </div>
+    
+    <!-- Stash Tab -->
+    <div id="inv-tab-stash" class="hidden">
+      <div class="card" style="padding: 12px; margin-bottom: 12px;">
+        <div style="font-size: 12px; color: var(--text-muted);">El baúl guarda lo que no llevas contigo.</div>
+      </div>
+      <div id="stash-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
+      <div id="stash-empty" class="text-center text-muted" style="padding: 40px 0;">El baúl está vacío</div>
     </div>
     
     <!-- Equipment Tab -->
