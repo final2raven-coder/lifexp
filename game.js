@@ -573,7 +573,15 @@ let gameState = {
   
   // Quests (placeholder)
   activeQuests: [],
-  completedQuests: []
+  completedQuests: [],
+  
+  // Guild / Coop
+  guildId: null,
+  guildName: null,
+  guildMembers: [], // { odeName, oderId, lastSync }
+  pendingReceipts: [], // receipts generated but not yet shared
+  receivedReceipts: [], // receipts received from others
+  lastReceiptId: 0
 };
 
 // Current task being viewed
@@ -780,6 +788,7 @@ function showScreen(screenId) {
   else if (screenId === 'character') renderCharacter();
   else if (screenId === 'inventory') renderInventory();
   else if (screenId === 'quests') renderQuests();
+  else if (screenId === 'guild') renderGuild();
   else if (screenId === 'settings') renderSettings();
 }
 
@@ -1156,9 +1165,17 @@ function renderSettings() {
   content.innerHTML = `
     <div class="section-title">Datos</div>
     <div class="card">
-      <button class="btn btn-secondary mb-8" onclick="exportData()">📤 Exportar datos</button>
-      <button class="btn btn-secondary mb-8" onclick="showImportModal()">📥 Importar datos</button>
+      <button class="btn btn-secondary mb-8" onclick="exportData()">📤 Exportar save</button>
+      <button class="btn btn-secondary mb-8" onclick="showImportModal()">📥 Importar save</button>
       <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">🗑️ Resetear progreso</button>
+    </div>
+    
+    <div class="section-title">Content Planning</div>
+    <div class="card">
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Exporta un snapshot con métricas de uso y sugerencias para planificar actualizaciones de contenido con tu agente de Langdock.
+      </p>
+      <button class="btn btn-gold" onclick="exportSnapshot()">📊 Exportar Snapshot para Agente</button>
     </div>
     
     <div class="section-title">Info</div>
@@ -1946,6 +1963,175 @@ function exportData() {
   URL.revokeObjectURL(url);
 }
 
+function exportSnapshot() {
+  // Generate a comprehensive snapshot for content update planning
+  const snapshot = {
+    meta: {
+      exportDate: new Date().toISOString(),
+      version: '1.0',
+      purpose: 'LifeXP content update planning snapshot',
+      instructions: 'Este fichero contiene el estado actual del jugador y métricas de uso. Úsalo para planificar actualizaciones de contenido (nuevas tareas, quests, items, enemigos, balanceo).'
+    },
+    
+    player: {
+      name: gameState.name,
+      level: gameState.level,
+      xp: gameState.xp,
+      gold: gameState.gold,
+      streak: gameState.streak,
+      classId: gameState.classId,
+      classLevel: gameState.classLevel,
+      stats: { ...gameState.stats }
+    },
+    
+    progression: {
+      totalTasksCompleted: gameState.taskHistory.length,
+      uniqueTasksCompleted: [...new Set(gameState.taskHistory.map(h => h.taskId))].length,
+      sideQuestsCompleted: gameState.taskHistory.filter(h => h.sideQuest).length,
+      totalXpEarned: gameState.taskHistory.reduce((a, h) => a + h.xp, 0),
+      questsCompleted: gameState.completedQuests.length,
+      daysActive: calculateDaysActive()
+    },
+    
+    taskMetrics: generateTaskMetrics(),
+    
+    inventory: {
+      itemCount: gameState.inventory.length,
+      equipped: { ...gameState.equipment },
+      items: gameState.inventory.map(slot => ({
+        id: slot.id,
+        qty: slot.qty || 1,
+        name: typeof ITEMS !== 'undefined' && ITEMS[slot.id] ? ITEMS[slot.id].name : slot.id
+      }))
+    },
+    
+    activeQuests: gameState.activeQuests.map(q => ({
+      questId: q.questId,
+      stepIndex: q.stepIndex,
+      startedAt: q.startedAt
+    })),
+    
+    suggestions: generateContentSuggestions()
+  };
+  
+  const data = JSON.stringify(snapshot, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lifexp_snapshot_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  alert('Snapshot exportado. Compártelo con tu agente de Langdock para planificar updates de contenido.');
+}
+
+function calculateDaysActive() {
+  if (gameState.taskHistory.length === 0) return 0;
+  const dates = [...new Set(gameState.taskHistory.map(h => h.date))];
+  return dates.length;
+}
+
+function generateTaskMetrics() {
+  const metrics = {
+    byCategory: {},
+    byFrequency: {},
+    mostCompleted: [],
+    neverCompleted: [],
+    overflowFrequent: []
+  };
+  
+  // Initialize categories
+  for (const cat of Object.keys(CATEGORIES)) {
+    metrics.byCategory[cat] = { completed: 0, overflow: 0 };
+  }
+  
+  // Count completions by task
+  const taskCounts = {};
+  for (const h of gameState.taskHistory) {
+    taskCounts[h.taskId] = (taskCounts[h.taskId] || 0) + 1;
+  }
+  
+  // Categorize
+  for (const h of gameState.taskHistory) {
+    const task = getTaskById(h.taskId);
+    if (task) {
+      metrics.byCategory[task.cat].completed++;
+    }
+  }
+  
+  // Find most completed
+  const sorted = Object.entries(taskCounts).sort((a, b) => b[1] - a[1]);
+  metrics.mostCompleted = sorted.slice(0, 5).map(([id, count]) => {
+    const task = getTaskById(id);
+    return { id, name: task?.name || id, count };
+  });
+  
+  // Find never completed
+  metrics.neverCompleted = gameState.tasks
+    .filter(t => !taskCounts[t.id])
+    .map(t => ({ id: t.id, name: t.name, category: t.cat }));
+  
+  return metrics;
+}
+
+function generateContentSuggestions() {
+  const suggestions = [];
+  const level = gameState.level;
+  const totalTasks = gameState.taskHistory.length;
+  
+  // Level-based suggestions
+  if (level >= 10 && gameState.classId === 'novato') {
+    suggestions.push({
+      type: 'progression',
+      priority: 'high',
+      message: 'El jugador está en nivel ' + level + ' pero sigue siendo Novato. Considera añadir recordatorios o tutoriales sobre el sistema de clases.'
+    });
+  }
+  
+  if (level >= 20) {
+    suggestions.push({
+      type: 'content',
+      priority: 'medium',
+      message: 'Jugador nivel ' + level + '. Considera añadir quests de historia más avanzadas o contenido endgame.'
+    });
+  }
+  
+  // Task variety
+  const taskMetrics = generateTaskMetrics();
+  const neglectedCats = Object.entries(taskMetrics.byCategory)
+    .filter(([cat, data]) => data.completed < totalTasks * 0.1)
+    .map(([cat]) => CATEGORIES[cat].name);
+  
+  if (neglectedCats.length > 0) {
+    suggestions.push({
+      type: 'balance',
+      priority: 'medium',
+      message: 'Categorías poco usadas: ' + neglectedCats.join(', ') + '. Considera hacer las tareas de estas categorías más atractivas o añadir mejores recompensas.'
+    });
+  }
+  
+  // Never completed tasks
+  if (taskMetrics.neverCompleted.length > 5) {
+    suggestions.push({
+      type: 'cleanup',
+      priority: 'low',
+      message: taskMetrics.neverCompleted.length + ' tareas nunca completadas. Revisa si son relevantes o si necesitan ajustes.'
+    });
+  }
+  
+  // Inventory suggestions
+  if (gameState.inventory.length >= 18) {
+    suggestions.push({
+      type: 'systems',
+      priority: 'medium',
+      message: 'Inventario casi lleno. Considera añadir sistema de stash, crafting para consumir materiales, o tienda para vender.'
+    });
+  }
+  
+  return suggestions;
+}
+
 function showImportModal() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -1973,6 +2159,331 @@ function resetGame() {
   
   localStorage.removeItem('lifexp_save');
   location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GUILD / COOP SYSTEM (Receipt-based sync)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function generatePlayerId() {
+  return 'player_' + Math.random().toString(36).substr(2, 9);
+}
+
+function getPlayerId() {
+  if (!gameState.playerId) {
+    gameState.playerId = generatePlayerId();
+    saveGame();
+  }
+  return gameState.playerId;
+}
+
+function createGuild(name) {
+  const guildId = 'guild_' + Math.random().toString(36).substr(2, 6).toUpperCase();
+  gameState.guildId = guildId;
+  gameState.guildName = name;
+  gameState.guildMembers = [{
+    odeName: gameState.name,
+    oderId: getPlayerId(),
+    level: gameState.level,
+    classId: gameState.classId,
+    lastSync: todayStr(),
+    totalXp: gameState.taskHistory.reduce((a, h) => a + h.xp, 0)
+  }];
+  saveGame();
+  return guildId;
+}
+
+function joinGuildFromReceipt(receipt) {
+  if (receipt.type !== 'guild_invite') return false;
+  
+  gameState.guildId = receipt.guildId;
+  gameState.guildName = receipt.guildName;
+  gameState.guildMembers = receipt.members || [];
+  
+  // Add self if not already in
+  const selfId = getPlayerId();
+  if (!gameState.guildMembers.find(m => m.oderId === selfId)) {
+    gameState.guildMembers.push({
+      odeName: gameState.name,
+      oderId: selfId,
+      level: gameState.level,
+      classId: gameState.classId,
+      lastSync: todayStr(),
+      totalXp: gameState.taskHistory.reduce((a, h) => a + h.xp, 0)
+    });
+  }
+  
+  saveGame();
+  return true;
+}
+
+function generateReceipt() {
+  // Generate a receipt with recent achievements since last receipt
+  const lastReceiptDate = gameState.lastReceiptDate || '2000-01-01';
+  const recentHistory = gameState.taskHistory.filter(h => h.date > lastReceiptDate);
+  
+  gameState.lastReceiptId++;
+  const receipt = {
+    type: 'progress_update',
+    receiptId: `${getPlayerId()}_${gameState.lastReceiptId}`,
+    playerId: getPlayerId(),
+    playerName: gameState.name,
+    guildId: gameState.guildId,
+    timestamp: new Date().toISOString(),
+    
+    // Current state
+    currentState: {
+      level: gameState.level,
+      xp: gameState.xp,
+      classId: gameState.classId,
+      className: typeof CLASS_TREE !== 'undefined' && CLASS_TREE[gameState.classId] 
+        ? CLASS_TREE[gameState.classId].name : 'Novato',
+      streak: gameState.streak,
+      totalXp: gameState.taskHistory.reduce((a, h) => a + h.xp, 0),
+      questsCompleted: gameState.completedQuests.length
+    },
+    
+    // Recent achievements (since last receipt)
+    recentAchievements: {
+      tasksCompleted: recentHistory.length,
+      xpEarned: recentHistory.reduce((a, h) => a + h.xp, 0),
+      sideQuestsCompleted: recentHistory.filter(h => h.sideQuest).length,
+      period: { from: lastReceiptDate, to: todayStr() }
+    }
+  };
+  
+  gameState.lastReceiptDate = todayStr();
+  saveGame();
+  
+  return receipt;
+}
+
+function generateGuildInvite() {
+  if (!gameState.guildId) return null;
+  
+  return {
+    type: 'guild_invite',
+    guildId: gameState.guildId,
+    guildName: gameState.guildName,
+    invitedBy: gameState.name,
+    timestamp: new Date().toISOString(),
+    members: gameState.guildMembers
+  };
+}
+
+function exportReceipt() {
+  if (!gameState.guildId) {
+    alert('Primero debes crear o unirte a un guild.');
+    return;
+  }
+  
+  const receipt = generateReceipt();
+  const data = JSON.stringify(receipt, null, 2);
+  
+  // Try to use Web Share API for mobile (WhatsApp, etc)
+  if (navigator.share && navigator.canShare) {
+    const file = new File([data], `recibo_${gameState.name}_${todayStr()}.json`, { type: 'application/json' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({
+        title: `Recibo de ${gameState.name}`,
+        text: `🎮 Actualización de ${gameState.name} en ${gameState.guildName}`,
+        files: [file]
+      }).catch(() => downloadReceipt(data, receipt));
+      return;
+    }
+  }
+  
+  // Fallback to download
+  downloadReceipt(data, receipt);
+}
+
+function downloadReceipt(data, receipt) {
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recibo_${gameState.name}_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  alert(`Recibo generado!\\n\\nCompártelo con tu guild por WhatsApp o donde prefieras.\\n\\n📊 ${receipt.recentAchievements.tasksCompleted} tareas | +${receipt.recentAchievements.xpEarned} XP`);
+}
+
+function exportGuildInvite() {
+  if (!gameState.guildId) {
+    const name = prompt('Nombre para tu nuevo Guild:');
+    if (!name) return;
+    createGuild(name);
+  }
+  
+  const invite = generateGuildInvite();
+  const data = JSON.stringify(invite, null, 2);
+  
+  // Try Web Share API
+  if (navigator.share && navigator.canShare) {
+    const file = new File([data], `invite_${gameState.guildName}.json`, { type: 'application/json' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({
+        title: `Invitación a ${gameState.guildName}`,
+        text: `🎮 ¡Únete a mi guild "${gameState.guildName}" en LifeXP!`,
+        files: [file]
+      }).catch(() => downloadInvite(data));
+      return;
+    }
+  }
+  
+  downloadInvite(data);
+}
+
+function downloadInvite(data) {
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `invite_${gameState.guildName || 'guild'}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  alert(`Invitación generada para "${gameState.guildName}"!\\n\\nCompártela con quien quieras que se una.`);
+}
+
+function importReceipt() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const receipt = JSON.parse(text);
+      processReceipt(receipt);
+    } catch (err) {
+      alert('Error al importar recibo: ' + err.message);
+    }
+  };
+  input.click();
+}
+
+function processReceipt(receipt) {
+  if (receipt.type === 'guild_invite') {
+    if (gameState.guildId && gameState.guildId !== receipt.guildId) {
+      if (!confirm(`Ya perteneces a "${gameState.guildName}". ¿Quieres cambiar a "${receipt.guildName}"?`)) {
+        return;
+      }
+    }
+    joinGuildFromReceipt(receipt);
+    alert(`¡Te has unido a "${receipt.guildName}"!`);
+    renderGuild();
+    return;
+  }
+  
+  if (receipt.type === 'progress_update') {
+    // Check guild match
+    if (receipt.guildId !== gameState.guildId) {
+      alert('Este recibo es de otro guild.');
+      return;
+    }
+    
+    // Check if already processed
+    if (gameState.receivedReceipts.includes(receipt.receiptId)) {
+      alert('Este recibo ya fue procesado.');
+      return;
+    }
+    
+    // Update member info
+    const memberIdx = gameState.guildMembers.findIndex(m => m.oderId === receipt.playerId);
+    const memberData = {
+      odeName: receipt.playerName,
+      oderId: receipt.playerId,
+      level: receipt.currentState.level,
+      classId: receipt.currentState.classId,
+      className: receipt.currentState.className,
+      lastSync: receipt.timestamp.slice(0, 10),
+      totalXp: receipt.currentState.totalXp,
+      streak: receipt.currentState.streak
+    };
+    
+    if (memberIdx >= 0) {
+      gameState.guildMembers[memberIdx] = memberData;
+    } else {
+      gameState.guildMembers.push(memberData);
+    }
+    
+    gameState.receivedReceipts.push(receipt.receiptId);
+    saveGame();
+    
+    alert(`Recibo de ${receipt.playerName} procesado!\\n\\n📊 Nivel ${receipt.currentState.level} | ${receipt.recentAchievements.tasksCompleted} tareas recientes`);
+    renderGuild();
+    return;
+  }
+  
+  alert('Tipo de recibo no reconocido.');
+}
+
+function renderGuild() {
+  const container = document.getElementById('guild-container');
+  if (!container) return;
+  
+  if (!gameState.guildId) {
+    container.innerHTML = `
+      <div class="card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">⚔️</div>
+        <h3 style="margin-bottom: 8px;">Sin Guild</h3>
+        <p style="color: var(--text-muted); margin-bottom: 16px;">Crea un guild o únete a uno existente para compartir logros con amigos.</p>
+        <button class="btn btn-gold mb-8" onclick="exportGuildInvite()">🏰 Crear Guild</button>
+        <button class="btn btn-secondary" onclick="importReceipt()">📥 Unirme con invitación</button>
+      </div>
+    `;
+    return;
+  }
+  
+  // Has guild
+  const members = gameState.guildMembers || [];
+  const sorted = [...members].sort((a, b) => (b.totalXp || 0) - (a.totalXp || 0));
+  
+  let membersHtml = '';
+  sorted.forEach((m, idx) => {
+    const isMe = m.oderId === getPlayerId();
+    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '▪️';
+    const classIcon = typeof CLASS_TREE !== 'undefined' && CLASS_TREE[m.classId] 
+      ? CLASS_TREE[m.classId].icon : '🧑‍🌾';
+    
+    membersHtml += `
+      <div class="card" style="display: flex; align-items: center; gap: 12px; ${isMe ? 'border-color: var(--gold);' : ''}">
+        <div style="font-size: 20px;">${medal}</div>
+        <div style="font-size: 28px;">${classIcon}</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700;">${m.odeName} ${isMe ? '(tú)' : ''}</div>
+          <div style="font-size: 12px; color: var(--text-muted);">
+            Lv ${m.level} · ${m.className || 'Novato'} · 🔥${m.streak || 0}
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 16px; color: var(--gold);">${(m.totalXp || 0).toLocaleString()} XP</div>
+          <div style="font-size: 10px; color: var(--text-muted);">sync: ${m.lastSync || '?'}</div>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = `
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div style="font-size: 13px; color: var(--text-muted);">GUILD</div>
+      <h2 style="color: var(--gold);">⚔️ ${gameState.guildName}</h2>
+      <div style="font-size: 12px; color: var(--text-muted);">${members.length} miembro${members.length !== 1 ? 's' : ''}</div>
+    </div>
+    
+    <div class="section-title">Ranking</div>
+    ${membersHtml}
+    
+    <div class="section-title" style="margin-top: 20px;">Acciones</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <button class="btn btn-gold" onclick="exportReceipt()">📤 Enviar recibo</button>
+      <button class="btn btn-secondary" onclick="importReceipt()">📥 Recibir recibo</button>
+    </div>
+    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="exportGuildInvite()">🔗 Invitar a alguien</button>
+  `;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
