@@ -1454,6 +1454,11 @@ function finalizeCompletion(sideQuestCompleted) {
   
   // Check for random encounter after task completion
   triggerEncounterAfterTask(task);
+  
+  // Update quest progress
+  if (typeof updateQuestProgress === 'function') {
+    updateQuestProgress(task);
+  }
 }
 
 // Drop system - connects to items.js
@@ -2033,6 +2038,291 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial render
   renderHub();
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUESTS RENDERING
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderQuests() {
+  const container = document.getElementById('quests-container');
+  if (!container) return;
+  
+  // Check if quests.js loaded
+  if (typeof QUESTS === 'undefined') {
+    container.innerHTML = '<div class="text-muted text-center">Sistema de quests cargando...</div>';
+    return;
+  }
+  
+  // Generate daily quests if needed
+  if (typeof generateDailyQuests === 'function') {
+    generateDailyQuests();
+  }
+  
+  const active = gameState.activeQuests || [];
+  
+  if (active.length === 0) {
+    container.innerHTML = `
+      <div class="card" style="text-align: center; padding: 24px;">
+        <div style="font-size: 32px; margin-bottom: 12px;">📜</div>
+        <div style="color: var(--text-muted);">No tienes quests activas</div>
+        <button class="btn btn-primary" style="margin-top: 16px;" onclick="showAvailableQuests()">
+          Ver quests disponibles
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  for (const questState of active) {
+    const quest = QUESTS[questState.questId];
+    if (!quest) continue;
+    
+    const currentStep = quest.steps ? quest.steps[questState.stepIndex || 0] : null;
+    const progress = questState.progress || {};
+    
+    // Calculate progress percentage
+    let progressPct = 0;
+    if (currentStep && currentStep.objective) {
+      const obj = currentStep.objective;
+      if (obj.type === 'completeTasks') {
+        const done = progress.tasksCompleted || 0;
+        progressPct = Math.min(100, Math.round((done / obj.count) * 100));
+      } else if (obj.type === 'defeatEnemy') {
+        progressPct = progress.enemyDefeated ? 100 : 0;
+      }
+    }
+    
+    const typeColors = {
+      daily: 'var(--green)',
+      simple: 'var(--blue)',
+      composed: 'var(--purple)',
+      story: 'var(--gold)',
+      bounty: 'var(--red)',
+      class: 'var(--cyan)'
+    };
+    const color = typeColors[quest.type] || 'var(--text-muted)';
+    
+    container.innerHTML += `
+      <div class="card" onclick="showQuestDetail('${questState.questId}')" style="cursor: pointer; border-left: 3px solid ${color};">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div style="font-size: 11px; color: ${color}; text-transform: uppercase; margin-bottom: 4px;">
+              ${quest.type}
+            </div>
+            <div style="font-weight: 700;">${quest.name}</div>
+            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : ''}
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 20px;">${quest.icon || '📜'}</div>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <div style="height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;">
+            <div style="height: 100%; width: ${progressPct}%; background: ${color}; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${progressPct}% completado</div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Add button to see more quests
+  container.innerHTML += `
+    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="showAvailableQuests()">
+      + Ver más quests
+    </button>
+  `;
+}
+
+function showAvailableQuests() {
+  const list = document.getElementById('modal-tasks-list');
+  document.getElementById('modal-tasks-title').textContent = '📜 Quests disponibles';
+  
+  if (typeof QUESTS === 'undefined') {
+    list.innerHTML = '<div class="text-muted">Sistema de quests no disponible</div>';
+    openModal('modal-tasks');
+    return;
+  }
+  
+  list.innerHTML = '';
+  const playerLevel = gameState.level || 1;
+  
+  for (const [questId, quest] of Object.entries(QUESTS)) {
+    // Skip if already active or completed
+    if (gameState.activeQuests.some(q => q.questId === questId)) continue;
+    if (gameState.completedQuests.includes(questId) && !quest.repeatable) continue;
+    
+    // Check level requirement
+    if (quest.levelReq && playerLevel < quest.levelReq) continue;
+    
+    const typeColors = {
+      daily: 'var(--green)',
+      simple: 'var(--blue)',
+      composed: 'var(--purple)',
+      story: 'var(--gold)',
+      bounty: 'var(--red)',
+      class: 'var(--cyan)'
+    };
+    const color = typeColors[quest.type] || 'var(--text-muted)';
+    
+    list.innerHTML += `
+      <div class="card" style="cursor: pointer; border-left: 3px solid ${color};" onclick="acceptQuest('${questId}')">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 11px; color: ${color}; text-transform: uppercase;">${quest.type}</div>
+            <div style="font-weight: 600;">${quest.name}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">${quest.desc}</div>
+          </div>
+          <div style="font-size: 24px;">${quest.icon || '📜'}</div>
+        </div>
+        <div style="margin-top: 8px; font-size: 11px; color: var(--gold);">
+          +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} 🪙
+        </div>
+      </div>
+    `;
+  }
+  
+  if (!list.innerHTML) {
+    list.innerHTML = '<div class="text-muted text-center">No hay quests disponibles ahora</div>';
+  }
+  
+  openModal('modal-tasks');
+}
+
+function acceptQuest(questId) {
+  if (typeof QUESTS === 'undefined' || !QUESTS[questId]) return;
+  
+  // Check if already active
+  if (gameState.activeQuests.some(q => q.questId === questId)) return;
+  
+  gameState.activeQuests.push({
+    questId,
+    stepIndex: 0,
+    progress: {},
+    startedAt: todayStr()
+  });
+  
+  saveGame();
+  closeModal('modal-tasks');
+  renderQuests();
+}
+
+function showQuestDetail(questId) {
+  const questState = gameState.activeQuests.find(q => q.questId === questId);
+  if (!questState || typeof QUESTS === 'undefined') return;
+  
+  const quest = QUESTS[questId];
+  if (!quest) return;
+  
+  const content = document.getElementById('modal-item-content');
+  const currentStep = quest.steps ? quest.steps[questState.stepIndex || 0] : null;
+  
+  content.innerHTML = `
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div style="font-size: 48px;">${quest.icon || '📜'}</div>
+      <h3 style="margin-top: 8px;">${quest.name}</h3>
+      <div style="font-size: 12px; color: var(--text-muted);">${quest.desc}</div>
+    </div>
+    ${currentStep ? `
+      <div class="card" style="margin-bottom: 12px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">OBJETIVO ACTUAL</div>
+        <div>${currentStep.desc}</div>
+      </div>
+    ` : ''}
+    <div style="font-size: 12px; color: var(--gold);">
+      Recompensa: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} 🪙
+    </div>
+  `;
+  
+  const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.textContent = '❌ Abandonar quest';
+  actionBtn.onclick = () => abandonQuest(questId);
+  
+  openModal('modal-item');
+}
+
+function abandonQuest(questId) {
+  gameState.activeQuests = gameState.activeQuests.filter(q => q.questId !== questId);
+  saveGame();
+  closeModal('modal-item');
+  renderQuests();
+}
+
+function updateQuestProgress(taskCompleted) {
+  if (typeof QUESTS === 'undefined') return;
+  
+  for (const questState of gameState.activeQuests) {
+    const quest = QUESTS[questState.questId];
+    if (!quest || !quest.steps) continue;
+    
+    const currentStep = quest.steps[questState.stepIndex || 0];
+    if (!currentStep || !currentStep.objective) continue;
+    
+    const obj = currentStep.objective;
+    
+    // Check task completion objectives
+    if (obj.type === 'completeTasks') {
+      const catMatch = !obj.category || taskCompleted.cat === obj.category;
+      if (catMatch) {
+        questState.progress.tasksCompleted = (questState.progress.tasksCompleted || 0) + 1;
+        
+        // Check if step complete
+        if (questState.progress.tasksCompleted >= obj.count) {
+          advanceQuestStep(questState);
+        }
+      }
+    }
+  }
+  
+  saveGame();
+}
+
+function advanceQuestStep(questState) {
+  const quest = QUESTS[questState.questId];
+  if (!quest) return;
+  
+  questState.stepIndex = (questState.stepIndex || 0) + 1;
+  questState.progress = {}; // Reset progress for new step
+  
+  // Check if quest complete
+  if (!quest.steps || questState.stepIndex >= quest.steps.length) {
+    completeQuest(questState.questId);
+  }
+}
+
+function completeQuest(questId) {
+  const quest = QUESTS[questId];
+  if (!quest) return;
+  
+  // Remove from active
+  gameState.activeQuests = gameState.activeQuests.filter(q => q.questId !== questId);
+  
+  // Add to completed (unless repeatable)
+  if (!quest.repeatable && !gameState.completedQuests.includes(questId)) {
+    gameState.completedQuests.push(questId);
+  }
+  
+  // Grant rewards
+  if (quest.rewards) {
+    if (quest.rewards.xp) addXp(quest.rewards.xp);
+    if (quest.rewards.gold) gameState.gold += quest.rewards.gold;
+    if (quest.rewards.items && typeof addToInventory === 'function') {
+      for (const itemId of quest.rewards.items) {
+        addToInventory(itemId);
+      }
+    }
+  }
+  
+  saveGame();
+  
+  // Show completion notification (simple alert for now)
+  alert(`¡Quest completada: ${quest.name}!\n+${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} oro`);
+  
+  renderQuests();
+  renderHub();
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PWA Service Worker Registration
