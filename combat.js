@@ -8,6 +8,60 @@
 
 let combatState = null;
 
+// ============================================================================
+// LifeXP Block 1 - status effects and equipment effects
+// ============================================================================
+function getCombatEffectDefinition(effect) {
+  return effect?.effect || effect?.data || effect || {};
+}
+
+function applyStatusEffect(target, status, data = {}, source = 'unknown') {
+  if (!target) return false;
+  const list = target.debuffs || (target.debuffs = []);
+  const existing = list.find(x => x.status === status);
+  const duration = Math.max(1, Number(data.duration || 1));
+  const stacks = Math.max(1, Number(data.stacks || 1));
+  if (existing) { existing.duration = Math.max(existing.duration, duration); existing.stacks = Math.min(Number(data.maxStacks || 99), (existing.stacks || 1) + stacks); }
+  else list.push({ status, duration, stacks, damage: Number(data.damage || 0), source });
+  return true;
+}
+
+function tickCombatStatuses(target, label = 'Objetivo') {
+  if (!target?.debuffs) return [];
+  const messages = [];
+  for (const effect of target.debuffs) {
+    if (effect.status === 'burn') {
+      const damage = Math.max(1, Number(effect.damage || 3) * Number(effect.stacks || 1));
+      target.hp = Math.max(0, target.hp - damage);
+      messages.push(`${label} sufre ${damage} de daño por quemadura.`);
+    }
+    effect.duration -= 1;
+  }
+  target.debuffs = target.debuffs.filter(x => x.duration > 0);
+  messages.forEach(addCombatLog);
+  return messages;
+}
+
+function applyEquipmentOnHitEffects(attacker, defender, result) {
+  if (attacker !== combatState?.player || !defender || !result) return [];
+  const applied = [];
+  if (typeof getEquippedItemEffects !== 'function') return applied;
+  for (const effect of getEquippedItemEffects()) {
+    const data = getCombatEffectDefinition(effect);
+    const trigger = effect.trigger || data.trigger || 'on_hit';
+    if (trigger !== 'on_hit') continue;
+    const chance = Number(effect.chance ?? data.chance ?? 1);
+    if (Math.random() > chance) continue;
+    const status = effect.status || data.status;
+    if (!status) continue;
+    applyStatusEffect(defender, status, { ...data, damage: data.damage || (status === 'burn' ? 4 : 0) }, effect.itemId);
+    applied.push(status);
+    addCombatLog(`${effect.name || status} aplicado.`);
+  }
+  return applied;
+}
+
+
 function initCombat(enemy, isTactical = false) {
   const playerStats = typeof getDerivedStats === 'function' ? getDerivedStats() : gameState.stats;
   const resources = typeof calculateResources === 'function' ? calculateResources(playerStats) : {
@@ -258,6 +312,7 @@ function executePlayerAction(actionId) {
       // Calculate and apply damage
       const dmgResult = calculateDamage(p, e, action);
       e.hp = Math.max(0, e.hp - dmgResult.damage);
+      result.effects.push(...applyEquipmentOnHitEffects(p, e, dmgResult));
       
       // Gain focus from attacking
       p.focus = Math.min(p.focusMax, p.focus + 10);
@@ -325,6 +380,9 @@ function executeEnemyTurn() {
   
   const p = combatState.player;
   const e = combatState.enemy;
+  
+  tickCombatStatuses(e, e.name || 'Enemigo');
+  if (e.hp <= 0) { combatState.phase = 'victory'; calculateCombatRewards(); return { action: 'status', victory: true, effects: [] }; }
   
   // Reset enemy defending
   e.defending = false;

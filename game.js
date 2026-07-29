@@ -3,6 +3,8 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
+const LIFE_XP_BUILD = 'v13.3-block2-hidden-effects';
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -758,7 +760,7 @@ function loadGame() {
       gameState.stashCapacity = Number.isFinite(gameState.stashCapacity) ? gameState.stashCapacity : 30;
       gameState.inventoryCapacityBonus = Number.isFinite(gameState.inventoryCapacityBonus) ? gameState.inventoryCapacityBonus : 0;
       gameState.pendingLoot = gameState.pendingLoot || null;
-      gameState.saveVersion = 2;
+      gameState.saveVersion = 3;
     }
   } catch (e) {
     console.warn('Could not load game:', e);
@@ -769,6 +771,11 @@ function loadGame() {
     gameState.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
   }
   
+  // Recover legacy item entries before rendering the inventory.
+  if (typeof migrateLegacyInventory === 'function') migrateLegacyInventory();
+  if (typeof initializeItemSystem === 'function') initializeItemSystem();
+  if (typeof repairInventoryIdentities === 'function') repairInventoryIdentities();
+
   // Merge official content added in later versions without touching custom task data.
   const existingTaskIds = new Set((gameState.tasks || []).map(task => task.id));
   for (const officialTask of DEFAULT_TASKS) {
@@ -1007,7 +1014,9 @@ function renderInventoryGrid() {
   for (const slot of gameState.inventory) {
     const item = typeof ITEMS !== 'undefined' ? ITEMS[slot.id] : null;
     if (!item) {
-      grid.innerHTML += `<div class="inv-slot" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;"><div style="font-size:24px;">❔</div><div style="font-size:10px;color:var(--text-muted);">Objeto desconocido</div></div>`;
+      const slotIndex = gameState.inventory.indexOf(slot);
+      const oldName = slot.name || slot.legacyName || 'Recompensa sin identificar';
+      grid.innerHTML += `<div class="inv-slot" onclick="showLegacyItemModal(${slotIndex})" style="background:var(--bg-card);border:2px solid var(--orange);border-radius:8px;padding:8px;text-align:center;cursor:pointer;position:relative;"><div style="font-size:24px;">❔</div><div style="font-size:10px;color:var(--orange);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${oldName}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px;">Revisar recompensa</div></div>`;
       continue;
     }
     
@@ -1142,6 +1151,7 @@ function showItemModal(itemId, container = 'inventory') {
   `;
   
   const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.disabled = false;
   if (container === 'stash') {
     actionBtn.textContent = 'Sacar al inventario';
     actionBtn.onclick = () => { moveItemToInventory(itemId); };
@@ -1157,6 +1167,34 @@ function showItemModal(itemId, container = 'inventory') {
   }
   
   document.getElementById('modal-item').classList.add('show');
+}
+
+function showLegacyItemModal(slotIndex) {
+  const slot = gameState.inventory?.[slotIndex];
+  if (!slot) return;
+  const oldName = slot.name || slot.legacyName || 'Recompensa sin identificar';
+  const used = Boolean(slot.recoveryUsed);
+  document.getElementById('modal-item-content').innerHTML = `
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:48px;">❔</div>
+      <div style="font-size:18px;font-weight:700;color:var(--orange);">Recompensa ilegible</div>
+      <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
+    </div>
+    <div style="font-size:13px;color:var(--text);line-height:1.5;">Esta recompensa procede de una versión antigua y no conserva un identificador válido. Puedes intentar reconstruirla o rehacerla una sola vez sin perder progreso.</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">El reroll de emergencia es una herramienta de recuperación de datos, no una mecánica normal.</div>
+  `;
+  const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.textContent = used ? 'Recuperación ya usada' : '🔄 Rehacer recompensa';
+  actionBtn.disabled = used;
+  actionBtn.onclick = () => {
+    if (used || typeof emergencyRerollLegacyItem !== 'function') return;
+    const result = emergencyRerollLegacyItem(slotIndex);
+    if (!result.success) { showToast('No se pudo recuperar la recompensa.', 'error'); return; }
+    closeModal('modal-item');
+    renderInventory();
+    showToast(result.method === 'name' ? 'Recompensa reconstruida.' : 'Recompensa rehecha.', 'gold');
+  };
+  openModal('modal-item');
 }
 
 function showEquippedItemModal(slot) {
@@ -1236,11 +1274,23 @@ function useConsumable(itemId) {
 
 // renderQuests() definido al final del archivo en sección QUESTS RENDERING
 
+
+function forceAppUpdate() {
+  const current = typeof LIFE_XP_BUILD !== 'undefined' ? LIFE_XP_BUILD : 'unknown';
+  const url = `${location.pathname}?lifexp_update=${encodeURIComponent(current)}_${Date.now()}`;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(reg => reg.update()))).finally(() => location.replace(url));
+  } else {
+    location.replace(url);
+  }
+}
+
 function renderSettings() {
   const content = document.getElementById('settings-content');
   content.innerHTML = `
     <div class="section-title">Datos</div>
     <div class="card">
+      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Actualizar versión</button>
       <button class="btn btn-secondary mb-8" onclick="exportData()">📤 Exportar save</button>
       <button class="btn btn-secondary mb-8" onclick="showImportModal()">📥 Importar save</button>
       <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">🗑️ Resetear progreso</button>
@@ -1257,7 +1307,7 @@ function renderSettings() {
     <div class="section-title">Info</div>
     <div class="card">
       <p style="font-size: 13px; color: var(--text-muted);">
-        LifeXP RPG v1.0<br>
+        LifeXP RPG v1.0 · Build ${LIFE_XP_BUILD}<br>
         Tareas: ${gameState.tasks.length}<br>
         Nivel: ${gameState.level}<br>
         XP Total: ${gameState.taskHistory.reduce((a, h) => a + h.xp, 0)}
@@ -1539,6 +1589,7 @@ function finalizeCompletion(sideQuestCompleted) {
   // Update quest progress
   if (typeof updateQuestProgress === 'function') {
     updateQuestProgress(task);
+  if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
   }
 }
 
@@ -3085,8 +3136,504 @@ function completeQuest(questId) {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {
+    navigator.serviceWorker.register(`sw.js?build=${LIFE_XP_BUILD}`, { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {
       console.log('Service worker registration failed (expected in dev)');
     });
   });
+}
+
+
+// ============================================================================
+// LifeXP Block 1 - item system compatibility layer
+// ============================================================================
+
+function escapeItemHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function initializeItemSystem() {
+  if (!gameState.itemSystem || typeof gameState.itemSystem !== 'object') gameState.itemSystem = {};
+  if (!gameState.itemSystem.attunement || typeof gameState.itemSystem.attunement !== 'object') gameState.itemSystem.attunement = {};
+  if (!gameState.itemSystem.rituals || typeof gameState.itemSystem.rituals !== 'object') gameState.itemSystem.rituals = {};
+  if (!gameState.itemSystem.curses || typeof gameState.itemSystem.curses !== 'object') gameState.itemSystem.curses = {};
+  gameState.itemSystem.version = 1;
+  if (typeof ITEMS !== 'undefined') {
+    Object.values(ITEMS).forEach(normalizeItemDefinition);
+  }
+}
+
+function normalizeItemDefinition(item) {
+  if (!item) return item;
+  if (!Array.isArray(item.effects)) item.effects = [];
+  if (item.effect && typeof item.effect === 'object' && !item.effects.some(e => e.id === 'legacy_effect')) {
+    item.effects.push({ id: 'legacy_effect', name: 'Legacy effect', description: item.passive || '', legacy: item.effect });
+  }
+  if (item.passive && !item.effects.some(e => e.description === item.passive)) {
+    item.effects.push({ id: 'legacy_passive', name: 'Passive', description: item.passive, legacy: true });
+  }
+  item.lore = item.lore || item.desc || '';
+  item.requirements = item.requirements || {};
+  item.requirements.stats = item.requirements.stats || {};
+  item.requirements.trainingId = item.requirements.trainingId || null;
+  item.attunement = item.attunement || { required: false, current: 0, max: 3, stages: [] };
+  item.attunement.max = Number(item.attunement.max || 3);
+  item.activation = item.activation || null;
+  item.curse = item.curse || null;
+  return item;
+}
+
+function getItemDefinition(itemId) {
+  return typeof ITEMS !== 'undefined' && ITEMS[itemId] ? normalizeItemDefinition(ITEMS[itemId]) : null;
+}
+
+function getItemAttunement(itemId) {
+  initializeItemSystem();
+  const item = getItemDefinition(itemId);
+  const max = Math.max(1, Number(item?.attunement?.max || 3));
+  const saved = gameState.itemSystem.attunement[itemId] || {};
+  return { xp: Number(saved.xp || 0), stage: Math.min(max, Number(saved.stage || 0)), max };
+}
+
+function getItemAttunementStage(itemId) {
+  return getItemAttunement(itemId).stage;
+}
+
+function recordItemAttunement(itemId, amount = 1) {
+  const item = getItemDefinition(itemId);
+  if (!item || !item.attunement?.required) return false;
+  initializeItemSystem();
+  const state = getItemAttunement(itemId);
+  state.xp += Math.max(0, Number(amount) || 0);
+  state.stage = Math.min(state.max, Math.floor(state.xp / 3));
+  gameState.itemSystem.attunement[itemId] = state;
+  saveGame();
+  return true;
+}
+
+function recordItemAttunementFromTask(task) {
+  if (!task || !gameState?.equipment) return;
+  Object.values(gameState.equipment).filter(Boolean).forEach(id => {
+    const item = getItemDefinition(id);
+    if (!item?.attunement?.required) return;
+    const themes = item.attunement.themes || item.themes || [];
+    const taskThemes = task.drops?.theme ? [task.drops.theme] : [];
+    const matches = !themes.length || themes.some(t => taskThemes.includes(t));
+    if (matches) { recordItemAttunement(id, 1); advanceItemRitual(id, task); }
+  });
+}
+
+function getPlayerStatForRequirement(stat) {
+  return Number(gameState?.stats?.[stat] || 0) + Number(getEquipmentStats?.()[stat] || 0);
+}
+
+function getItemRequirementStatus(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'] };
+  const reasons = [];
+  for (const [stat, needed] of Object.entries(item.requirements?.stats || {})) {
+    const actual = getPlayerStatForRequirement(stat);
+    if (actual < needed) reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+  }
+  if (item.requirements?.trainingId && !(gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
+    reasons.push(`Necesita entrenamiento: ${item.requirements.trainingName || item.requirements.trainingId}`);
+  }
+  const att = getItemAttunement(itemId);
+  if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
+  return { canEquip: reasons.length === 0, reasons, attunement: att };
+}
+
+// Override equipment entry point while preserving old item behavior.
+function equipItem(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item || !item.type) return false;
+  const status = getItemRequirementStatus(itemId);
+  if (!status.canEquip) {
+    if (typeof showToast === 'function') showToast(status.reasons[0], 'error');
+    return false;
+  }
+  const type = ITEM_TYPE[item.type];
+  if (!type || !type.slot) return false;
+  let slot = type.slot;
+  if (slot === 'accessory') slot = !gameState.equipment.accessory1 ? 'accessory1' : (!gameState.equipment.accessory2 ? 'accessory2' : 'accessory1');
+  const current = gameState.equipment[slot];
+  if (current && !addToInventory(current)) return false;
+  if (!removeFromInventory(itemId)) return false;
+  gameState.equipment[slot] = itemId;
+  initializeItemSystem();
+  if (item.attunement?.required && !gameState.itemSystem.attunement[itemId]) gameState.itemSystem.attunement[itemId] = { xp: 0, stage: 0 };
+  saveGame();
+  return true;
+}
+
+function getEquippedItemEffects() {
+  const effects = [];
+  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
+    const item = getItemDefinition(id);
+    if (item?.effects) item.effects.forEach(effect => effects.push({ ...effect, itemId: id }));
+  });
+  return effects;
+}
+
+function registerItemCurse(itemId, curseState = {}) {
+  initializeItemSystem();
+  gameState.itemSystem.curses[itemId] = { active: true, marks: 0, ...curseState };
+  saveGame();
+}
+
+function getItemCurseState(itemId) {
+  initializeItemSystem();
+  return gameState.itemSystem.curses[itemId] || { active: false, marks: 0 };
+}
+
+function canUnequipItem(slot) {
+  const itemId = gameState.equipment?.[slot];
+  if (!itemId) return { ok: false, reason: 'No hay objeto equipado.' };
+  const curse = getItemCurseState(itemId);
+  const item = getItemDefinition(itemId);
+  if (curse.active && item?.curse?.cannotUnequip) return { ok: false, reason: item.curse.removeHint || 'El objeto no puede desequiparse todavía.' };
+  return { ok: true };
+}
+
+function unequipItem(slot) {
+  const check = canUnequipItem(slot);
+  if (!check.ok) { if (typeof showToast === 'function') showToast(check.reason, 'error'); return false; }
+  const itemId = gameState.equipment[slot];
+  if (!itemId || !canAddToInventory()) return false;
+  if (!addToInventory(itemId)) return false;
+  gameState.equipment[slot] = null;
+  saveGame();
+  return true;
+}
+
+// Item modal: effect-first information hierarchy and balanced actions.
+function showItemModal(itemId, container = 'inventory') {
+  selectedItemId = itemId;
+  const item = getItemDefinition(itemId); if (!item) return;
+  const rarity = RARITY[item.rarity] || RARITY.common;
+  const type = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
+  const qty = container === 'stash' ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1) : getItemCount(itemId);
+  const effects = item.effects || [];
+  const req = getItemRequirementStatus(itemId);
+  const att = req.attunement;
+  const effectsHtml = effects.length ? `<div class="item-panel"><div class="item-panel-label">EFFECTS</div>${effects.map(e => `<div class="item-effect"><strong>${escapeItemHtml(e.name || 'Effect')}</strong><br>${escapeItemHtml(e.description || '')}</div>`).join('')}</div>` : '';
+  const reqHtml = (Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId) ? `<div class="item-panel"><div class="item-panel-label">REQUIREMENTS</div>${req.reasons.length ? `<div class="item-warning">${req.reasons.map(escapeItemHtml).join('<br>')}</div>` : '<div class="item-ok">Requirements met</div>'}</div>` : '';
+  const attHtml = item.attunement?.required ? `<div class="item-panel"><div class="item-panel-label">ATTUNEMENT</div><div>${att.stage}/${att.max}</div><div class="attunement-track"><span style="width:${Math.min(100, att.stage / att.max * 100)}%"></span></div>${item.attunement.stages?.[att.stage] ? `<small>${escapeItemHtml(item.attunement.stages[att.stage])}</small>` : ''}</div>` : '';
+  const ritualHtml = item.activation ? `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || item.activation.requirement || 'A hidden condition.')}</div></div>` : '';
+  const curseHtml = item.curse ? `<div class="item-panel item-curse"><div class="item-panel-label">CURSE</div><div>${escapeItemHtml(item.curse.description || 'The item carries a curse.')}</div></div>` : '';
+  const statsHtml = item.stats && Object.keys(item.stats).length ? `<div class="item-stats">${Object.entries(item.stats).map(([s,v]) => `<span style="color:var(--stat-${s})">${STATS[s]?.abbr || s} +${v}</span>`).join(' ')}</div>` : '';
+  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${itemIconSvg(item, 52)}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${ritualHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
+  const actionBtn = document.getElementById('btn-item-action'); actionBtn.disabled = false;
+  if (container === 'stash') { actionBtn.textContent = 'Sacar al inventario'; actionBtn.onclick = () => moveItemToInventory(itemId); }
+  else if (type.slot) { actionBtn.textContent = req.canEquip ? 'Equipar' : req.reasons[0]; actionBtn.disabled = !req.canEquip; actionBtn.onclick = () => equipItemFromInventory(itemId); }
+  else if (item.type === 'consumable') { actionBtn.textContent = 'Usar'; actionBtn.onclick = () => useConsumable(itemId); }
+  else { actionBtn.textContent = 'Guardar en baúl'; actionBtn.onclick = () => moveItemToStash(itemId); }
+  openModal('modal-item');
+}
+
+function showEquippedItemModal(slot) {
+  const itemId = gameState.equipment?.[slot]; if (!itemId) return;
+  showItemModal(itemId, 'equipped');
+  const actionBtn = document.getElementById('btn-item-action');
+  const check = canUnequipItem(slot);
+  actionBtn.textContent = check.ok ? 'Desequipar' : check.reason;
+  actionBtn.disabled = !check.ok;
+  actionBtn.onclick = () => unequipItemToInventory(slot);
+}
+
+
+// ============================================================================
+// Block 2.1 hotfix - inventory identity recovery and non-emoji item icons
+// ============================================================================
+
+const LEGACY_ITEM_ALIASES = {
+  'cuchilla llameante': 'cuchilla_llameante',
+  'flaming blade': 'cuchilla_llameante',
+  'ashbrand': 'cuchilla_llameante',
+  'daga corrosiva': 'daga_corrosiva',
+  'espada radiante': 'espada_radiante',
+  'hoja gelida': 'hoja_gelida',
+  'hoja gélida': 'hoja_gelida',
+  'arco de espino': 'arco_espino',
+  'tridente marino': 'tridente_marino',
+  'katana oriental': 'katana_oriental'
+};
+
+function resolveInventoryItemId(slot) {
+  if (!slot) return null;
+  if (slot.id && typeof ITEMS !== 'undefined' && ITEMS[slot.id]) return slot.id;
+  const raw = slot.id || slot.name || slot.legacyName || slot.itemName || '';
+  const normalized = normalizeItemText(raw);
+  if (LEGACY_ITEM_ALIASES[normalized]) return LEGACY_ITEM_ALIASES[normalized];
+  if (typeof ITEMS !== 'undefined') {
+    const exact = Object.entries(ITEMS).find(([id, item]) => normalizeItemText(item.name) === normalized);
+    if (exact) return exact[0];
+    const byId = Object.keys(ITEMS).find(id => normalizeItemText(id) === normalized || normalizeItemText(id.replaceAll('_', ' ')) === normalized);
+    if (byId) return byId;
+  }
+  return null;
+}
+
+function repairInventoryIdentities() {
+  let changed = false;
+  for (const list of [gameState.inventory, gameState.stash]) {
+    if (!Array.isArray(list)) continue;
+    for (const slot of list) {
+      const resolved = resolveInventoryItemId(slot);
+      if (resolved && slot.id !== resolved) {
+        slot.id = resolved;
+        delete slot.name; delete slot.legacyName; delete slot.itemName;
+        slot.recoveredAtBuild = LIFE_XP_BUILD;
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveGame();
+  return changed;
+}
+
+function itemIconSvg(item, size = 38) {
+  const type = item?.type || 'material';
+  const color = RARITY[item?.rarity]?.color || '#c9c5bb';
+  const paths = {
+    weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
+    armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
+    accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
+    artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
+    consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
+    material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
+    skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
+    key: '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>'
+  };
+  return `<svg class="item-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true" style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[type] || paths.material}</g></svg>`;
+}
+
+function renderInventoryGrid() {
+  const grid = document.getElementById('inventory-grid');
+  const empty = document.getElementById('inventory-empty');
+  if (!grid) return;
+  repairInventoryIdentities();
+  const list = Array.isArray(gameState.inventory) ? gameState.inventory : [];
+  if (list.length === 0) { grid.innerHTML = ''; empty?.classList.remove('hidden'); return; }
+  empty?.classList.add('hidden');
+  grid.innerHTML = list.map((slot, index) => {
+    const id = resolveInventoryItemId(slot);
+    const item = id ? ITEMS[id] : null;
+    if (!item) return `<div class="inv-slot inv-slot-recovery" onclick="showLegacyItemModal(${index})"><div class="recovery-icon">?</div><div>Unidentified item</div><small>Review recovery</small></div>`;
+    const rarity = RARITY[item.rarity] || RARITY.common;
+    const qty = slot.qty || 1;
+    return `<div class="inv-slot item-card" onclick="showItemModal('${id}')" style="border-color:${rarity.color}"><div class="item-card-icon">${itemIconSvg(item, 40)}</div><div class="item-card-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div>${qty > 1 ? `<div class="item-card-qty">x${qty}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function renderStashGrid() {
+  const grid = document.getElementById('stash-grid');
+  const empty = document.getElementById('stash-empty');
+  if (!grid) return;
+  repairInventoryIdentities();
+  const list = Array.isArray(gameState.stash) ? gameState.stash : [];
+  if (!list.length) { grid.innerHTML = ''; empty?.classList.remove('hidden'); return; }
+  empty?.classList.add('hidden');
+  grid.innerHTML = list.map((slot, index) => {
+    const id = resolveInventoryItemId(slot), item = id ? ITEMS[id] : null;
+    if (!item) return `<div class="inv-slot inv-slot-recovery"><div class="recovery-icon">?</div><small>Unidentified item</small></div>`;
+    const rarity = RARITY[item.rarity] || RARITY.common;
+    return `<div class="inv-slot item-card" onclick="showStashItemModal('${id}')" style="border-color:${rarity.color}"><div class="item-card-icon">${itemIconSvg(item, 40)}</div><div class="item-card-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div></div>`;
+  }).join('');
+}
+
+
+// ============================================================================
+// Block 2.2 - attunement gates and in-app activation
+// ============================================================================
+
+function getItemActivationState(itemId) {
+  initializeItemSystem();
+  const item = getItemDefinition(itemId);
+  const req = item?.activation?.requirement || {};
+  const saved = gameState.itemSystem.rituals[itemId] || {};
+  const count = Number(saved.count || 0);
+  const needed = Number(req.count || 0);
+  return { count, needed, ready: needed > 0 && count >= needed, active: Boolean(saved.active), discovered: Boolean(saved.discovered) };
+}
+
+function getTaskTheme(task) {
+  return task?.drops?.theme || task?.theme || null;
+}
+
+function isTaskRelevantToItem(task, item) {
+  const themes = item?.attunement?.themes || item?.themes || item?.activation?.requirement?.themes || [];
+  const taskTheme = getTaskTheme(task);
+  return Boolean(taskTheme && themes.includes(taskTheme));
+}
+
+function advanceItemRitual(itemId, task) {
+  const item = getItemDefinition(itemId);
+  const req = item?.activation?.requirement;
+  if (!item?.activation || !req?.count || !isTaskRelevantToItem(task, item)) return false;
+  initializeItemSystem();
+  const state = gameState.itemSystem.rituals[itemId] || { count: 0, active: false, discovered: true };
+  if (!state.active) state.count = Math.min(Number(req.count), Number(state.count || 0) + 1);
+  state.discovered = true;
+  gameState.itemSystem.rituals[itemId] = state;
+  return true;
+}
+
+function attemptItemActivation(itemId) {
+  const item = getItemDefinition(itemId);
+  const state = getItemActivationState(itemId);
+  if (!item?.activation || !state.ready || state.active) return { success: false, reason: 'not_ready' };
+  initializeItemSystem();
+  gameState.itemSystem.rituals[itemId] = { ...state, active: true, discovered: true, activatedAt: Date.now() };
+  saveGame();
+  return { success: true };
+}
+
+function isItemEffectUnlocked(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const att = getItemAttunement(itemId);
+  const needed = Number(effect.unlockStage || 0);
+  if (att.stage < needed) return false;
+  if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
+  return true;
+}
+
+function getActiveItemEffects(itemId) {
+  const item = getItemDefinition(itemId);
+  return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
+}
+
+function getEquippedItemEffects() {
+  const effects = [];
+  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
+    getActiveItemEffects(id).forEach(effect => effects.push({ ...effect, itemId: id }));
+  });
+  return effects;
+}
+
+function renderItemEffectList(itemId) {
+  const item = getItemDefinition(itemId);
+  const att = getItemAttunement(itemId);
+  const ritual = getItemActivationState(itemId);
+  return (item?.effects || []).map(effect => {
+    const unlocked = isItemEffectUnlocked(itemId, effect);
+    if (unlocked) return `<div class="item-effect"><strong>${escapeItemHtml(effect.name || 'Effect')}</strong><br>${escapeItemHtml(effect.description || '')}</div>`;
+    const stage = Number(effect.unlockStage || 1);
+    const ritualText = effect.activationRequired ? ' · Ritual required' : '';
+    return `<div class="item-effect item-effect-locked"><strong>Locked effect</strong><br>${escapeItemHtml(effect.name || 'Unknown effect')} · Unlocks at Attunement ${stage}/ ${att.max}${ritualText}</div>`;
+  }).join('');
+}
+
+function renderActivationPanel(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item?.activation) return '';
+  const state = getItemActivationState(itemId);
+  if (state.active) return `<div class="item-panel item-activation-active"><div class="item-panel-label">ACTIVATION</div><div>Ritual complete.</div></div>`;
+  const progress = `${state.count}/${state.needed}`;
+  const button = state.ready ? `<button class="btn btn-primary item-ritual-button" onclick="attemptActivationFromModal('${itemId}')">Attempt activation</button>` : '';
+  return `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || 'Complete the required tasks.')}</div><div class="ritual-progress">${progress}</div>${button}</div>`;
+}
+
+function attemptActivationFromModal(itemId) {
+  const result = attemptItemActivation(itemId);
+  if (!result.success) { if (typeof showToast === 'function') showToast('The ritual is not ready.', 'error'); return; }
+  showToast('Ritual complete.', 'gold');
+  showItemModal(itemId, 'inventory');
+}
+
+function showItemModal(itemId, container = 'inventory') {
+  selectedItemId = itemId;
+  const item = getItemDefinition(itemId); if (!item) return;
+  const rarity = RARITY[item.rarity] || RARITY.common;
+  const type = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
+  const qty = container === 'stash' ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1) : getItemCount(itemId);
+  const req = getItemRequirementStatus(itemId);
+  const att = req.attunement;
+  const effectsHtml = item.effects?.length ? `<div class="item-panel"><div class="item-panel-label">EFFECTS</div>${renderItemEffectList(itemId)}</div>` : '';
+  const reqHtml = (Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId) ? `<div class="item-panel"><div class="item-panel-label">REQUIREMENTS</div>${req.reasons.length ? `<div class="item-warning">${req.reasons.map(escapeItemHtml).join('<br>')}</div>` : '<div class="item-ok">Requirements met</div>'}</div>` : '';
+  const attStageText = item.attunement?.stages?.[att.stage] || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
+  const attHtml = item.attunement?.required ? `<div class="item-panel"><div class="item-panel-label">ATTUNEMENT</div><div>${att.stage}/${att.max}</div><div class="attunement-track"><span style="width:${Math.min(100, att.stage / att.max * 100)}%"></span></div><small>${escapeItemHtml(attStageText)}</small></div>` : '';
+  const activationHtml = renderActivationPanel(itemId);
+  const curseHtml = item.curse ? `<div class="item-panel item-curse"><div class="item-panel-label">CURSE</div><div>${escapeItemHtml(item.curse.description || 'The item carries a curse.')}</div></div>` : '';
+  const statsHtml = item.stats && Object.keys(item.stats).length ? `<div class="item-stats">${Object.entries(item.stats).map(([s,v]) => `<span style="color:var(--stat-${s})">${STATS[s]?.abbr || s} +${v}</span>`).join(' ')}</div>` : '';
+  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${itemIconSvg(item, 52)}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${activationHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
+  const actionBtn = document.getElementById('btn-item-action'); actionBtn.disabled = false;
+  if (container === 'stash') { actionBtn.textContent = 'Sacar al inventario'; actionBtn.onclick = () => moveItemToInventory(itemId); }
+  else if (type.slot) { actionBtn.textContent = req.canEquip ? 'Equipar' : req.reasons[0]; actionBtn.disabled = !req.canEquip; actionBtn.onclick = () => equipItemFromInventory(itemId); }
+  else if (item.type === 'consumable') { actionBtn.textContent = 'Usar'; actionBtn.onclick = () => useConsumable(itemId); }
+  else { actionBtn.textContent = 'Guardar en baúl'; actionBtn.onclick = () => moveItemToStash(itemId); }
+  openModal('modal-item');
+}
+
+
+// ============================================================================
+// Block 2.3 - hidden item knowledge
+// ============================================================================
+// Unknown effects are not shown as locked. They remain undiscovered until the
+// item teaches them through attunement, activation, combat or another system.
+// Items may later opt into visible/known effects with `knowledge: 'known'`.
+
+function getItemKnowledgeState(itemId) {
+  initializeItemSystem();
+  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
+  return gameState.itemSystem.knowledge[itemId] || {};
+}
+
+function isItemEffectKnown(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const knowledge = getItemKnowledgeState(itemId);
+  if (effect.knowledge === 'known' || effect.visibility === 'visible') return true;
+  if (knowledge[effect.id] === true) return true;
+  const stage = Number(effect.unlockStage || 0);
+  return stage > 0 && getItemAttunement(itemId).stage >= stage;
+}
+
+function discoverItemEffect(itemId, effectId) {
+  const item = getItemDefinition(itemId);
+  const effect = item?.effects?.find(e => e.id === effectId);
+  if (!effect) return false;
+  initializeItemSystem();
+  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
+  gameState.itemSystem.knowledge[itemId] = { ...(gameState.itemSystem.knowledge[itemId] || {}), [effectId]: true };
+  saveGame();
+  return true;
+}
+
+function isItemEffectUnlocked(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const att = getItemAttunement(itemId);
+  const needed = Number(effect.unlockStage || 0);
+  if (att.stage < needed) return false;
+  if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
+  return isItemEffectKnown(itemId, effect);
+}
+
+function getActiveItemEffects(itemId) {
+  const item = getItemDefinition(itemId);
+  return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
+}
+
+function getEquippedItemEffects() {
+  const effects = [];
+  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
+    getActiveItemEffects(id).forEach(effect => effects.push({ ...effect, itemId: id }));
+  });
+  return effects;
+}
+
+function renderItemEffectList(itemId) {
+  const item = getItemDefinition(itemId);
+  return (item?.effects || []).filter(effect => isItemEffectKnown(itemId, effect)).map(effect => {
+    if (!isItemEffectUnlocked(itemId, effect)) return '';
+    return `<div class="item-effect"><strong>${escapeItemHtml(effect.name || 'Effect')}</strong><br>${escapeItemHtml(effect.description || '')}</div>`;
+  }).join('');
+}
+
+function renderActivationPanel(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item?.activation) return '';
+  const state = getItemActivationState(itemId);
+  if (state.active) return `<div class="item-panel item-activation-active"><div class="item-panel-label">ACTIVATION</div><div>Ritual complete.</div></div>`;
+  const progress = `${state.count}/${state.needed}`;
+  const button = state.ready ? `<button class="btn btn-primary item-ritual-button" onclick="attemptActivationFromModal('${itemId}')">Attempt activation</button>` : '';
+  return `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || 'Complete the required tasks.')}</div><div class="ritual-progress">${progress}</div>${button}</div>`;
 }
