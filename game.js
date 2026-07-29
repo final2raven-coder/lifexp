@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v13-block2';
+const LIFE_XP_BUILD = 'v13.1-block2-hotfix';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -774,6 +774,7 @@ function loadGame() {
   // Recover legacy item entries before rendering the inventory.
   if (typeof migrateLegacyInventory === 'function') migrateLegacyInventory();
   if (typeof initializeItemSystem === 'function') initializeItemSystem();
+  if (typeof repairInventoryIdentities === 'function') repairInventoryIdentities();
 
   // Merge official content added in later versions without touching custom task data.
   const existingTaskIds = new Set((gameState.tasks || []).map(task => task.id));
@@ -3320,7 +3321,7 @@ function showItemModal(itemId, container = 'inventory') {
   const ritualHtml = item.activation ? `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || item.activation.requirement || 'A hidden condition.')}</div></div>` : '';
   const curseHtml = item.curse ? `<div class="item-panel item-curse"><div class="item-panel-label">CURSE</div><div>${escapeItemHtml(item.curse.description || 'The item carries a curse.')}</div></div>` : '';
   const statsHtml = item.stats && Object.keys(item.stats).length ? `<div class="item-stats">${Object.entries(item.stats).map(([s,v]) => `<span style="color:var(--stat-${s})">${STATS[s]?.abbr || s} +${v}</span>`).join(' ')}</div>` : '';
-  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${item.icon || '◆'}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${ritualHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
+  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${itemIconSvg(item, 52)}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${ritualHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
   const actionBtn = document.getElementById('btn-item-action'); actionBtn.disabled = false;
   if (container === 'stash') { actionBtn.textContent = 'Sacar al inventario'; actionBtn.onclick = () => moveItemToInventory(itemId); }
   else if (type.slot) { actionBtn.textContent = req.canEquip ? 'Equipar' : req.reasons[0]; actionBtn.disabled = !req.canEquip; actionBtn.onclick = () => equipItemFromInventory(itemId); }
@@ -3337,4 +3338,105 @@ function showEquippedItemModal(slot) {
   actionBtn.textContent = check.ok ? 'Desequipar' : check.reason;
   actionBtn.disabled = !check.ok;
   actionBtn.onclick = () => unequipItemToInventory(slot);
+}
+
+
+// ============================================================================
+// Block 2.1 hotfix - inventory identity recovery and non-emoji item icons
+// ============================================================================
+
+const LEGACY_ITEM_ALIASES = {
+  'cuchilla llameante': 'cuchilla_llameante',
+  'flaming blade': 'cuchilla_llameante',
+  'ashbrand': 'cuchilla_llameante',
+  'daga corrosiva': 'daga_corrosiva',
+  'espada radiante': 'espada_radiante',
+  'hoja gelida': 'hoja_gelida',
+  'hoja gélida': 'hoja_gelida',
+  'arco de espino': 'arco_espino',
+  'tridente marino': 'tridente_marino',
+  'katana oriental': 'katana_oriental'
+};
+
+function resolveInventoryItemId(slot) {
+  if (!slot) return null;
+  if (slot.id && typeof ITEMS !== 'undefined' && ITEMS[slot.id]) return slot.id;
+  const raw = slot.id || slot.name || slot.legacyName || slot.itemName || '';
+  const normalized = normalizeItemText(raw);
+  if (LEGACY_ITEM_ALIASES[normalized]) return LEGACY_ITEM_ALIASES[normalized];
+  if (typeof ITEMS !== 'undefined') {
+    const exact = Object.entries(ITEMS).find(([id, item]) => normalizeItemText(item.name) === normalized);
+    if (exact) return exact[0];
+    const byId = Object.keys(ITEMS).find(id => normalizeItemText(id) === normalized || normalizeItemText(id.replaceAll('_', ' ')) === normalized);
+    if (byId) return byId;
+  }
+  return null;
+}
+
+function repairInventoryIdentities() {
+  let changed = false;
+  for (const list of [gameState.inventory, gameState.stash]) {
+    if (!Array.isArray(list)) continue;
+    for (const slot of list) {
+      const resolved = resolveInventoryItemId(slot);
+      if (resolved && slot.id !== resolved) {
+        slot.id = resolved;
+        delete slot.name; delete slot.legacyName; delete slot.itemName;
+        slot.recoveredAtBuild = LIFE_XP_BUILD;
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveGame();
+  return changed;
+}
+
+function itemIconSvg(item, size = 38) {
+  const type = item?.type || 'material';
+  const color = RARITY[item?.rarity]?.color || '#c9c5bb';
+  const paths = {
+    weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
+    armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
+    accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
+    artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
+    consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
+    material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
+    skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
+    key: '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>'
+  };
+  return `<svg class="item-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true" style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[type] || paths.material}</g></svg>`;
+}
+
+function renderInventoryGrid() {
+  const grid = document.getElementById('inventory-grid');
+  const empty = document.getElementById('inventory-empty');
+  if (!grid) return;
+  repairInventoryIdentities();
+  const list = Array.isArray(gameState.inventory) ? gameState.inventory : [];
+  if (list.length === 0) { grid.innerHTML = ''; empty?.classList.remove('hidden'); return; }
+  empty?.classList.add('hidden');
+  grid.innerHTML = list.map((slot, index) => {
+    const id = resolveInventoryItemId(slot);
+    const item = id ? ITEMS[id] : null;
+    if (!item) return `<div class="inv-slot inv-slot-recovery" onclick="showLegacyItemModal(${index})"><div class="recovery-icon">?</div><div>Unidentified item</div><small>Review recovery</small></div>`;
+    const rarity = RARITY[item.rarity] || RARITY.common;
+    const qty = slot.qty || 1;
+    return `<div class="inv-slot item-card" onclick="showItemModal('${id}')" style="border-color:${rarity.color}"><div class="item-card-icon">${itemIconSvg(item, 40)}</div><div class="item-card-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div>${qty > 1 ? `<div class="item-card-qty">x${qty}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function renderStashGrid() {
+  const grid = document.getElementById('stash-grid');
+  const empty = document.getElementById('stash-empty');
+  if (!grid) return;
+  repairInventoryIdentities();
+  const list = Array.isArray(gameState.stash) ? gameState.stash : [];
+  if (!list.length) { grid.innerHTML = ''; empty?.classList.remove('hidden'); return; }
+  empty?.classList.add('hidden');
+  grid.innerHTML = list.map((slot, index) => {
+    const id = resolveInventoryItemId(slot), item = id ? ITEMS[id] : null;
+    if (!item) return `<div class="inv-slot inv-slot-recovery"><div class="recovery-icon">?</div><small>Unidentified item</small></div>`;
+    const rarity = RARITY[item.rarity] || RARITY.common;
+    return `<div class="inv-slot item-card" onclick="showStashItemModal('${id}')" style="border-color:${rarity.color}"><div class="item-card-icon">${itemIconSvg(item, 40)}</div><div class="item-card-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div></div>`;
+  }).join('');
 }

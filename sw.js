@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-rpg-v13-block2';
+const CACHE_NAME = 'lifexp-rpg-v13-1-block2-hotfix';
 const urlsToCache = [
   '/',
   '/index.html',

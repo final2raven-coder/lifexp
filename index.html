@@ -1089,6 +1089,10 @@ body {
 .item-hero{text-align:center;margin-bottom:14px}.item-icon{font-size:48px}.item-name{font-size:20px;font-weight:800}.item-subtitle{font-size:12px;color:var(--text-muted);margin-top:3px}.item-lore{font-size:14px;line-height:1.5;margin:10px 0 14px}.item-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.item-panel-label{font-size:10px;letter-spacing:.08em;color:var(--text-muted);margin-bottom:5px}.item-effect{margin:5px 0}.item-warning{color:var(--orange)}.item-ok{color:var(--green)}.item-curse{border-color:var(--red);color:var(--red)}.item-stats{margin-top:10px;font-size:12px}.item-value{font-size:11px;color:var(--text-muted);margin-top:12px}.attunement-track{height:5px;background:var(--border);border-radius:3px;margin:6px 0;overflow:hidden}.attunement-track span{display:block;height:100%;background:var(--gold);border-radius:3px}
 #modal-item .modal-actions{display:flex;gap:10px;margin-top:16px}#modal-item .modal-actions .btn-primary{flex:1.6;min-height:46px;font-size:14px}#modal-item .modal-actions .btn-ghost{flex:.7;width:auto;min-height:42px;padding:10px 16px}
 
+
+/* Block 2.1 item identity and icon treatment */
+.item-card{background:var(--bg-card);border:2px solid;border-radius:10px;padding:8px;text-align:center;cursor:pointer;position:relative;min-height:86px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.item-card-icon{height:42px;display:flex;align-items:center;justify-content:center}.item-icon-svg{filter:drop-shadow(0 0 5px currentColor)}.item-card-name{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.item-card-qty{position:absolute;right:5px;bottom:4px;font-size:10px;color:var(--text-muted)}.inv-slot-recovery{background:var(--bg-card);border:2px solid var(--orange);border-radius:10px;padding:8px;text-align:center;min-height:86px;cursor:pointer;color:var(--orange);font-size:10px}.recovery-icon{font-size:30px;color:var(--orange)}
+
 </style>
 </head>
 <body>
@@ -1501,11 +1505,11 @@ body {
   <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continuar</button>
 </div>
 
-<script src="classes.js?build=v13-block2"></script>
-<script src="items.js?build=v13-block2"></script>
-<script src="enemies.js?build=v13-block2"></script>
-<script src="combat.js?build=v13-block2"></script>
-<script src="quests.js?build=v13-block2"></script>
-<script src="game.js?build=v13-block2"></script>
+<script src="classes.js?build=v13.1-block2-hotfix"></script>
+<script src="items.js?build=v13.1-block2-hotfix"></script>
+<script src="enemies.js?build=v13.1-block2-hotfix"></script>
+<script src="combat.js?build=v13.1-block2-hotfix"></script>
+<script src="quests.js?build=v13.1-block2-hotfix"></script>
+<script src="game.js?build=v13.1-block2-hotfix"></script>
 </body>
 </html>
