@@ -48,10 +48,26 @@
     } catch (e) { console.warn('Ashbrand hotfix backup unavailable:', e); }
   }
 
+  function normalize(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  // Recover every known legacy shape without changing quantity or metadata.
   function canonicalize(container) {
     if (!Array.isArray(container)) return;
     for (const slot of container) {
-      if (slot && ['Ashbrand', 'ashbrand'].includes(slot.id)) slot.id = ID;
+      if (!slot || typeof slot !== 'object') continue;
+      const candidates = [slot.id, slot.name, slot.legacyName, slot.itemName].map(normalize);
+      if (candidates.some(value => ['ashbrand', 'cuchilla llameante', 'cuchilla_llameante'].includes(value))) {
+        slot.id = ID;
+        delete slot.name;
+        delete slot.legacyName;
+        delete slot.itemName;
+      }
     }
   }
 
@@ -64,7 +80,7 @@
     canonicalize(gameState.stash);
     if (gameState.equipment) {
       for (const slot of Object.keys(gameState.equipment)) {
-        if (['Ashbrand', 'ashbrand'].includes(gameState.equipment[slot])) gameState.equipment[slot] = ID;
+        if (['Ashbrand', 'ashbrand', 'Cuchilla Llameante', 'cuchilla_llameante'].map(normalize).includes(normalize(gameState.equipment[slot]))) gameState.equipment[slot] = ID;
       }
     }
     gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
