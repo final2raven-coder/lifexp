@@ -2782,62 +2782,75 @@ function renderQuests() {
 
 function showAvailableQuests() {
   const modal = document.getElementById('modal-tasks');
-  const list = document.getElementById('modal-tasks-list');
+  const list  = document.getElementById('modal-tasks-list');
   const title = document.getElementById('modal-tasks-title');
   if (!modal || !list || !title) return;
   title.textContent = '📜 Quests disponibles';
-  
-  const activeQuests = Array.isArray(gameState.activeQuests) ? gameState.activeQuests : [];
-  const completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
-  
+
   if (typeof QUESTS === 'undefined') {
     list.innerHTML = '<div class="text-muted">Sistema de quests no disponible</div>';
     openModal('modal-tasks');
     return;
   }
-  
+
+  const activeQuests    = Array.isArray(gameState.activeQuests)    ? gameState.activeQuests    : [];
+  const completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
+  const playerLevel     = gameState.level || 1;
+
+  const typeConfig = {
+    daily:       { color: 'var(--green)',  label: 'Diaria',    icon: '📅' },
+    simple:      { color: 'var(--blue)',   label: 'Misión',    icon: '📜' },
+    compound:    { color: 'var(--purple)', label: 'Compuesta', icon: '📚' },
+    story:       { color: 'var(--gold)',   label: 'Historia',  icon: '⭐' },
+    bounty:      { color: 'var(--red)',    label: 'Bounty',    icon: '🎯' },
+    class_quest: { color: 'var(--cyan)',   label: 'Clase',     icon: '⚔️' },
+    event:       { color: 'var(--orange)', label: 'Evento',    icon: '🎉' },
+  };
+
   list.innerHTML = '';
-  const playerLevel = gameState.level || 1;
-  
+  let count = 0;
+
   for (const [questId, quest] of Object.entries(QUESTS)) {
-    // Skip if already active or completed
     if (activeQuests.some(q => q.questId === questId)) continue;
     if (completedQuests.includes(questId) && !quest.repeatable) continue;
-    
-    // Check level requirement
     if ((quest.levelReq || quest.minLevel) && playerLevel < (quest.levelReq || quest.minLevel)) continue;
-    
-    const typeColors = {
-      daily: 'var(--green)',
-      simple: 'var(--blue)',
-      composed: 'var(--purple)',
-      story: 'var(--gold)',
-      bounty: 'var(--red)',
-      class: 'var(--cyan)'
-    };
-    const color = typeColors[quest.type] || 'var(--text-muted)';
-    
+
+    const cfg   = typeConfig[quest.type] || { color: 'var(--text-muted)', label: quest.type, icon: '📜' };
+    // Prefer EN fantasy name if patched by update2, fall back to ES name
+    const displayName = quest.name || questId;
+    // Lore line: setting > lore > desc (in that priority — setting is the world-flavour hook)
+    const loreLine = quest.setting || quest.lore || '';
+    // Practical desc always shown below (ES)
+    const practicalDesc = quest.desc || '';
+
+    const rewardXp   = quest.rewards?.xp   || 0;
+    const rewardGold = quest.rewards?.gold  || 0;
+    const rewardItems = (quest.rewards?.items || []).length;
+
     list.innerHTML += `
-      <div class="card" style="cursor: pointer; border-left: 3px solid ${color};" onclick="acceptQuest('${questId}')">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 11px; color: ${color}; text-transform: uppercase;">${quest.type}</div>
-            <div style="font-weight: 600;">${quest.name}</div>
-            <div style="font-size: 12px; color: var(--text-muted);">${quest.desc}</div>
+      <div class="card" style="cursor:pointer;border-left:3px solid ${cfg.color};margin-bottom:8px;" onclick="acceptQuest('${questId}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10px;color:${cfg.color};text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">${cfg.icon} ${cfg.label}</div>
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">${escapeHtml(displayName)}</div>
+            ${loreLine ? `<div style="font-size:12px;color:var(--text-muted);font-style:italic;line-height:1.4;margin-bottom:4px;">${escapeHtml(loreLine)}</div>` : ''}
+            ${practicalDesc ? `<div style="font-size:11px;color:var(--text-muted);line-height:1.4;">${escapeHtml(practicalDesc)}</div>` : ''}
           </div>
-          <div style="font-size: 24px;">${quest.icon || '📜'}</div>
         </div>
-        <div style="margin-top: 8px; font-size: 11px; color: var(--gold);">
-          +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} 🪙
+        <div style="display:flex;gap:10px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
+          ${rewardXp   ? `<span style="font-size:11px;color:var(--gold);">+${rewardXp} XP</span>` : ''}
+          ${rewardGold ? `<span style="font-size:11px;color:var(--gold);">+${rewardGold} 🪙</span>` : ''}
+          ${rewardItems ? `<span style="font-size:11px;color:var(--blue);">+${rewardItems} objeto${rewardItems>1?'s':''}</span>` : ''}
         </div>
       </div>
     `;
+    count++;
   }
-  
-  if (!list.innerHTML) {
-    list.innerHTML = '<div class="text-muted text-center">No hay quests disponibles ahora</div>';
+
+  if (!count) {
+    list.innerHTML = '<div class="text-muted text-center" style="padding:20px;">No hay quests disponibles ahora</div>';
   }
-  
+
   openModal('modal-tasks');
 }
 
@@ -2994,6 +3007,7 @@ if ('serviceWorker' in navigator) {
 function escapeItemHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
+const escapeHtml = escapeItemHtml; // alias for quest/UI rendering
 
 function initializeItemSystem() {
   if (!gameState.itemSystem || typeof gameState.itemSystem !== 'object') gameState.itemSystem = {};
@@ -3336,24 +3350,132 @@ function attemptActivationFromModal(itemId) {
 function showItemModal(itemId, container = 'inventory') {
   selectedItemId = itemId;
   const item = getItemDefinition(itemId); if (!item) return;
-  const rarity = RARITY[item.rarity] || RARITY.common;
-  const type = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
-  const qty = container === 'stash' ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1) : getItemCount(itemId);
-  const req = getItemRequirementStatus(itemId);
-  const att = req.attunement;
-  const effectsHtml = item.effects?.length ? `<div class="item-panel"><div class="item-panel-label">EFFECTS</div>${renderItemEffectList(itemId)}</div>` : '';
-  const reqHtml = (Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId) ? `<div class="item-panel"><div class="item-panel-label">REQUIREMENTS</div>${req.reasons.length ? `<div class="item-warning">${req.reasons.map(escapeItemHtml).join('<br>')}</div>` : '<div class="item-ok">Requirements met</div>'}</div>` : '';
-  const attStageText = item.attunement?.stages?.[att.stage] || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
-  const attHtml = item.attunement?.required ? `<div class="item-panel"><div class="item-panel-label">ATTUNEMENT</div><div>${att.stage}/${att.max}</div><div class="attunement-track"><span style="width:${Math.min(100, att.stage / att.max * 100)}%"></span></div><small>${escapeItemHtml(attStageText)}</small></div>` : '';
-  const activationHtml = renderActivationPanel(itemId);
-  const curseHtml = item.curse ? `<div class="item-panel item-curse"><div class="item-panel-label">CURSE</div><div>${escapeItemHtml(item.curse.description || 'The item carries a curse.')}</div></div>` : '';
-  const statsHtml = item.stats && Object.keys(item.stats).length ? `<div class="item-stats">${Object.entries(item.stats).map(([s,v]) => `<span style="color:var(--stat-${s})">${STATS[s]?.abbr || s} +${v}</span>`).join(' ')}</div>` : '';
-  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${itemIconSvg(item, 52)}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${activationHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
-  const actionBtn = document.getElementById('btn-item-action'); actionBtn.disabled = false;
-  if (container === 'stash') { actionBtn.textContent = 'Sacar al inventario'; actionBtn.onclick = () => moveItemToInventory(itemId); }
-  else if (type.slot) { actionBtn.textContent = req.canEquip ? 'Equipar' : req.reasons[0]; actionBtn.disabled = !req.canEquip; actionBtn.onclick = () => equipItemFromInventory(itemId); }
-  else if (item.type === 'consumable') { actionBtn.textContent = 'Usar'; actionBtn.onclick = () => useConsumable(itemId); }
-  else { actionBtn.textContent = 'Guardar en baúl'; actionBtn.onclick = () => moveItemToStash(itemId); }
+  const rarity   = RARITY[item.rarity] || RARITY.common;
+  const type     = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
+  const qty      = container === 'stash'
+    ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1)
+    : getItemCount(itemId);
+  const req      = getItemRequirementStatus(itemId);
+  const att      = req.attunement;
+  const discovery = getItemDiscoveryState ? getItemDiscoveryState(itemId) : {};
+
+  // ── HEADER ────────────────────────────────────────────────────────────────
+  const iconHtml = `<div style="font-size:52px;line-height:1;margin-bottom:6px;">${item.icon || '📦'}</div>`;
+  const nameHtml = `<div style="font-size:19px;font-weight:700;color:${rarity.color};letter-spacing:.3px;">${escapeItemHtml(item.name)}</div>`;
+  const subtitleHtml = `<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;">${escapeItemHtml(type.name)} · <span style="color:${rarity.color}">${escapeItemHtml(rarity.name)}</span>${qty > 1 ? ` · ×${qty}` : ''}</div>`;
+
+  // ── LORE / DESC ───────────────────────────────────────────────────────────
+  const loreText = item.lore || item.desc || '';
+  const loreHtml = loreText
+    ? `<div style="font-size:13px;color:var(--text-muted);font-style:italic;line-height:1.5;margin:10px 0 4px;">${escapeItemHtml(loreText)}</div>`
+    : '';
+
+  // ── STATS (colored per stat, only if present) ─────────────────────────────
+  const statsEntries = Object.entries(item.stats || {}).filter(([,v]) => v);
+  const statsHtml = statsEntries.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
+        ${statsEntries.map(([s,v]) =>
+          `<span style="background:var(--bg-surface);border:1px solid var(--stat-${s},var(--border));border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;color:var(--stat-${s},var(--text));">${STATS[s]?.abbr || s.toUpperCase()} <span style="color:var(--green)">+${v}</span></span>`
+        ).join('')}
+       </div>`
+    : '';
+
+  // ── PASSIVE (gold, small) ─────────────────────────────────────────────────
+  const passiveHtml = item.passive
+    ? `<div style="font-size:11px;color:var(--gold);margin:4px 0;">✦ ${escapeItemHtml(item.passive)}</div>`
+    : '';
+
+  // ── EFFECTS (progressive: only known effects shown) ───────────────────────
+  const knownEffects = (item.effects || []).filter(e => isItemEffectKnown(itemId, e));
+  const effectsHtml = knownEffects.length
+    ? `<div class="item-panel" style="margin-top:10px;">
+        <div class="item-panel-label" style="color:var(--orange);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Efectos conocidos</div>
+        ${knownEffects.map(e => {
+          const unlocked = isItemEffectUnlocked(itemId, e);
+          return unlocked
+            ? `<div style="font-size:12px;margin-bottom:4px;"><span style="color:var(--orange);font-weight:600;">${escapeItemHtml(e.name || 'Efecto')}</span> <span style="color:var(--text-muted);">— ${escapeItemHtml(e.description || '')}</span></div>`
+            : `<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">🔒 ${escapeItemHtml(e.name || 'Efecto')} <span style="font-size:10px;">(Aclimatación ${e.unlockStage}/${att.max}${e.activationRequired ? ' · Ritual' : ''})</span></div>`;
+        }).join('')}
+       </div>`
+    : '';
+
+  // ── REQUIREMENTS (only if item has them) ──────────────────────────────────
+  const hasReqs = Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId;
+  const reqHtml = hasReqs
+    ? `<div class="item-panel" style="margin-top:8px;">
+        <div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--text-muted);">Requisitos</div>
+        ${req.canEquip
+          ? `<div style="font-size:12px;color:var(--green);">✓ Cumplidos</div>`
+          : req.reasons.map(r => `<div style="font-size:12px;color:var(--red);">✗ ${escapeItemHtml(r)}</div>`).join('')
+        }
+       </div>`
+    : '';
+
+  // ── ATTUNEMENT (only if required AND player has interacted) ───────────────
+  const showAtt = item.attunement?.required && (att.stage > 0 || container === 'equipped');
+  const attStageText = item.attunement?.stages?.[att.stage]
+    || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
+  const attHtml = showAtt
+    ? `<div class="item-panel" style="margin-top:8px;">
+        <div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Aclimatación</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="flex:1;height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${Math.min(100, att.stage/att.max*100)}%;background:var(--purple);border-radius:2px;"></div>
+          </div>
+          <span style="font-size:11px;color:var(--purple);">${att.stage}/${att.max}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);font-style:italic;">${escapeItemHtml(attStageText)}</div>
+       </div>`
+    : '';
+
+  // ── ACTIVATION (only if att stage >= minimumStage) ────────────────────────
+  const showActivation = item.attunement?.required
+    ? att.stage >= Number(item.attunement.minimumStage || 1)
+    : true;
+  const activationHtml = showActivation ? renderActivationPanel(itemId) : '';
+
+  // ── CURSE ─────────────────────────────────────────────────────────────────
+  const curseHtml = item.curse
+    ? `<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">
+        <div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>
+        <div style="font-size:12px;color:var(--red);">${escapeItemHtml(item.curse.description || 'El objeto lleva una maldición.')}</div>
+       </div>`
+    : '';
+
+  // ── VALUE ─────────────────────────────────────────────────────────────────
+  const valueHtml = `<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">${item.value || 0} 🪙</div>`;
+
+  // ── ASSEMBLE ──────────────────────────────────────────────────────────────
+  document.getElementById('modal-item-content').innerHTML =
+    `<div style="text-align:center;padding-bottom:8px;border-bottom:1px solid var(--border);">${iconHtml}${nameHtml}${subtitleHtml}</div>`
+    + loreHtml + statsHtml + passiveHtml
+    + effectsHtml + reqHtml + attHtml + activationHtml + curseHtml
+    + valueHtml;
+
+  // ── ACTION BUTTON ─────────────────────────────────────────────────────────
+  const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.disabled = false;
+  if (container === 'stash') {
+    actionBtn.textContent = 'Sacar al inventario';
+    actionBtn.onclick = () => moveItemToInventory(itemId);
+  } else if (type.slot) {
+    if (req.canEquip) {
+      actionBtn.textContent = 'Equipar';
+      actionBtn.disabled = false;
+      actionBtn.onclick = () => equipItemFromInventory(itemId);
+    } else {
+      // Flavor text instead of raw stat error
+      const flavorMsg = req.flavorReasons?.[0] || req.reasons[0] || 'No puedes equiparlo aún.';
+      actionBtn.textContent = flavorMsg.length > 30 ? 'No puedes equiparlo aún' : flavorMsg;
+      actionBtn.disabled = true;
+    }
+  } else if (item.type === 'consumable') {
+    actionBtn.textContent = 'Usar';
+    actionBtn.onclick = () => useConsumable(itemId);
+  } else {
+    actionBtn.textContent = 'Guardar en baúl';
+    actionBtn.onclick = () => moveItemToStash(itemId);
+  }
   openModal('modal-item');
 }
 
