@@ -1,8 +1,8 @@
-// LifeXP Hotfix 2.4 - deterministic item UX and requirement privacy repair.
-// Load after game.js, items.js and optional expansion modules.
+// LifeXP Hotfix 2.5 - item UX, encoding and requirement privacy repair.
+// Loaded after game.js, items.js and expansion modules.
 (function () {
   'use strict';
-  const HOTFIX_ID = 'lifexp_hotfix_2_4_item_ux_repair';
+  const HOTFIX_ID = 'lifexp_hotfix_2_5_item_ux_privacy';
   const ID = 'cuchilla_llameante';
   const COMPLETE = {
     id: ID, name: 'Ashbrand', rarity: 'rare', type: 'weapon',
@@ -25,97 +25,85 @@
   function backup() {
     try {
       const raw = localStorage.getItem('lifexp_save');
-      if (raw && !localStorage.getItem('lifexp_hotfix_2_3_backup')) {
-        localStorage.setItem('lifexp_hotfix_2_3_backup', raw);
-        localStorage.setItem('lifexp_hotfix_2_3_backup_time', new Date().toISOString());
+      if (raw && !localStorage.getItem('lifexp_item_ux_backup_2_5')) {
+        localStorage.setItem('lifexp_item_ux_backup_2_5', raw);
+        localStorage.setItem('lifexp_item_ux_backup_2_5_time', new Date().toISOString());
       }
-    } catch (e) { console.warn('Item UX repair backup unavailable:', e); }
+    } catch (e) { console.warn('Item UX backup unavailable:', e); }
   }
-  function normalize(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
-  function isAshbrand(value) { return ['ashbrand', 'cuchilla llameante', 'cuchilla_llameante'].includes(normalize(value)); }
-  function canonicalize(container) {
-    if (!Array.isArray(container)) return;
-    for (const slot of container) {
-      if (!slot || typeof slot !== 'object') continue;
-      if ([slot.id, slot.name, slot.legacyName, slot.itemName].some(isAshbrand)) {
-        slot.id = ID; delete slot.name; delete slot.legacyName; delete slot.itemName;
+  function norm(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+  function isAshbrand(v) { return ['ashbrand', 'cuchilla llameante', 'cuchilla_llameante'].includes(norm(v)); }
+  function canonicalize(list) {
+    if (!Array.isArray(list)) return;
+    list.forEach(slot => {
+      if (slot && typeof slot === 'object' && [slot.id, slot.name, slot.legacyName, slot.itemName].some(isAshbrand)) {
+        slot.id = ID;
+        delete slot.name; delete slot.legacyName; delete slot.itemName;
       }
-    }
+    });
   }
-  function canonicalizeEquipment(equipment) {
-    if (!equipment || typeof equipment !== 'object') return;
-    for (const slot of Object.keys(equipment)) if (isAshbrand(equipment[slot])) equipment[slot] = ID;
-  }
-
   function install() {
     if (typeof gameState === 'undefined' || typeof ITEMS === 'undefined') return;
     backup();
     Object.assign(ITEMS, { [ID]: { ...(ITEMS[ID] || {}), ...COMPLETE } });
-    canonicalize(gameState.inventory); canonicalize(gameState.stash); canonicalizeEquipment(gameState.equipment);
+    canonicalize(gameState.inventory); canonicalize(gameState.stash);
+    if (gameState.equipment) Object.keys(gameState.equipment).forEach(k => { if (isAshbrand(gameState.equipment[k])) gameState.equipment[k] = ID; });
     gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
     gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
-    const owned = gameState.inventory.some(x => x?.id === ID) || gameState.stash.some(x => x?.id === ID) || Object.values(gameState.equipment || {}).includes(ID);
-    if (!owned) gameState.inventory.push({ id: ID, qty: 1, obtainedAt: typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10) });
+    if (!gameState.inventory.some(x => x && x.id === ID) && !gameState.stash.some(x => x && x.id === ID) && !Object.values(gameState.equipment || {}).includes(ID)) gameState.inventory.push({ id: ID, qty: 1, obtainedAt: new Date().toISOString().slice(0, 10) });
     gameState.__lifexpHotfix = HOTFIX_ID;
     if (typeof initializeItemSystem === 'function') initializeItemSystem();
     if (typeof renderInventory === 'function') renderInventory();
     if (typeof saveGame === 'function') saveGame();
   }
 
-  function isEquippable(item) {
-    return !!(item && ((window.ITEM_TYPE && window.ITEM_TYPE[item.type] && window.ITEM_TYPE[item.type].slot) || ['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)));
+  function narrative(text) {
+    const s = String(text || '');
+    if (!s) return 'The item does not respond.';
+    if (/requier|actual|needs? training|training:|aclimat|fue|vit|des|int|vol|pre|\d+\s*\/\s*\d+|\b\d+\s*\(actual/i.test(s)) return 'Something in you is not ready for this yet.';
+    if (/algo en ti|todav[ií]a no est[aá]s? listo/i.test(s)) return 'Something in you is not ready for this yet.';
+    return s;
   }
-  function addVaultAction(itemId, container) {
+  function scrub(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('#modal-item, .flavor-dialog, .toast, [role="dialog"]').forEach(node => {
+      if (/requier|actual|needs? training|training:|aclimat|\b(fue|vit|des|int|vol|pre)\b|\d+\s*\/\s*\d+|algo en ti|todav[ií]a no est[aá]s? listo/i.test(node.textContent || '')) {
+        node.querySelectorAll('button, [data-action]').forEach(() => {});
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach(t => { if (/requier|actual|needs? training|training:|aclimat|\b(fue|vit|des|int|vol|pre)\b|\d+\s*\/\s*\d+|algo en ti|todav[ií]a no est[aá]s? listo/i.test(t.nodeValue || '')) t.nodeValue = narrative(t.nodeValue); });
+      }
+    });
+  }
+
+  const oldStatus = window.getItemRequirementStatus;
+  if (typeof oldStatus === 'function') window.getItemRequirementStatus = function () {
+    const status = oldStatus.apply(this, arguments) || {};
+    return status.canEquip ? status : { ...status, reasons: ['The item does not respond.'], flavorReasons: ['Something in you is not ready for this yet.'] };
+  };
+  const oldToast = window.showToast;
+  if (typeof oldToast === 'function') window.showToast = function (text, type) { return oldToast.call(this, narrative(text), type); };
+  const oldFlavor = window.showFlavorDialog;
+  if (typeof oldFlavor === 'function') window.showFlavorDialog = function (text, type) { return oldFlavor.call(this, narrative(text), type); };
+  const oldModal = window.showItemModal;
+  if (typeof oldModal === 'function') window.showItemModal = function (itemId, container) {
+    const result = oldModal.apply(this, arguments);
     const actions = document.querySelector('#modal-item .item-modal-actions');
     const primary = document.getElementById('btn-item-action');
-    if (!actions || !primary) return;
-    document.getElementById('btn-item-vault-action')?.remove();
     const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
-    if (container !== 'inventory' || !isEquippable(item)) return;
+    if (container !== 'inventory' || !actions || !primary || !item || !['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) return result;
+    document.getElementById('btn-item-vault-action')?.remove();
     const button = document.createElement('button');
     button.id = 'btn-item-vault-action'; button.type = 'button'; button.className = 'btn btn-ghost';
     button.textContent = 'Guardar en el ba\u00FAl';
     button.setAttribute('aria-label', 'Guardar este objeto en el ba\u00FAl');
-    button.style.cssText = 'flex:1 1 auto;min-width:0;min-height:50px;padding:14px 12px;font-size:13px;border-color:var(--gold-dim);color:var(--gold);';
     button.onclick = () => { if (typeof moveItemToStash === 'function') moveItemToStash(itemId); };
     actions.insertBefore(button, primary.nextSibling);
-  }
-
-  // The shared modal is wrapped only to add the inventory-to-stash action.
-  // All item types use the same correctly encoded label.
-  const originalShowItemModal = window.showItemModal;
-  if (typeof originalShowItemModal === 'function') {
-    window.showItemModal = function (itemId, container) {
-      originalShowItemModal.apply(this, arguments);
-      addVaultAction(itemId, container || 'inventory');
-    };
-  }
-
-  // Keep the mechanical result intact, but never expose stat values, training
-  // IDs, or attunement counters as an equip-failure diagnosis. Narrative text
-  // must let the player infer the obstacle from the scene.
-  const originalRequirementStatus = window.getItemRequirementStatus;
-  if (typeof originalRequirementStatus === 'function') {
-    window.getItemRequirementStatus = function (itemId) {
-      const status = originalRequirementStatus.apply(this, arguments) || {};
-      if (status.canEquip) return status;
-      return {
-        ...status,
-        reasons: ['The item does not respond.'],
-        flavorReasons: ['Something in you is not ready for this yet.']
-      };
-    };
-  }
-
-  const originalGetItemFlavorText = window.getItemFlavorText;
-  if (typeof originalGetItemFlavorText === 'function') {
-    window.getItemFlavorText = function (itemId, situation) {
-      // The base flavor text is already written as scene-based English.
-      // Do not append technical requirement details or mixed-language text.
-      return originalGetItemFlavorText.apply(this, arguments) || '';
-    };
-  }
-
+    scrub(document.body);
+    return result;
+  };
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(() => scrub(document.body)).observe(document.body, { childList: true, subtree: true, characterData: true });
   window.LifeXPAshbrandHotfix = { install, definition: COMPLETE };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true }); else install();
 })();
