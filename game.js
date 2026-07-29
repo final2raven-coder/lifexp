@@ -1101,7 +1101,7 @@ function equipItemFromInventory(itemId) {
     // Show flavor toast — evocative, not a stat sheet
     var situation = prevAttempts === 0 ? 'equip_fail_1' : 'equip_fail_n';
     var flavor = getItemFlavorText(itemId, situation);
-    if (typeof showToast === 'function') showFlavorDialog(flavor, 'error');
+    showFlavorDialog(flavor, 'error');
 
     // Refresh modal so the hint appears
     showItemModal(itemId, 'inventory');
@@ -3876,7 +3876,7 @@ function renderItemEffectList(itemId) {
 function attemptActivationFromModal(itemId) {
   const result = attemptItemActivation(itemId);
   if (!result.success) { if (typeof showToast === 'function') showToast('The ritual is not ready.', 'error'); return; }
-  showFlavorDialog('Ritual complete.', 'gold');
+  // showRitualFlavor() already presents the item-specific persistent text.
   showItemModal(itemId, 'inventory');
 }
 
@@ -4011,8 +4011,9 @@ function showItemModal(itemId, container) {
   if (container === 'stash') {
     actionBtn.textContent = 'Sacar al inventario';
     actionBtn.onclick = function() { moveItemToInventory(itemId); };
-  } else if (type.slot) {
-    // Always show "Equipar" — player discovers requirements by trying
+  } else if (type.slot || ['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) {
+    // Every equippable item keeps the primary action visible. Do not rely
+    // only on ITEM_TYPE.slot: older and expansion definitions may omit it.
     actionBtn.textContent = 'Equipar';
     actionBtn.disabled = false;
     actionBtn.onclick = function() { equipItemFromInventory(itemId); };
