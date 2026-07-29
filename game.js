@@ -3347,134 +3347,143 @@ function attemptActivationFromModal(itemId) {
   showItemModal(itemId, 'inventory');
 }
 
-function showItemModal(itemId, container = 'inventory') {
+function showItemModal(itemId, container) {
+  container = container || 'inventory';
   selectedItemId = itemId;
-  const item = getItemDefinition(itemId); if (!item) return;
-  const rarity   = RARITY[item.rarity] || RARITY.common;
-  const type     = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
-  const qty      = container === 'stash'
-    ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1)
+  var item = getItemDefinition(itemId);
+  if (!item) return;
+  var rarity  = RARITY[item.rarity]  || RARITY.common;
+  var type    = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
+  var qty     = container === 'stash'
+    ? ((gameState.stash || []).find(function(s){ return s.id === itemId; }) || {}).qty || 1
     : getItemCount(itemId);
-  const req      = getItemRequirementStatus(itemId);
-  const att      = req.attunement;
-  const discovery = getItemDiscoveryState ? getItemDiscoveryState(itemId) : {};
+  var req = getItemRequirementStatus(itemId);
+  var att = req.attunement;
 
   // ── HEADER ────────────────────────────────────────────────────────────────
-  const iconHtml = `<div style="font-size:52px;line-height:1;margin-bottom:6px;">${item.icon || '📦'}</div>`;
-  const nameHtml = `<div style="font-size:19px;font-weight:700;color:${rarity.color};letter-spacing:.3px;">${escapeItemHtml(item.name)}</div>`;
-  const subtitleHtml = `<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;">${escapeItemHtml(type.name)} · <span style="color:${rarity.color}">${escapeItemHtml(rarity.name)}</span>${qty > 1 ? ` · ×${qty}` : ''}</div>`;
+  var html = '';
+  html += '<div style="text-align:center;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;">';
+  html += '<div style="font-size:48px;line-height:1;margin-bottom:6px;">' + (item.icon || '📦') + '</div>';
+  html += '<div style="font-size:18px;font-weight:700;color:' + rarity.color + ';letter-spacing:.3px;">' + escapeItemHtml(item.name) + '</div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;">';
+  html += escapeItemHtml(type.name) + ' · <span style="color:' + rarity.color + ';">' + escapeItemHtml(rarity.name) + '</span>';
+  if (qty > 1) html += ' · ×' + qty;
+  html += '</div></div>';
 
-  // ── LORE / DESC ───────────────────────────────────────────────────────────
-  const loreText = item.lore || item.desc || '';
-  const loreHtml = loreText
-    ? `<div style="font-size:13px;color:var(--text-muted);font-style:italic;line-height:1.5;margin:10px 0 4px;">${escapeItemHtml(loreText)}</div>`
-    : '';
+  // ── LORE ──────────────────────────────────────────────────────────────────
+  var lore = item.lore || item.desc || '';
+  if (lore) {
+    html += '<div style="font-size:13px;color:var(--text-muted);font-style:italic;line-height:1.5;margin-bottom:8px;">' + escapeItemHtml(lore) + '</div>';
+  }
 
-  // ── STATS (colored per stat, only if present) ─────────────────────────────
-  const statsEntries = Object.entries(item.stats || {}).filter(([,v]) => v);
-  const statsHtml = statsEntries.length
-    ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
-        ${statsEntries.map(([s,v]) =>
-          `<span style="background:var(--bg-surface);border:1px solid var(--stat-${s},var(--border));border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;color:var(--stat-${s},var(--text));">${STATS[s]?.abbr || s.toUpperCase()} <span style="color:var(--green)">+${v}</span></span>`
-        ).join('')}
-       </div>`
-    : '';
+  // ── STATS ─────────────────────────────────────────────────────────────────
+  var statsEntries = Object.entries(item.stats || {}).filter(function(e){ return e[1]; });
+  if (statsEntries.length) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">';
+    statsEntries.forEach(function(entry) {
+      var s = entry[0], v = entry[1];
+      var statColor = 'var(--stat-' + s + ', var(--text))';
+      html += '<span style="background:var(--bg-surface);border:1px solid var(--stat-' + s + ',var(--border));border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600;color:' + statColor + ';">';
+      html += (STATS[s] ? STATS[s].abbr : s.toUpperCase());
+      html += ' <span style="color:var(--green);">+' + v + '</span></span>';
+    });
+    html += '</div>';
+  }
 
-  // ── PASSIVE (gold, small) ─────────────────────────────────────────────────
-  const passiveHtml = item.passive
-    ? `<div style="font-size:11px;color:var(--gold);margin:4px 0;">✦ ${escapeItemHtml(item.passive)}</div>`
-    : '';
+  // ── PASSIVE ───────────────────────────────────────────────────────────────
+  if (item.passive) {
+    html += '<div style="font-size:11px;color:var(--gold);margin:4px 0;">✦ ' + escapeItemHtml(item.passive) + '</div>';
+  }
 
-  // ── EFFECTS (progressive: only known effects shown) ───────────────────────
-  const knownEffects = (item.effects || []).filter(e => isItemEffectKnown(itemId, e));
-  const effectsHtml = knownEffects.length
-    ? `<div class="item-panel" style="margin-top:10px;">
-        <div class="item-panel-label" style="color:var(--orange);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Efectos conocidos</div>
-        ${knownEffects.map(e => {
-          const unlocked = isItemEffectUnlocked(itemId, e);
-          return unlocked
-            ? `<div style="font-size:12px;margin-bottom:4px;"><span style="color:var(--orange);font-weight:600;">${escapeItemHtml(e.name || 'Efecto')}</span> <span style="color:var(--text-muted);">— ${escapeItemHtml(e.description || '')}</span></div>`
-            : `<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">🔒 ${escapeItemHtml(e.name || 'Efecto')} <span style="font-size:10px;">(Aclimatación ${e.unlockStage}/${att.max}${e.activationRequired ? ' · Ritual' : ''})</span></div>`;
-        }).join('')}
-       </div>`
-    : '';
+  // ── EFFECTS (only known) ──────────────────────────────────────────────────
+  var knownEffects = (item.effects || []).filter(function(e){ return isItemEffectKnown(itemId, e); });
+  if (knownEffects.length) {
+    html += '<div class="item-panel" style="margin-top:10px;">';
+    html += '<div class="item-panel-label" style="color:var(--orange);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Efectos conocidos</div>';
+    knownEffects.forEach(function(e) {
+      var unlocked = isItemEffectUnlocked(itemId, e);
+      if (unlocked) {
+        html += '<div style="font-size:12px;margin-bottom:4px;">';
+        html += '<span style="color:var(--orange);font-weight:600;">' + escapeItemHtml(e.name || 'Efecto') + '</span>';
+        html += ' <span style="color:var(--text-muted);">— ' + escapeItemHtml(e.description || '') + '</span></div>';
+      } else {
+        html += '<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">🔒 ' + escapeItemHtml(e.name || 'Efecto');
+        html += ' <span style="font-size:10px;">(Aclimatación ' + (e.unlockStage || '?') + '/' + att.max + (e.activationRequired ? ' · Ritual' : '') + ')</span></div>';
+      }
+    });
+    html += '</div>';
+  }
 
-  // ── REQUIREMENTS (only if item has them) ──────────────────────────────────
-  const hasReqs = Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId;
-  const reqHtml = hasReqs
-    ? `<div class="item-panel" style="margin-top:8px;">
-        <div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--text-muted);">Requisitos</div>
-        ${req.canEquip
-          ? `<div style="font-size:12px;color:var(--green);">✓ Cumplidos</div>`
-          : req.reasons.map(r => `<div style="font-size:12px;color:var(--red);">✗ ${escapeItemHtml(r)}</div>`).join('')
-        }
-       </div>`
-    : '';
+  // ── REQUIREMENTS ──────────────────────────────────────────────────────────
+  var hasReqs = Object.keys(item.requirements && item.requirements.stats || {}).length || (item.requirements && item.requirements.trainingId);
+  if (hasReqs) {
+    html += '<div class="item-panel" style="margin-top:8px;">';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--text-muted);">Requisitos</div>';
+    if (req.canEquip) {
+      html += '<div style="font-size:12px;color:var(--green);">✓ Cumplidos</div>';
+    } else {
+      req.reasons.forEach(function(r) {
+        html += '<div style="font-size:12px;color:var(--red);">✗ ' + escapeItemHtml(r) + '</div>';
+      });
+    }
+    html += '</div>';
+  }
 
-  // ── ATTUNEMENT (only if required AND player has interacted) ───────────────
-  const showAtt = item.attunement?.required && (att.stage > 0 || container === 'equipped');
-  const attStageText = item.attunement?.stages?.[att.stage]
-    || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
-  const attHtml = showAtt
-    ? `<div class="item-panel" style="margin-top:8px;">
-        <div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Aclimatación</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <div style="flex:1;height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;">
-            <div style="height:100%;width:${Math.min(100, att.stage/att.max*100)}%;background:var(--purple);border-radius:2px;"></div>
-          </div>
-          <span style="font-size:11px;color:var(--purple);">${att.stage}/${att.max}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-muted);font-style:italic;">${escapeItemHtml(attStageText)}</div>
-       </div>`
-    : '';
+  // ── ATTUNEMENT (only if stage > 0 or equipped) ───────────────────────────
+  if (item.attunement && item.attunement.required && (att.stage > 0 || container === 'equipped')) {
+    var attText = (item.attunement.stages && item.attunement.stages[att.stage])
+      || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
+    var attPct = Math.min(100, att.stage / att.max * 100);
+    html += '<div class="item-panel" style="margin-top:8px;">';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Aclimatación</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<div style="flex:1;height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;">';
+    html += '<div style="height:100%;width:' + attPct + '%;background:var(--purple);border-radius:2px;"></div></div>';
+    html += '<span style="font-size:11px;color:var(--purple);">' + att.stage + '/' + att.max + '</span></div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;">' + escapeItemHtml(attText) + '</div>';
+    html += '</div>';
+  }
 
-  // ── ACTIVATION (only if att stage >= minimumStage) ────────────────────────
-  const showActivation = item.attunement?.required
-    ? att.stage >= Number(item.attunement.minimumStage || 1)
-    : true;
-  const activationHtml = showActivation ? renderActivationPanel(itemId) : '';
+  // ── ACTIVATION (gated by minimumStage) ───────────────────────────────────
+  var minStage = Number((item.attunement && item.attunement.minimumStage) || 1);
+  if (!item.attunement || !item.attunement.required || att.stage >= minStage) {
+    html += renderActivationPanel(itemId);
+  }
 
   // ── CURSE ─────────────────────────────────────────────────────────────────
-  const curseHtml = item.curse
-    ? `<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">
-        <div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>
-        <div style="font-size:12px;color:var(--red);">${escapeItemHtml(item.curse.description || 'El objeto lleva una maldición.')}</div>
-       </div>`
-    : '';
+  if (item.curse) {
+    html += '<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>';
+    html += '<div style="font-size:12px;color:var(--red);">' + escapeItemHtml((item.curse && item.curse.description) || 'El objeto lleva una maldición.') + '</div>';
+    html += '</div>';
+  }
 
   // ── VALUE ─────────────────────────────────────────────────────────────────
-  const valueHtml = `<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">${item.value || 0} 🪙</div>`;
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">' + (item.value || 0) + ' 🪙</div>';
 
-  // ── ASSEMBLE ──────────────────────────────────────────────────────────────
-  document.getElementById('modal-item-content').innerHTML =
-    `<div style="text-align:center;padding-bottom:8px;border-bottom:1px solid var(--border);">${iconHtml}${nameHtml}${subtitleHtml}</div>`
-    + loreHtml + statsHtml + passiveHtml
-    + effectsHtml + reqHtml + attHtml + activationHtml + curseHtml
-    + valueHtml;
+  document.getElementById('modal-item-content').innerHTML = html;
 
   // ── ACTION BUTTON ─────────────────────────────────────────────────────────
-  const actionBtn = document.getElementById('btn-item-action');
+  var actionBtn = document.getElementById('btn-item-action');
   actionBtn.disabled = false;
   if (container === 'stash') {
     actionBtn.textContent = 'Sacar al inventario';
-    actionBtn.onclick = () => moveItemToInventory(itemId);
+    actionBtn.onclick = function() { moveItemToInventory(itemId); };
   } else if (type.slot) {
     if (req.canEquip) {
       actionBtn.textContent = 'Equipar';
-      actionBtn.disabled = false;
-      actionBtn.onclick = () => equipItemFromInventory(itemId);
+      actionBtn.onclick = function() { equipItemFromInventory(itemId); };
     } else {
-      // Flavor text instead of raw stat error
-      const flavorMsg = req.flavorReasons?.[0] || req.reasons[0] || 'No puedes equiparlo aún.';
-      actionBtn.textContent = flavorMsg.length > 30 ? 'No puedes equiparlo aún' : flavorMsg;
+      var flavorMsg = (req.flavorReasons && req.flavorReasons[0]) || req.reasons[0] || 'No puedes equiparlo aún.';
+      actionBtn.textContent = flavorMsg.length > 32 ? 'No puedes equiparlo aún' : flavorMsg;
       actionBtn.disabled = true;
     }
   } else if (item.type === 'consumable') {
     actionBtn.textContent = 'Usar';
-    actionBtn.onclick = () => useConsumable(itemId);
+    actionBtn.onclick = function() { useConsumable(itemId); };
   } else {
     actionBtn.textContent = 'Guardar en baúl';
-    actionBtn.onclick = () => moveItemToStash(itemId);
+    actionBtn.onclick = function() { moveItemToStash(itemId); };
   }
   openModal('modal-item');
 }

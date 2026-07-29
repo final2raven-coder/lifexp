@@ -300,7 +300,7 @@ const ITEMS = {
     value: 0, themes: ['comercio'],
     cantSell: true,
     effect: { merchantDiscount: 10 }
-  }
+  },
 
   // ══════════ QUEST REWARDS (missing items) ══════════
 

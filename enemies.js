@@ -462,7 +462,7 @@ const ENEMIES = {
       { itemId: 'veneno_letal', chance: 0.25 }
     ],
     themes: ['alianzas']
-  }
+  },
 
   // ══════════ BOSSES (quest-required) ══════════
 
