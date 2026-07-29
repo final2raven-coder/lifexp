@@ -1,8 +1,8 @@
-// LifeXP Hotfix 2.5 - item UX, encoding and requirement privacy repair.
+// LifeXP Hotfix 2.6 - item UX, encoding and narrative equip-failure repair.
 // Loaded after game.js, items.js and expansion modules.
 (function () {
   'use strict';
-  const HOTFIX_ID = 'lifexp_hotfix_2_5_item_ux_privacy';
+  const HOTFIX_ID = 'lifexp_hotfix_2_6_item_narrative_repair';
   const ID = 'cuchilla_llameante';
   const COMPLETE = {
     id: ID, name: 'Ashbrand', rarity: 'rare', type: 'weapon',
@@ -25,9 +25,9 @@
   function backup() {
     try {
       const raw = localStorage.getItem('lifexp_save');
-      if (raw && !localStorage.getItem('lifexp_item_ux_backup_2_5')) {
-        localStorage.setItem('lifexp_item_ux_backup_2_5', raw);
-        localStorage.setItem('lifexp_item_ux_backup_2_5_time', new Date().toISOString());
+      if (raw && !localStorage.getItem('lifexp_item_ux_backup_2_6')) {
+        localStorage.setItem('lifexp_item_ux_backup_2_6', raw);
+        localStorage.setItem('lifexp_item_ux_backup_2_6_time', new Date().toISOString());
       }
     } catch (e) { console.warn('Item UX backup unavailable:', e); }
   }
@@ -57,23 +57,34 @@
     if (typeof saveGame === 'function') saveGame();
   }
 
-  function narrative(text) {
-    const s = String(text || '');
-    if (!s) return 'The item does not respond.';
-    if (/requier|actual|needs? training|training:|aclimat|fue|vit|des|int|vol|pre|\d+\s*\/\s*\d+|\b\d+\s*\(actual/i.test(s)) return 'Something in you is not ready for this yet.';
-    if (/algo en ti|todav[ií]a no est[aá]s? listo/i.test(s)) return 'Something in you is not ready for this yet.';
-    return s;
+  const TECHNICAL = /requier|actual|needs? training|training:|aclimat|\b(fue|vit|des|int|vol|pre)\b|\d+\s*\/\s*\d+|\b\d+\s*\(actual/i;
+  function clean(text) {
+    const value = String(text || '');
+    if (!value || TECHNICAL.test(value) || /algo en ti|todav[ií]a no est[aá]s? listo/i.test(value)) return 'Something in you is not ready for this yet.';
+    return value;
+  }
+  function narrativeFor(itemId) {
+    const attempts = Number(gameState?.itemSystem?.equipAttempts?.[itemId] || 0);
+    if (itemId === ID) return attempts <= 1
+      ? 'Your hand closes around the grip and the warmth pulls back. The sword does not resist you. It simply waits, as if it already knows you are not ready.'
+      : 'Again the heat retreats when you reach for it. Something in the blade measures you each time. You are closer than you were. That is not nothing.';
+    if (typeof window.getItemFlavorText === 'function') return clean(window.getItemFlavorText(itemId, attempts <= 1 ? 'equip_fail_1' : 'equip_fail_n'));
+    return 'The item does not respond. Something in it is waiting for a readiness you have not built yet.';
+  }
+  function setFailureDialog(itemId) {
+    const text = narrativeFor(itemId);
+    const node = document.querySelector('.flavor-dialog-text');
+    if (node) { node.textContent = text; return true; }
+    if (typeof window.showFlavorDialog === 'function') { window.showFlavorDialog(text, 'error'); return true; }
+    return false;
   }
   function scrub(root) {
     if (!root || !root.querySelectorAll) return;
-    root.querySelectorAll('#modal-item, .flavor-dialog, .toast, [role="dialog"]').forEach(node => {
-      if (/requier|actual|needs? training|training:|aclimat|\b(fue|vit|des|int|vol|pre)\b|\d+\s*\/\s*\d+|algo en ti|todav[ií]a no est[aá]s? listo/i.test(node.textContent || '')) {
-        node.querySelectorAll('button, [data-action]').forEach(() => {});
-        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-        const textNodes = [];
-        while (walker.nextNode()) textNodes.push(walker.currentNode);
-        textNodes.forEach(t => { if (/requier|actual|needs? training|training:|aclimat|\b(fue|vit|des|int|vol|pre)\b|\d+\s*\/\s*\d+|algo en ti|todav[ií]a no est[aá]s? listo/i.test(t.nodeValue || '')) t.nodeValue = narrative(t.nodeValue); });
-      }
+    root.querySelectorAll('.toast, [role="dialog"]').forEach(node => {
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach(t => { if (TECHNICAL.test(t.nodeValue || '') || /algo en ti|todav[ií]a no est[aá]s? listo/i.test(t.nodeValue || '')) t.nodeValue = 'Something in you is not ready for this yet.'; });
     });
   }
 
@@ -83,23 +94,35 @@
     return status.canEquip ? status : { ...status, reasons: ['The item does not respond.'], flavorReasons: ['Something in you is not ready for this yet.'] };
   };
   const oldToast = window.showToast;
-  if (typeof oldToast === 'function') window.showToast = function (text, type) { return oldToast.call(this, narrative(text), type); };
+  if (typeof oldToast === 'function') window.showToast = function (text, type) { return oldToast.call(this, clean(text), type); };
   const oldFlavor = window.showFlavorDialog;
-  if (typeof oldFlavor === 'function') window.showFlavorDialog = function (text, type) { return oldFlavor.call(this, narrative(text), type); };
+  if (typeof oldFlavor === 'function') window.showFlavorDialog = function (text, type) { return oldFlavor.call(this, clean(text), type); };
+  const oldEquip = window.equipItemFromInventory;
+  if (typeof oldEquip === 'function') window.equipItemFromInventory = function (itemId) {
+    const result = oldEquip.apply(this, arguments);
+    [40, 180, 500].forEach(delay => setTimeout(() => {
+      const dialog = document.querySelector('.flavor-dialog-text');
+      if (!dialog || !dialog.textContent || TECHNICAL.test(dialog.textContent)) setFailureDialog(itemId);
+      else if (dialog.closest('.flavor-dialog')?.classList.contains('error')) dialog.textContent = clean(dialog.textContent);
+      scrub(document.body);
+    }, delay));
+    return result;
+  };
   const oldModal = window.showItemModal;
   if (typeof oldModal === 'function') window.showItemModal = function (itemId, container) {
     const result = oldModal.apply(this, arguments);
     const actions = document.querySelector('#modal-item .item-modal-actions');
     const primary = document.getElementById('btn-item-action');
     const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
-    if (container !== 'inventory' || !actions || !primary || !item || !['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) return result;
-    document.getElementById('btn-item-vault-action')?.remove();
-    const button = document.createElement('button');
-    button.id = 'btn-item-vault-action'; button.type = 'button'; button.className = 'btn btn-ghost';
-    button.textContent = 'Guardar en el ba\u00FAl';
-    button.setAttribute('aria-label', 'Guardar este objeto en el ba\u00FAl');
-    button.onclick = () => { if (typeof moveItemToStash === 'function') moveItemToStash(itemId); };
-    actions.insertBefore(button, primary.nextSibling);
+    if (container === 'inventory' && actions && primary && item && ['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) {
+      document.getElementById('btn-item-vault-action')?.remove();
+      const button = document.createElement('button');
+      button.id = 'btn-item-vault-action'; button.type = 'button'; button.className = 'btn btn-ghost';
+      button.textContent = 'Guardar en el ba\u00FAl';
+      button.setAttribute('aria-label', 'Guardar este objeto en el ba\u00FAl');
+      button.onclick = () => { if (typeof moveItemToStash === 'function') moveItemToStash(itemId); };
+      actions.insertBefore(button, primary.nextSibling);
+    }
     scrub(document.body);
     return result;
   };
