@@ -21,6 +21,7 @@ function applyStatusEffect(target, status, data = {}, source = 'unknown') {
   const existing = list.find(x => x.status === status);
   const duration = Math.max(1, Number(data.duration || 1));
   const stacks = Math.max(1, Number(data.stacks || 1));
+  if (target.statusResistances?.includes?.(status)) return false;
   if (existing) { existing.duration = Math.max(existing.duration, duration); existing.stacks = Math.min(Number(data.maxStacks || 99), (existing.stacks || 1) + stacks); }
   else list.push({ status, duration, stacks, damage: Number(data.damage || 0), source });
   return true;
@@ -30,10 +31,10 @@ function tickCombatStatuses(target, label = 'Objetivo') {
   if (!target?.debuffs) return [];
   const messages = [];
   for (const effect of target.debuffs) {
-    if (effect.status === 'burn') {
+    if (effect.status === 'burn' || effect.status === 'poison' || effect.status === 'bleed') {
       const damage = Math.max(1, Number(effect.damage || 3) * Number(effect.stacks || 1));
       target.hp = Math.max(0, target.hp - damage);
-      messages.push(`${label} sufre ${damage} de daño por quemadura.`);
+      messages.push(`${label} sufre ${damage} de daño por ${effect.status}.`);
     }
     effect.duration -= 1;
   }
@@ -56,6 +57,7 @@ function applyEquipmentOnHitEffects(attacker, defender, result) {
     if (!status) continue;
     applyStatusEffect(defender, status, { ...data, damage: data.damage || (status === 'burn' ? 4 : 0) }, effect.itemId);
     applied.push(status);
+    if (typeof advanceItemProgressFromCombat === 'function') advanceItemProgressFromCombat(effect.itemId, { trigger: 'on_hit' });
     addCombatLog(`${effect.name || status} aplicado.`);
   }
   return applied;

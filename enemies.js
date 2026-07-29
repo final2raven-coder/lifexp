@@ -571,3 +571,11 @@ function getThemeEnemies(theme) {
   const enemyIds = THEME_ENEMIES[theme] || [];
   return enemyIds.map(id => ENEMIES[id]).filter(Boolean);
 }
+
+
+// Block 3: optional status resistance metadata. Existing enemies remain valid.
+if (typeof ENEMIES !== 'undefined') {
+  Object.values(ENEMIES).forEach(enemy => {
+    if (!Array.isArray(enemy.statusResistances)) enemy.statusResistances = [];
+  });
+}

@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v13.2.1-block2-items';
+const LIFE_XP_BUILD = 'v14-block3-integration';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -3234,7 +3234,7 @@ function getItemRequirementStatus(itemId) {
     const actual = getPlayerStatForRequirement(stat);
     if (actual < needed) reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
   }
-  if (item.requirements?.trainingId && !(gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
+  if (item.requirements?.trainingId && !(hasItemTraining(item.requirements.trainingId) || gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
     reasons.push(`Necesita entrenamiento: ${item.requirements.trainingName || item.requirements.trainingId}`);
   }
   const att = getItemAttunement(itemId);
@@ -3562,4 +3562,133 @@ function showItemModal(itemId, container = 'inventory') {
   else if (item.type === 'consumable') { actionBtn.textContent = 'Usar'; actionBtn.onclick = () => useConsumable(itemId); }
   else { actionBtn.textContent = 'Guardar en baúl'; actionBtn.onclick = () => moveItemToStash(itemId); }
   openModal('modal-item');
+}
+
+
+// ============================================================================
+// Block 2.3 - hidden item knowledge
+// ============================================================================
+// Unknown effects are not shown as locked. They remain undiscovered until the
+// item teaches them through attunement, activation, combat or another system.
+// Items may later opt into visible/known effects with `knowledge: 'known'`.
+
+function getItemKnowledgeState(itemId) {
+  initializeItemSystem();
+  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
+  return gameState.itemSystem.knowledge[itemId] || {};
+}
+
+function isItemEffectKnown(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const knowledge = getItemKnowledgeState(itemId);
+  if (effect.knowledge === 'known' || effect.visibility === 'visible') return true;
+  if (knowledge[effect.id] === true) return true;
+  const stage = Number(effect.unlockStage || 0);
+  return stage > 0 && getItemAttunement(itemId).stage >= stage;
+}
+
+function discoverItemEffect(itemId, effectId) {
+  const item = getItemDefinition(itemId);
+  const effect = item?.effects?.find(e => e.id === effectId);
+  if (!effect) return false;
+  initializeItemSystem();
+  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
+  gameState.itemSystem.knowledge[itemId] = { ...(gameState.itemSystem.knowledge[itemId] || {}), [effectId]: true };
+  saveGame();
+  return true;
+}
+
+function isItemEffectUnlocked(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const att = getItemAttunement(itemId);
+  const needed = Number(effect.unlockStage || 0);
+  if (att.stage < needed) return false;
+  if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
+  return isItemEffectKnown(itemId, effect);
+}
+
+function getActiveItemEffects(itemId) {
+  const item = getItemDefinition(itemId);
+  return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
+}
+
+function getEquippedItemEffects() {
+  const effects = [];
+  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
+    getActiveItemEffects(id).forEach(effect => effects.push({ ...effect, itemId: id }));
+  });
+  return effects;
+}
+
+function renderItemEffectList(itemId) {
+  const item = getItemDefinition(itemId);
+  return (item?.effects || []).filter(effect => isItemEffectKnown(itemId, effect)).map(effect => {
+    if (!isItemEffectUnlocked(itemId, effect)) return '';
+    return `<div class="item-effect"><strong>${escapeItemHtml(effect.name || 'Effect')}</strong><br>${escapeItemHtml(effect.description || '')}</div>`;
+  }).join('');
+}
+
+function renderActivationPanel(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item?.activation) return '';
+  const state = getItemActivationState(itemId);
+  if (state.active) return `<div class="item-panel item-activation-active"><div class="item-panel-label">ACTIVATION</div><div>Ritual complete.</div></div>`;
+  const progress = `${state.count}/${state.needed}`;
+  const button = state.ready ? `<button class="btn btn-primary item-ritual-button" onclick="attemptActivationFromModal('${itemId}')">Attempt activation</button>` : '';
+  return `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || 'Complete the required tasks.')}</div><div class="ritual-progress">${progress}</div>${button}</div>`;
+}
+
+
+// ============================================================================
+// Block 3 - content/system integration
+// ============================================================================
+
+function initializeTrainingState() {
+  if (!gameState.itemSystem) initializeItemSystem();
+  if (!gameState.itemSystem.training || typeof gameState.itemSystem.training !== 'object') gameState.itemSystem.training = {};
+  return gameState.itemSystem.training;
+}
+
+function hasItemTraining(trainingId) {
+  return Boolean(initializeTrainingState()[trainingId]);
+}
+
+function grantItemTraining(trainingId) {
+  if (!trainingId) return false;
+  const training = initializeTrainingState();
+  if (training[trainingId]) return false;
+  training[trainingId] = { unlockedAt: Date.now(), source: 'quest' };
+  saveGame();
+  return true;
+}
+
+function revealItemEffectFromUse(itemId, effectId) {
+  const item = getItemDefinition(itemId);
+  const effect = item?.effects?.find(e => e.id === effectId);
+  if (!effect) return false;
+  return discoverItemEffect(itemId, effectId);
+}
+
+function advanceItemProgressFromCombat(itemId, event = {}) {
+  const item = getItemDefinition(itemId);
+  if (!item) return false;
+  let changed = false;
+  for (const effect of item.effects || []) {
+    if (effect.discoverOnUse && event.trigger === effect.discoverOnUse) {
+      changed = revealItemEffectFromUse(itemId, effect.id) || changed;
+    }
+  }
+  return changed;
+}
+
+// Quest content can call this without depending on a particular quest schema.
+function applyItemQuestReward(reward = {}) {
+  let changed = false;
+  if (reward.trainingId) changed = grantItemTraining(reward.trainingId) || changed;
+  if (reward.discoverItem && reward.effectId) changed = revealItemEffectFromUse(reward.discoverItem, reward.effectId) || changed;
+  if (reward.activateItem) {
+    const state = getItemActivationState(reward.activateItem);
+    if (state.ready) changed = attemptItemActivation(reward.activateItem).success || changed;
+  }
+  return changed;
 }
