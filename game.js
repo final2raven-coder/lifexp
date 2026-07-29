@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v12-block1';
+const LIFE_XP_BUILD = 'v13-block2';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -1273,11 +1273,23 @@ function useConsumable(itemId) {
 
 // renderQuests() definido al final del archivo en sección QUESTS RENDERING
 
+
+function forceAppUpdate() {
+  const current = typeof LIFE_XP_BUILD !== 'undefined' ? LIFE_XP_BUILD : 'unknown';
+  const url = `${location.pathname}?lifexp_update=${encodeURIComponent(current)}_${Date.now()}`;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(reg => reg.update()))).finally(() => location.replace(url));
+  } else {
+    location.replace(url);
+  }
+}
+
 function renderSettings() {
   const content = document.getElementById('settings-content');
   content.innerHTML = `
     <div class="section-title">Datos</div>
     <div class="card">
+      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Actualizar versión</button>
       <button class="btn btn-secondary mb-8" onclick="exportData()">📤 Exportar save</button>
       <button class="btn btn-secondary mb-8" onclick="showImportModal()">📥 Importar save</button>
       <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">🗑️ Resetear progreso</button>
@@ -1294,7 +1306,7 @@ function renderSettings() {
     <div class="section-title">Info</div>
     <div class="card">
       <p style="font-size: 13px; color: var(--text-muted);">
-        LifeXP RPG v1.0 · Build v11<br>
+        LifeXP RPG v1.0 · Build ${LIFE_XP_BUILD}<br>
         Tareas: ${gameState.tasks.length}<br>
         Nivel: ${gameState.level}<br>
         XP Total: ${gameState.taskHistory.reduce((a, h) => a + h.xp, 0)}
@@ -3123,7 +3135,7 @@ function completeQuest(questId) {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js?v=12').catch(() => {
+    navigator.serviceWorker.register(`sw.js?build=${LIFE_XP_BUILD}`, { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {
       console.log('Service worker registration failed (expected in dev)');
     });
   });

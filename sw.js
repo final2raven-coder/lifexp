@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-rpg-v12-block1';
+const CACHE_NAME = 'lifexp-rpg-v13-block2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -57,3 +57,5 @@ self.addEventListener('fetch', event => {
     );
   }
 });
+
+self.addEventListener('message', event => { if (event.data === 'SKIP_WAITING') self.skipWaiting(); });
