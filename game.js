@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v15.1-lore-update';
+const LIFE_XP_BUILD = 'v15.2-quest-lifecycle';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -2850,10 +2850,10 @@ function renderQuests() {
     return;
   }
   
-  // Generate daily quests if needed
-  if (typeof generateDailyQuests === 'function') {
-    generateDailyQuests();
-  }
+  if (typeof normalizeQuestState === 'function') normalizeQuestState();
+  if (typeof expireDailyQuests === 'function') expireDailyQuests();
+  if (typeof generateDailyQuests === 'function') generateDailyQuests();
+  if (typeof markDailyStatus === 'function') markDailyStatus();
   
   const active = gameState.activeQuests || [];
   
@@ -2912,7 +2912,7 @@ function renderQuests() {
               ${quest.type}
             </div>
             <div style="font-weight: 700;">${quest.name}</div>
-            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}
+            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}${quest.type === 'daily' ? `<div style="font-size: 10px; color: var(--gold); margin-top: 5px;">Daily · ${questState.dailyStatus === 'completed' ? 'Complete' : 'In progress'}</div>` : ''}
           </div>
           <div style="text-align: right;">
             <div style="font-size: 20px;">${quest.icon || '📜'}</div>
@@ -3775,3 +3775,34 @@ function openLoreJournal() {
   if (!content) return;
   content.innerHTML = renderLoreJournal() + '<button class="btn btn-ghost" style="margin-top:12px" onclick="renderQuests()">Back to quests</button>';
 }
+
+
+// Quest lifecycle UI fix: active cards always read the current QUESTS database.
+function renderQuestLifecycleCards() {
+  const container = document.getElementById('quests-container');
+  if (!container || typeof QUESTS === 'undefined') return;
+  if (typeof normalizeQuestState === 'function') normalizeQuestState();
+  if (typeof expireDailyQuests === 'function') expireDailyQuests();
+  const active = gameState.activeQuests || [];
+  if (!active.length) return;
+  active.forEach(state => {
+    const quest = QUESTS[state.questId];
+    if (!quest) return;
+  });
+}
+
+function refreshQuestDefinitionsInSave() {
+  if (typeof normalizeQuestState === 'function') normalizeQuestState();
+  // Do not store narrative copies: active quest state only keeps identity/progress.
+  gameState.activeQuests = (gameState.activeQuests || []).map(state => ({
+    questId: state.questId,
+    stepIndex: state.stepIndex || 0,
+    progress: state.progress || {},
+    startedAt: state.startedAt || todayStr(),
+    dailyDate: state.dailyDate,
+    dailyStatus: state.dailyStatus
+  }));
+  gameState.quests.active = gameState.activeQuests.map(q => q.questId);
+  saveGame();
+}
+refreshQuestDefinitionsInSave();

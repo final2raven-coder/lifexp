@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-rpg-v15-1-lore-update';
+const CACHE_NAME = 'lifexp-rpg-v15-2-quest-lifecycle';
 const urlsToCache = [
   '/',
   '/index.html',
