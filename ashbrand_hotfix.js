@@ -1,8 +1,8 @@
-// LifeXP Hotfix 2.3 - deterministic runtime repair for Ashbrand plus item UX compatibility.
+// LifeXP Hotfix 2.4 - deterministic item UX and requirement privacy repair.
 // Load after game.js, items.js and optional expansion modules.
 (function () {
   'use strict';
-  const HOTFIX_ID = 'lifexp_hotfix_2_3_ashbrand_runtime_repair';
+  const HOTFIX_ID = 'lifexp_hotfix_2_4_item_ux_repair';
   const ID = 'cuchilla_llameante';
   const COMPLETE = {
     id: ID, name: 'Ashbrand', rarity: 'rare', type: 'weapon',
@@ -13,7 +13,7 @@
       { id: 'burning_edge', name: 'Burn', trigger: 'on_hit', status: 'burn', unlockStage: 1, chance: 0.35, duration: 3, damage: 4, description: 'Attacks can apply Burn for 3 turns.' },
       { id: 'pressure', name: 'Pressure', trigger: 'on_hit', status: 'burn', unlockStage: 3, activationRequired: true, chance: 0.15, duration: 2, damage: 2, description: 'A burning target can receive another, shorter Burn.' }
     ],
-    requirements: { stats: { fue: 12 }, trainingId: null },
+    requirements: { stats: { fue: 12, des: 12 }, trainingId: null },
     attunement: { required: true, max: 3, minimumStage: 1, themes: ['fuego', 'fuego_comida'], stages: [
       'The blade resists your hand with sudden heat.',
       'The edge catches on fire when you press the attack.',
@@ -29,7 +29,7 @@
         localStorage.setItem('lifexp_hotfix_2_3_backup', raw);
         localStorage.setItem('lifexp_hotfix_2_3_backup_time', new Date().toISOString());
       }
-    } catch (e) { console.warn('Ashbrand hotfix backup unavailable:', e); }
+    } catch (e) { console.warn('Item UX repair backup unavailable:', e); }
   }
   function normalize(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   function isAshbrand(value) { return ['ashbrand', 'cuchilla llameante', 'cuchilla_llameante'].includes(normalize(value)); }
@@ -74,11 +74,15 @@
     if (container !== 'inventory' || !isEquippable(item)) return;
     const button = document.createElement('button');
     button.id = 'btn-item-vault-action'; button.type = 'button'; button.className = 'btn btn-ghost';
-    button.textContent = 'Guardar en el baúl'; button.setAttribute('aria-label', 'Guardar este objeto en el baúl');
+    button.textContent = 'Guardar en el ba\u00FAl';
+    button.setAttribute('aria-label', 'Guardar este objeto en el ba\u00FAl');
     button.style.cssText = 'flex:1 1 auto;min-width:0;min-height:50px;padding:14px 12px;font-size:13px;border-color:var(--gold-dim);color:var(--gold);';
     button.onclick = () => { if (typeof moveItemToStash === 'function') moveItemToStash(itemId); };
     actions.insertBefore(button, primary.nextSibling);
   }
+
+  // The shared modal is wrapped only to add the inventory-to-stash action.
+  // All item types use the same correctly encoded label.
   const originalShowItemModal = window.showItemModal;
   if (typeof originalShowItemModal === 'function') {
     window.showItemModal = function (itemId, container) {
@@ -87,34 +91,28 @@
     };
   }
 
-  function statLabel(stat) { const meta = window.STATS && window.STATS[stat]; return meta ? (meta.name || meta.abbr || stat.toUpperCase()) : stat.toUpperCase(); }
-  function failureContext(itemId) {
-    if (typeof getItemRequirementStatus !== 'function') return '';
-    const status = getItemRequirementStatus(itemId);
-    if (!status || status.canEquip || !status.reasons?.length) return '';
-    const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
-    const missing = [];
-    Object.keys(item?.requirements?.stats || {}).forEach(stat => {
-      const required = Number(item.requirements.stats[stat]);
-      const actual = typeof getPlayerStatForRequirement === 'function' ? Number(getPlayerStatForRequirement(stat)) : Number(gameState?.stats?.[stat] || 0);
-      if (actual < required) missing.push(statLabel(stat) + ' (' + actual + '/' + required + ')');
-    });
-    const parts = [];
-    if (missing.length) parts.push('Al intentar ajustarlo, notas dónde cede tu cuerpo: ' + missing.join(', ') + '. Todavía no has desarrollado esas capacidades hasta el umbral que exige.');
-    if (status.reasons.some(r => /entrenamiento/i.test(r))) parts.push('También percibes que te falta la preparación específica para manejarlo con seguridad.');
-    if (status.reasons.some(r => /aclimataci/i.test(r))) {
-      const att = status.attunement || {};
-      parts.push('La conexión todavía no responde: necesitas más aclimatación (' + (att.stage || 0) + '/' + (item?.attunement?.minimumStage || '?') + ').');
-    }
-    return parts.length ? 'Lo que descubres al intentarlo: ' + parts.join(' ') : 'Lo que descubres al intentarlo: hay una barrera concreta entre tú y su uso.';
+  // Keep the mechanical result intact, but never expose stat values, training
+  // IDs, or attunement counters as an equip-failure diagnosis. Narrative text
+  // must let the player infer the obstacle from the scene.
+  const originalRequirementStatus = window.getItemRequirementStatus;
+  if (typeof originalRequirementStatus === 'function') {
+    window.getItemRequirementStatus = function (itemId) {
+      const status = originalRequirementStatus.apply(this, arguments) || {};
+      if (status.canEquip) return status;
+      return {
+        ...status,
+        reasons: ['The item does not respond.'],
+        flavorReasons: ['Something in you is not ready for this yet.']
+      };
+    };
   }
+
   const originalGetItemFlavorText = window.getItemFlavorText;
   if (typeof originalGetItemFlavorText === 'function') {
     window.getItemFlavorText = function (itemId, situation) {
-      const base = originalGetItemFlavorText.apply(this, arguments) || '';
-      if (!['equip_fail_1', 'equip_fail_n'].includes(situation)) return base;
-      const context = failureContext(itemId);
-      return context ? base + '\n\n' + context : base;
+      // The base flavor text is already written as scene-based English.
+      // Do not append technical requirement details or mixed-language text.
+      return originalGetItemFlavorText.apply(this, arguments) || '';
     };
   }
 
