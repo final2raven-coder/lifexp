@@ -479,6 +479,7 @@ function checkQuestCompletion(questId) {
 
 function applyQuestRewards(rewards) {
   if (!rewards) return;
+  if (typeof applyItemQuestReward === "function") applyItemQuestReward(rewards);
   
   if (rewards.xp) {
     if (typeof addXp === 'function') {

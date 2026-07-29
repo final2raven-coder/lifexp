@@ -422,6 +422,10 @@ function executeEnemyTurn() {
     } else {
       const dmgResult = calculateDamage(e, p, chosenSkill);
       p.hp = Math.max(0, p.hp - dmgResult.damage);
+      if (chosenSkill.effect && typeof applyStatusEffect === 'function') {
+        applyStatusEffect(p, chosenSkill.effect, { duration: chosenSkill.duration || 2, damage: chosenSkill.statusDamage || 3 }, e.name);
+        result.effects.push(chosenSkill.effect);
+      }
       result.damage = dmgResult.damage;
       result.isCrit = dmgResult.isCrit;
       addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);

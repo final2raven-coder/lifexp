@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v14-block3-integration';
+const LIFE_XP_BUILD = 'v14.1-block3-integration-hotfix';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
