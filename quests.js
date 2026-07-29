@@ -695,59 +695,19 @@ function getQuestLore(questId) {
 }
 
 
-// Quest persistence fix: active quests are resolved from current QUESTS data,
-// while progress remains in the save. Daily quests are explicit and visible.
-function normalizeQuestState() {
-  if (!Array.isArray(gameState.activeQuests)) gameState.activeQuests = [];
-  if (!Array.isArray(gameState.completedQuests)) gameState.completedQuests = [];
-  if (!gameState.quests || typeof gameState.quests !== 'object') gameState.quests = { active: [], completed: [], failed: [] };
-  if (!Array.isArray(gameState.quests.active)) gameState.quests.active = [];
-  gameState.activeQuests.forEach(state => {
-    if (!gameState.quests.active.includes(state.questId)) gameState.quests.active.push(state.questId);
-  });
-  gameState.quests.active.forEach(id => {
-    if (!gameState.activeQuests.some(q => q.questId === id) && QUESTS[id]) {
-      const legacy = gameState.quests[id] || {};
-      gameState.activeQuests.push({ questId: id, stepIndex: legacy.currentChapter || 0, progress: legacy.progress || {}, startedAt: legacy.startedAt || todayStr() });
-    }
-  });
-}
+// Lore and quest lifecycle content overlay, loaded without writing the save.
+Object.entries(QUEST_LORE_UPDATE).forEach(([id, patch]) => { if (QUESTS[id]) QUESTS[id] = { ...QUESTS[id], ...patch }; });
+function initLoreState(){ if(!gameState.lore||typeof gameState.lore!=='object') gameState.lore={discovered:[]}; if(!Array.isArray(gameState.lore.discovered)) gameState.lore.discovered=[]; return gameState.lore; }
+function discoverLore(id){ const state=initLoreState(); if(!LORE[id]||state.discovered.includes(id)) return false; state.discovered.push(id); return true; }
+function discoverLoreEntries(ids=[]){ let changed=false; ids.forEach(id=>{if(discoverLore(id))changed=true}); return changed; }
+function getDiscoveredLore(){ return initLoreState().discovered.map(id=>LORE[id]).filter(Boolean); }
 
-function dailyDateKey() { return todayStr(); }
-
-function expireDailyQuests() {
-  normalizeQuestState();
-  const today = dailyDateKey();
-  const expired = [];
-  gameState.activeQuests = gameState.activeQuests.filter(state => {
-    const quest = QUESTS[state.questId];
-    if (quest?.type !== 'daily' && !quest?.resetDaily) return true;
-    const key = state.dailyDate || state.startedAt || today;
-    if (key !== today) { expired.push(state.questId); return false; }
-    return true;
-  });
-  gameState.quests.active = gameState.activeQuests.map(q => q.questId);
-  if (expired.length) saveGame();
-  return expired;
+function normalizeQuestState(){
+  if(!Array.isArray(gameState.activeQuests)) gameState.activeQuests=[];
+  if(!Array.isArray(gameState.completedQuests)) gameState.completedQuests=[];
+  if(!gameState.quests||typeof gameState.quests!=='object') gameState.quests={active:[],completed:[],failed:[]};
+  if(!Array.isArray(gameState.quests.active)) gameState.quests.active=[];
+  gameState.activeQuests.forEach(q=>{if(q?.questId&&!gameState.quests.active.includes(q.questId))gameState.quests.active.push(q.questId)});
+  gameState.quests.active.forEach(id=>{if(QUESTS[id]&&!gameState.activeQuests.some(q=>q.questId===id)){const old=gameState.quests[id]||{};gameState.activeQuests.push({questId:id,stepIndex:old.currentChapter||0,progress:old.progress||{},startedAt:old.startedAt||todayStr()})}});
 }
-
-function acceptDailyQuest(questId) {
-  normalizeQuestState();
-  const quest = QUESTS[questId];
-  if (!quest || quest.type !== 'daily') return false;
-  if (gameState.activeQuests.some(q => q.questId === questId)) return false;
-  if (gameState.activeQuests.length >= 3) return false;
-  gameState.activeQuests.push({ questId, stepIndex: 0, progress: {}, startedAt: todayStr(), dailyDate: todayStr(), dailyStatus: 'in_progress' });
-  gameState.quests.active = gameState.activeQuests.map(q => q.questId);
-  saveGame();
-  return true;
-}
-
-function markDailyStatus() {
-  normalizeQuestState();
-  gameState.activeQuests.forEach(state => {
-    const quest = QUESTS[state.questId];
-    if (quest?.type === 'daily') state.dailyStatus = state.dailyStatus || 'in_progress';
-  });
-  saveGame();
-}
+function expireDailyQuests(){ normalizeQuestState(); const today=todayStr(); gameState.activeQuests=gameState.activeQuests.filter(q=>{const quest=QUESTS[q.questId]; if(quest?.type!=='daily'&&!quest?.resetDaily)return true; const date=q.dailyDate||q.startedAt||today; return date===today}); gameState.quests.active=gameState.activeQuests.map(q=>q.questId); }

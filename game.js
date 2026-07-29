@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v15.2-quest-lifecycle';
+const LIFE_XP_BUILD = 'v15.2.3-save-recovery';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -2850,10 +2850,10 @@ function renderQuests() {
     return;
   }
   
-  if (typeof normalizeQuestState === 'function') normalizeQuestState();
-  if (typeof expireDailyQuests === 'function') expireDailyQuests();
-  if (typeof generateDailyQuests === 'function') generateDailyQuests();
-  if (typeof markDailyStatus === 'function') markDailyStatus();
+  // Generate daily quests if needed
+  if (typeof generateDailyQuests === 'function') {
+    generateDailyQuests();
+  }
   
   const active = gameState.activeQuests || [];
   
@@ -2912,7 +2912,7 @@ function renderQuests() {
               ${quest.type}
             </div>
             <div style="font-weight: 700;">${quest.name}</div>
-            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}${quest.type === 'daily' ? `<div style="font-size: 10px; color: var(--gold); margin-top: 5px;">Daily · ${questState.dailyStatus === 'completed' ? 'Complete' : 'In progress'}</div>` : ''}
+            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}
           </div>
           <div style="text-align: right;">
             <div style="font-size: 20px;">${quest.icon || '📜'}</div>
@@ -3777,32 +3777,66 @@ function openLoreJournal() {
 }
 
 
-// Quest lifecycle UI fix: active cards always read the current QUESTS database.
-function renderQuestLifecycleCards() {
-  const container = document.getElementById('quests-container');
-  if (!container || typeof QUESTS === 'undefined') return;
-  if (typeof normalizeQuestState === 'function') normalizeQuestState();
-  if (typeof expireDailyQuests === 'function') expireDailyQuests();
-  const active = gameState.activeQuests || [];
-  if (!active.length) return;
-  active.forEach(state => {
-    const quest = QUESTS[state.questId];
-    if (!quest) return;
-  });
+// Save recovery hotfix: never save a default state before loadGame completes.
+let lifexpLoaded = false;
+let lifexpSaveWriting = false;
+
+function backupCurrentSave() {
+  try {
+    const current = localStorage.getItem('lifexp_save');
+    if (current && current !== 'null' && current !== '{}') {
+      localStorage.setItem('lifexp_save_backup', current);
+      localStorage.setItem('lifexp_save_backup_time', new Date().toISOString());
+    }
+  } catch (e) { console.warn('Could not backup save:', e); }
 }
 
-function refreshQuestDefinitionsInSave() {
-  if (typeof normalizeQuestState === 'function') normalizeQuestState();
-  // Do not store narrative copies: active quest state only keeps identity/progress.
-  gameState.activeQuests = (gameState.activeQuests || []).map(state => ({
-    questId: state.questId,
-    stepIndex: state.stepIndex || 0,
-    progress: state.progress || {},
-    startedAt: state.startedAt || todayStr(),
-    dailyDate: state.dailyDate,
-    dailyStatus: state.dailyStatus
-  }));
-  gameState.quests.active = gameState.activeQuests.map(q => q.questId);
-  saveGame();
+function safeSaveGame() {
+  if (!lifexpLoaded || lifexpSaveWriting) return false;
+  try {
+    lifexpSaveWriting = true;
+    backupCurrentSave();
+    localStorage.setItem('lifexp_save', JSON.stringify(gameState));
+    return true;
+  } catch (e) {
+    console.warn('Could not save game:', e);
+    return false;
+  } finally { lifexpSaveWriting = false; }
 }
-refreshQuestDefinitionsInSave();
+
+function restoreSaveBackup() {
+  try {
+    const backup = localStorage.getItem('lifexp_save_backup');
+    if (!backup) return false;
+    const parsed = JSON.parse(backup);
+    if (!parsed || typeof parsed !== 'object') return false;
+    gameState = { ...gameState, ...parsed };
+    localStorage.setItem('lifexp_save', backup);
+    location.reload();
+    return true;
+  } catch (e) { console.warn('Could not restore save backup:', e); return false; }
+}
+
+// Replace the legacy save function only after declarations are loaded.
+saveGame = safeSaveGame;
+
+function completeSafeLoad() {
+  lifexpLoaded = true;
+  if (typeof initializeItemSystem === 'function') initializeItemSystem();
+  if (typeof migrateLegacyInventory === 'function') migrateLegacyInventory();
+  if (typeof normalizeQuestState === 'function') normalizeQuestState();
+  if (typeof refreshQuestDefinitionsInSave === 'function') refreshQuestDefinitionsInSave();
+  safeSaveGame();
+}
+
+// The original DOMContentLoaded listener calls loadGame. Add a second listener
+// after it: loadGame runs first because listeners preserve registration order.
+document.addEventListener('DOMContentLoaded', () => {
+  completeSafeLoad();
+});
+
+
+function renderSettings(){
+  const content=document.getElementById('settings-content'); if(!content)return;
+  content.innerHTML=`<div class="section-title">Data</div><div class="card"><button class="btn btn-gold mb-8" onclick="forceAppUpdate()">Refresh version</button><button class="btn btn-secondary mb-8" onclick="exportData()">Export save</button><button class="btn btn-secondary mb-8" onclick="showImportModal()">Import save</button><button class="btn btn-secondary mb-8" onclick="restoreSaveBackup()">Restore previous save</button><button class="btn btn-ghost" onclick="resetGame()" style="color:var(--red)">Reset progress</button></div><div class="section-title">Info</div><div class="card"><p style="font-size:13px;color:var(--text-muted)">LifeXP RPG · Build ${LIFE_XP_BUILD}<br>Tasks: ${gameState.tasks.length}<br>Level: ${gameState.level}<br>Backup: ${localStorage.getItem('lifexp_save_backup_time')||'none'}</p></div>`;
+}
