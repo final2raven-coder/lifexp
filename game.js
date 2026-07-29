@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v13.3-block2-hidden-effects';
+const LIFE_XP_BUILD = 'v13.4-equip-action-fix';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -4007,6 +4007,10 @@ function showItemModal(itemId, container) {
 
   // ── ACTION BUTTON ─────────────────────────────────────────────────────────
   var actionBtn = document.getElementById('btn-item-action');
+  if (!actionBtn) return;
+  actionBtn.style.display = 'flex';
+  actionBtn.style.visibility = 'visible';
+  actionBtn.style.opacity = '1';
   actionBtn.disabled = false;
   if (container === 'stash') {
     actionBtn.textContent = 'Sacar al inventario';

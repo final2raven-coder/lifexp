@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v11';
+const CACHE_NAME = 'lifexp-v13';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -39,8 +39,24 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const request = event.request;
+  const isAppAsset = request.method === 'GET' &&
+    /\/(?:index\.html|game\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|ashbrand_hotfix\.js|sw\.js)$/.test(new URL(request.url).pathname);
+
+  if (isAppAsset) {
+    // Network-first keeps GitHub Pages updates visible instead of serving an
+    // old JavaScript bundle indefinitely. The cache remains the offline fallback.
+    event.respondWith(
+      fetch(request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    caches.match(request).then(response => response || fetch(request))
   );
 });
