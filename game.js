@@ -711,31 +711,7 @@ function getOverflowCount(cat) {
 // DROP SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════
 
-function rollDrop(task, sideQuestCompleted = false) {
-  if (!task.drops) return null;
-  
-  let chance = 0.15; // 15% base chance
-  if (sideQuestCompleted && task.sideQuest) {
-    chance += (task.sideQuest.dropBonus || 0) / 100;
-  }
-  
-  if (Math.random() < chance) {
-    const items = task.drops.items;
-    return items[Math.floor(Math.random() * items.length)];
-  }
-  return null;
-}
 
-function rollSideQuestDrop(task) {
-  if (!task.sideQuest || !task.sideQuest.drops) return null;
-  
-  const chance = 0.25; // 25% chance for side quest drops
-  if (Math.random() < chance) {
-    const items = task.sideQuest.drops;
-    return items[Math.floor(Math.random() * items.length)];
-  }
-  return null;
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SAVE/LOAD
@@ -998,61 +974,7 @@ function renderInventory() {
   }
 }
 
-function renderInventoryGrid() {
-  const grid = document.getElementById('inventory-grid');
-  const empty = document.getElementById('inventory-empty');
-  
-  if (gameState.inventory.length === 0) {
-    grid.innerHTML = '';
-    empty?.classList.remove('hidden');
-    return;
-  }
-  
-  empty?.classList.add('hidden');
-  grid.innerHTML = '';
-  
-  for (const slot of gameState.inventory) {
-    const item = typeof ITEMS !== 'undefined' ? ITEMS[slot.id] : null;
-    if (!item) {
-      const slotIndex = gameState.inventory.indexOf(slot);
-      const oldName = slot.name || slot.legacyName || 'Recompensa sin identificar';
-      grid.innerHTML += `<div class="inv-slot" onclick="showLegacyItemModal(${slotIndex})" style="background:var(--bg-card);border:2px solid var(--orange);border-radius:8px;padding:8px;text-align:center;cursor:pointer;position:relative;"><div style="font-size:24px;">❔</div><div style="font-size:10px;color:var(--orange);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${oldName}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px;">Revisar recompensa</div></div>`;
-      continue;
-    }
-    
-    const rarity = typeof RARITY !== 'undefined' ? RARITY[item.rarity] : { color: '#9ca3af' };
-    const qty = slot.qty || 1;
-    
-    grid.innerHTML += `
-      <div class="inv-slot" onclick="showItemModal('${slot.id}')" 
-           style="background: var(--bg-card); border: 2px solid ${rarity.color}; border-radius: 8px; 
-                  padding: 8px; text-align: center; cursor: pointer; position: relative;">
-        <div style="font-size: 24px;">${item.icon}</div>
-        ${qty > 1 ? `<div style="position: absolute; bottom: 2px; right: 4px; font-size: 10px; color: var(--text-muted);">x${qty}</div>` : ''}
-      </div>
-    `;
-  }
-}
 
-function renderStashGrid() {
-  const grid = document.getElementById('stash-grid');
-  const empty = document.getElementById('stash-empty');
-  if (!grid) return;
-  const stash = Array.isArray(gameState.stash) ? gameState.stash : [];
-  if (stash.length === 0) {
-    grid.innerHTML = '';
-    empty?.classList.remove('hidden');
-    return;
-  }
-  empty?.classList.add('hidden');
-  grid.innerHTML = stash.map(slot => {
-    const item = ITEMS[slot.id];
-    if (!item) return '';
-    const rarity = RARITY[item.rarity] || RARITY.common;
-    const qty = slot.qty || 1;
-    return `<div class="inv-slot" onclick="showStashItemModal('${slot.id}')" style="background:var(--bg-card);border:2px solid ${rarity.color};border-radius:8px;padding:8px;text-align:center;cursor:pointer;position:relative;"><div style="font-size:24px;">${item.icon}</div><div style="font-size:10px;color:${rarity.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>${qty > 1 ? `<div style="position:absolute;bottom:2px;right:4px;font-size:10px;color:var(--text-muted);">x${qty}</div>` : ''}</div>`;
-  }).join('');
-}
 
 function showStashItemModal(itemId) {
   showItemModal(itemId, 'stash');
@@ -1122,52 +1044,6 @@ function renderEquipment() {
   }
 }
 
-function showItemModal(itemId, container = 'inventory') {
-  selectedItemId = itemId;
-  const item = ITEMS[itemId];
-  if (!item) return;
-  
-  const rarity = RARITY[item.rarity];
-  const type = ITEM_TYPE[item.type];
-  const qty = getItemCount(itemId);
-  
-  let statsHtml = '';
-  if (item.stats) {
-    statsHtml = '<div style="margin-top: 8px;">' + 
-      Object.entries(item.stats).map(([s, v]) => `<span style="color: var(--stat-${s});">${STATS[s].abbr} +${v}</span>`).join(' ') +
-      '</div>';
-  }
-  
-  document.getElementById('modal-item-content').innerHTML = `
-    <div style="text-align: center; margin-bottom: 12px;">
-      <div style="font-size: 48px;">${item.icon}</div>
-      <div style="font-size: 18px; font-weight: 700; color: ${rarity.color};">${item.name}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">${type.name} - ${rarity.name}${qty > 1 ? ' x' + qty : ''}</div>
-    </div>
-    <div style="font-size: 13px; color: var(--text);">${item.desc}</div>
-    ${statsHtml}
-    ${item.passive ? `<div style="margin-top: 8px; font-size: 12px; color: var(--gold);">* ${item.passive}</div>` : ''}
-    <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">Valor: ${item.value} oro</div>
-  `;
-  
-  const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.disabled = false;
-  if (container === 'stash') {
-    actionBtn.textContent = 'Sacar al inventario';
-    actionBtn.onclick = () => { moveItemToInventory(itemId); };
-  } else if (type.slot) {
-    actionBtn.textContent = 'Equipar';
-    actionBtn.onclick = () => { equipItemFromInventory(itemId); };
-  } else if (item.type === 'consumable') {
-    actionBtn.textContent = 'Usar';
-    actionBtn.onclick = () => { useConsumable(itemId); };
-  } else {
-    actionBtn.textContent = 'Guardar en baúl';
-    actionBtn.onclick = () => { moveItemToStash(itemId); };
-  }
-  
-  document.getElementById('modal-item').classList.add('show');
-}
 
 function showLegacyItemModal(slotIndex) {
   const slot = gameState.inventory?.[slotIndex];
@@ -1197,39 +1073,6 @@ function showLegacyItemModal(slotIndex) {
   openModal('modal-item');
 }
 
-function showEquippedItemModal(slot) {
-  const itemId = gameState.equipment[slot];
-  if (!itemId) return;
-  
-  selectedItemId = itemId;
-  const item = ITEMS[itemId];
-  const rarity = RARITY[item.rarity];
-  const type = ITEM_TYPE[item.type];
-  
-  let statsHtml = '';
-  if (item.stats) {
-    statsHtml = '<div style="margin-top: 8px;">' + 
-      Object.entries(item.stats).map(([s, v]) => `<span style="color: var(--stat-${s});">${STATS[s].abbr} +${v}</span>`).join(' ') +
-      '</div>';
-  }
-  
-  document.getElementById('modal-item-content').innerHTML = `
-    <div style="text-align: center; margin-bottom: 12px;">
-      <div style="font-size: 48px;">${item.icon}</div>
-      <div style="font-size: 18px; font-weight: 700; color: ${rarity.color};">${item.name}</div>
-      <div style="font-size: 12px; color: var(--text-muted);">${type.name} - ${rarity.name} - EQUIPADO</div>
-    </div>
-    <div style="font-size: 13px; color: var(--text);">${item.desc}</div>
-    ${statsHtml}
-    ${item.passive ? `<div style="margin-top: 8px; font-size: 12px; color: var(--gold);">* ${item.passive}</div>` : ''}
-  `;
-  
-  const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = 'Desequipar';
-  actionBtn.onclick = () => { unequipItemToInventory(slot); };
-  
-  document.getElementById('modal-item').classList.add('show');
-}
 
 function equipItemFromInventory(itemId) {
   if (equipItem(itemId)) {
@@ -1594,50 +1437,51 @@ function finalizeCompletion(sideQuestCompleted) {
 }
 
 // Drop system - connects to items.js
-function rollDrop(task, sideQuestCompleted) {
-  if (!task.drops || !task.drops.theme) return null;
-  
-  // Calculate bonus from side quest
-  const bonus = sideQuestCompleted && task.sideQuest ? (task.sideQuest.dropBonus || 0) / 100 : 0;
-  
-  // Use items.js rollDrop if available
-  if (typeof rollDrop === 'function' && typeof ITEMS !== 'undefined') {
-    const result = rollDrop(task.drops.theme, bonus);
-    if (result) {
-      // Add to inventory using items.js system
-      if (typeof addToInventory === 'function') {
-        addToInventory(result.itemId);
-      }
-      const item = ITEMS[result.itemId];
-      return item ? item.name : result.itemId;
-    }
-  }
-  
-  // Fallback: use old string-based system
-  if (task.drops.items && task.drops.items.length > 0) {
-    const dropChance = 0.4 + bonus;
-    if (Math.random() < dropChance) {
-      const dropName = task.drops.items[Math.floor(Math.random() * task.drops.items.length)];
-      return dropName;
-    }
-  }
-  
+// ─── Drop system ────────────────────────────────────────────────────────────
+// rollDropFromTheme: bridge to items.js rollDrop(theme, bonusChance).
+// items.js must be loaded first. Returns {itemId, rarity} or null.
+function rollDropFromTheme(theme, bonusChance) {
+  if (typeof ITEMS === 'undefined') return null;
+  // items.js exposes rollDrop(theme, bonusChance) — different signature from this file's rollDrop
+  // We access it via the global scope after items.js loads
+  const itemsRollDrop = window._itemsRollDrop;
+  if (typeof itemsRollDrop === 'function') return itemsRollDrop(theme, bonusChance || 0);
   return null;
 }
 
-function rollSideQuestDrop(task) {
-  if (!task.sideQuest || !task.sideQuest.drops) return null;
-  
-  const drops = task.sideQuest.drops;
-  if (drops.length === 0) return null;
-  
-  // 60% chance to get side quest drop
-  if (Math.random() < 0.6) {
-    return drops[Math.floor(Math.random() * drops.length)];
+// rollDrop: task-based drop resolver. Uses rollDropFromTheme when theme is set.
+function rollDrop(task, sideQuestCompleted) {
+  if (!task.drops) return null;
+  const bonus = sideQuestCompleted && task.sideQuest ? (task.sideQuest.dropBonus || 0) / 100 : 0;
+  if (task.drops.theme) {
+    const result = rollDropFromTheme(task.drops.theme, bonus);
+    if (result) return result;
   }
-  
+  // Fallback: old string-based items list
+  if (task.drops.items && task.drops.items.length > 0) {
+    const dropChance = 0.4 + bonus;
+    if (Math.random() < dropChance) {
+      return { itemId: null, name: task.drops.items[Math.floor(Math.random() * task.drops.items.length)] };
+    }
+  }
   return null;
 }
+
+// rollSideQuestDrop: drop from side quest theme.
+function rollSideQuestDrop(task) {
+  if (!task.sideQuest) return null;
+  const theme = task.drops?.theme || null;
+  if (!theme) {
+    // Fallback: string list
+    const drops = task.sideQuest.drops;
+    if (!drops || !drops.length) return null;
+    if (Math.random() < 0.6) return { itemId: null, name: drops[Math.floor(Math.random() * drops.length)] };
+    return null;
+  }
+  const bonus = (task.sideQuest.dropBonus || 0) / 100;
+  return rollDropFromTheme(theme, bonus);
+}
+
 
 // Pending encounter after task completion
 let pendingEncounter = null;
@@ -3306,29 +3150,6 @@ function unequipItem(slot) {
 }
 
 // Item modal: effect-first information hierarchy and balanced actions.
-function showItemModal(itemId, container = 'inventory') {
-  selectedItemId = itemId;
-  const item = getItemDefinition(itemId); if (!item) return;
-  const rarity = RARITY[item.rarity] || RARITY.common;
-  const type = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
-  const qty = container === 'stash' ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1) : getItemCount(itemId);
-  const effects = item.effects || [];
-  const req = getItemRequirementStatus(itemId);
-  const att = req.attunement;
-  const effectsHtml = effects.length ? `<div class="item-panel"><div class="item-panel-label">EFFECTS</div>${effects.map(e => `<div class="item-effect"><strong>${escapeItemHtml(e.name || 'Effect')}</strong><br>${escapeItemHtml(e.description || '')}</div>`).join('')}</div>` : '';
-  const reqHtml = (Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId) ? `<div class="item-panel"><div class="item-panel-label">REQUIREMENTS</div>${req.reasons.length ? `<div class="item-warning">${req.reasons.map(escapeItemHtml).join('<br>')}</div>` : '<div class="item-ok">Requirements met</div>'}</div>` : '';
-  const attHtml = item.attunement?.required ? `<div class="item-panel"><div class="item-panel-label">ATTUNEMENT</div><div>${att.stage}/${att.max}</div><div class="attunement-track"><span style="width:${Math.min(100, att.stage / att.max * 100)}%"></span></div>${item.attunement.stages?.[att.stage] ? `<small>${escapeItemHtml(item.attunement.stages[att.stage])}</small>` : ''}</div>` : '';
-  const ritualHtml = item.activation ? `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || item.activation.requirement || 'A hidden condition.')}</div></div>` : '';
-  const curseHtml = item.curse ? `<div class="item-panel item-curse"><div class="item-panel-label">CURSE</div><div>${escapeItemHtml(item.curse.description || 'The item carries a curse.')}</div></div>` : '';
-  const statsHtml = item.stats && Object.keys(item.stats).length ? `<div class="item-stats">${Object.entries(item.stats).map(([s,v]) => `<span style="color:var(--stat-${s})">${STATS[s]?.abbr || s} +${v}</span>`).join(' ')}</div>` : '';
-  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${itemIconSvg(item, 52)}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${ritualHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
-  const actionBtn = document.getElementById('btn-item-action'); actionBtn.disabled = false;
-  if (container === 'stash') { actionBtn.textContent = 'Sacar al inventario'; actionBtn.onclick = () => moveItemToInventory(itemId); }
-  else if (type.slot) { actionBtn.textContent = req.canEquip ? 'Equipar' : req.reasons[0]; actionBtn.disabled = !req.canEquip; actionBtn.onclick = () => equipItemFromInventory(itemId); }
-  else if (item.type === 'consumable') { actionBtn.textContent = 'Usar'; actionBtn.onclick = () => useConsumable(itemId); }
-  else { actionBtn.textContent = 'Guardar en baúl'; actionBtn.onclick = () => moveItemToStash(itemId); }
-  openModal('modal-item');
-}
 
 function showEquippedItemModal(slot) {
   const itemId = gameState.equipment?.[slot]; if (!itemId) return;
@@ -3488,27 +3309,8 @@ function attemptItemActivation(itemId) {
   return { success: true };
 }
 
-function isItemEffectUnlocked(itemId, effect) {
-  const item = getItemDefinition(itemId);
-  const att = getItemAttunement(itemId);
-  const needed = Number(effect.unlockStage || 0);
-  if (att.stage < needed) return false;
-  if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
-  return true;
-}
 
-function getActiveItemEffects(itemId) {
-  const item = getItemDefinition(itemId);
-  return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
-}
 
-function getEquippedItemEffects() {
-  const effects = [];
-  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
-    getActiveItemEffects(id).forEach(effect => effects.push({ ...effect, itemId: id }));
-  });
-  return effects;
-}
 
 function renderItemEffectList(itemId) {
   const item = getItemDefinition(itemId);
@@ -3523,15 +3325,6 @@ function renderItemEffectList(itemId) {
   }).join('');
 }
 
-function renderActivationPanel(itemId) {
-  const item = getItemDefinition(itemId);
-  if (!item?.activation) return '';
-  const state = getItemActivationState(itemId);
-  if (state.active) return `<div class="item-panel item-activation-active"><div class="item-panel-label">ACTIVATION</div><div>Ritual complete.</div></div>`;
-  const progress = `${state.count}/${state.needed}`;
-  const button = state.ready ? `<button class="btn btn-primary item-ritual-button" onclick="attemptActivationFromModal('${itemId}')">Attempt activation</button>` : '';
-  return `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || 'Complete the required tasks.')}</div><div class="ritual-progress">${progress}</div>${button}</div>`;
-}
 
 function attemptActivationFromModal(itemId) {
   const result = attemptItemActivation(itemId);
@@ -3612,21 +3405,7 @@ function getActiveItemEffects(itemId) {
   return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
 }
 
-function getEquippedItemEffects() {
-  const effects = [];
-  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
-    getActiveItemEffects(id).forEach(effect => effects.push({ ...effect, itemId: id }));
-  });
-  return effects;
-}
 
-function renderItemEffectList(itemId) {
-  const item = getItemDefinition(itemId);
-  return (item?.effects || []).filter(effect => isItemEffectKnown(itemId, effect)).map(effect => {
-    if (!isItemEffectUnlocked(itemId, effect)) return '';
-    return `<div class="item-effect"><strong>${escapeItemHtml(effect.name || 'Effect')}</strong><br>${escapeItemHtml(effect.description || '')}</div>`;
-  }).join('');
-}
 
 function renderActivationPanel(itemId) {
   const item = getItemDefinition(itemId);
