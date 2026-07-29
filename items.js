@@ -715,17 +715,17 @@ Object.assign(ITEMS, {
   daga_corrosiva: {
     name: 'Greenbite', lore: 'A narrow blade kept in a waxed leather sheath. The edge leaves a green stain on anything it cuts.',
     desc: 'A narrow blade kept in a waxed leather sheath. The edge leaves a green stain on anything it cuts.',
-    effects: [{ id: 'corrode', name: 'Corrode', trigger: 'on_hit', status: 'poison', chance: 0.30, duration: 3, damage: 3, description: 'Attacks can apply Poison for 3 turns.' }],
+    effects: [{ id: 'corrode', name: 'Corrode', trigger: 'on_hit', unlockStage: 1, status: 'poison', chance: 0.30, duration: 3, damage: 3, description: 'Attacks can apply Poison for 3 turns.' }],
     requirements: { stats: { des: 12 } }, attunement: { required: true, max: 3, minimumStage: 1, stages: ['The grip slips in your hand.', 'The edge holds its bite.', 'The poison no longer wastes itself on the first cut.'] }
   },
   cuchilla_llameante: {
     name: 'Ashbrand', lore: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
     desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
     stats: {},
-    effects: [{ id: 'burning_edge', name: 'Burn', trigger: 'on_hit', status: 'burn', chance: 0.35, duration: 3, damage: 4, description: 'Attacks can apply Burn for 3 turns.' }, { id: 'pressure', name: 'Pressure', trigger: 'on_hit', status: 'burn', chance: 0.15, duration: 2, damage: 2, description: 'A burning target can receive another, shorter Burn.' }],
-    requirements: { stats: { fue: 12 }, trainingId: 'fire_handling', trainingName: 'Fire handling' },
-    attunement: { required: true, max: 3, minimumStage: 1, themes: ['fuego', 'fuego_comida'], stages: ['The blade burns your palm.', 'The edge catches when you press the attack.', 'The old heat answers without being forced.'] },
-    activation: { type: 'ritual', description: 'Light a flame without flint or oil. The blade must be in your hand when it catches.' }
+    effects: [{ id: 'burning_edge', name: 'Burn', trigger: 'on_hit', status: 'burn', unlockStage: 1, chance: 0.35, duration: 3, damage: 4, description: 'Attacks can apply Burn for 3 turns.' }, { id: 'pressure', name: 'Pressure', trigger: 'on_hit', status: 'burn', unlockStage: 3, activationRequired: true, chance: 0.15, duration: 2, damage: 2, description: 'A burning target can receive another, shorter Burn.' }],
+    requirements: { stats: { fue: 12 } },
+    attunement: { required: true, max: 3, minimumStage: 1, themes: ['fuego', 'fuego_comida'], stages: ['The blade burns your palm.', 'The edge catches on fire when you press the attack.', 'The old heat answers without being forced.'] },
+    activation: { type: 'task_threshold', description: 'Complete three fire-related tasks, then attempt the ritual in the app.', instruction: 'The old fire is ready to answer.', requirement: { themes: ['fuego', 'fuego_comida'], count: 3 }, unlocks: ['pressure'] }
   },
   espada_radiante: {
     name: 'Daybreak', lore: 'The sword was found wrapped in a soldier\'s cloak. Its polished face shows the sky more clearly than a mirror.',
@@ -737,21 +737,21 @@ Object.assign(ITEMS, {
   hoja_gelida: {
     name: 'Winterbite', lore: 'A chipped blade with frost sealed under the fuller. It leaves no trail in snow.',
     desc: 'A chipped blade with frost sealed under the fuller. It leaves no trail in snow.',
-    stats: {}, effects: [{ id: 'chill', name: 'Chill', trigger: 'on_hit', status: 'chill', chance: 0.30, duration: 2, description: 'Attacks can Chill the target for 2 turns.' }],
+    stats: {}, effects: [{ id: 'chill', name: 'Chill', trigger: 'on_hit', unlockStage: 1, status: 'chill', chance: 0.30, duration: 2, description: 'Attacks can Chill the target for 2 turns.' }],
     requirements: { stats: { des: 12 } }, attunement: { required: true, max: 3, minimumStage: 1, themes: ['hielo'], stages: ['The cold follows the metal.', 'The edge slows what it touches.', 'The frost waits for your command.'] },
     activation: { type: 'ritual', description: 'Leave the blade beneath open winter sky for one night.' }
   },
   arco_espino: {
     name: 'Thornwake', lore: 'The bow was cut from a living branch and never finished by a carpenter. New thorns grow where the string is tied.',
     desc: 'The bow was cut from a living branch and never finished by a carpenter. New thorns grow where the string is tied.',
-    stats: {}, effects: [{ id: 'bleed', name: 'Barbed Shot', trigger: 'on_hit', status: 'bleed', chance: 0.25, duration: 3, damage: 3, description: 'Arrows can apply Bleed for 3 turns.' }],
+    stats: {}, effects: [{ id: 'bleed', name: 'Barbed Shot', trigger: 'on_hit', unlockStage: 1, status: 'bleed', chance: 0.25, duration: 3, damage: 3, description: 'Arrows can apply Bleed for 3 turns.' }],
     requirements: { stats: { des: 13 } }, attunement: { required: true, max: 3, minimumStage: 1, themes: ['naturaleza'], stages: ['The bow resists your draw.', 'The thorns turn toward the target.', 'The branch bends before you ask it to.'] },
     activation: { type: 'ritual', description: 'String the bow with a fresh green shoot, then fire one arrow into living wood.' }
   },
   tridente_marino: {
     name: 'Drownwake', lore: 'The three points are dark with salt. Water gathers around the shaft even in a dry room.',
     desc: 'The three points are dark with salt. Water gathers around the shaft even in a dry room.',
-    stats: {}, effects: [{ id: 'undertow', name: 'Undertow', trigger: 'on_hit', status: 'slow', chance: 0.25, duration: 2, description: 'Attacks can Slow the target for 2 turns.' }],
+    stats: {}, effects: [{ id: 'undertow', name: 'Undertow', trigger: 'on_hit', unlockStage: 1, status: 'slow', chance: 0.25, duration: 2, description: 'Attacks can Slow the target for 2 turns.' }],
     requirements: { stats: { fue: 13 } }, attunement: { required: true, max: 3, minimumStage: 1, themes: ['agua_profunda'], stages: ['The weight is wrong on dry land.', 'The prongs pull at wounded foes.', 'The sea answers through the haft.'] },
     activation: { type: 'ritual', description: 'Hold the trident beneath running water until the current changes direction.' }
   },
