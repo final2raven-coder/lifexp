@@ -1081,8 +1081,43 @@ function equipItemFromInventory(itemId) {
     renderInventory();
     renderCharacter();
   } else {
-    alert('No se pudo equipar el item.');
+    // Record the attempt so the modal can show a hint next time
+    initializeItemSystem();
+    if (!gameState.itemSystem.equipAttempts) gameState.itemSystem.equipAttempts = {};
+    gameState.itemSystem.equipAttempts[itemId] = (gameState.itemSystem.equipAttempts[itemId] || 0) + 1;
+    saveGame();
+
+    // Show flavor toast — evocative, not a stat sheet
+    var req = getItemRequirementStatus(itemId);
+    var flavor = (req.flavorReasons && req.flavorReasons[0]) || _getEquipFlavorText(itemId);
+    if (typeof showToast === 'function') showToast(flavor, 'error');
+
+    // Refresh modal so the hint appears
+    showItemModal(itemId, 'inventory');
   }
+}
+
+function _getEquipFlavorText(itemId) {
+  var item = getItemDefinition(itemId);
+  if (!item) return 'No puedes equiparlo aún.';
+  // Ashbrand-specific
+  if (itemId === 'cuchilla_llameante') return 'The blade resists. It is not yet yours to carry.';
+  // Attunement-gated
+  if (item.attunement && item.attunement.required) return 'El objeto no responde. Quizás con el tiempo.';
+  // Generic stat-gated — evocative, no numbers
+  var statHints = {
+    fue: 'No tienes la fuerza necesaria para manejarlo.',
+    des: 'Tus manos no están listas para esto todavía.',
+    int: 'Tu mente aún no puede sostener lo que esto exige.',
+    vol: 'Te falta la voluntad para portarlo.',
+    vit: 'Tu cuerpo no está preparado aún.',
+    pre: 'No tienes la presencia que esto requiere.'
+  };
+  var req = getItemRequirementStatus(itemId);
+  for (var stat in (item.requirements && item.requirements.stats || {})) {
+    if (statHints[stat]) return statHints[stat];
+  }
+  return 'Algo en ti todavía no está listo para esto.';
 }
 
 function unequipItemToInventory(slot) {
@@ -2793,6 +2828,12 @@ function showAvailableQuests() {
     return;
   }
 
+  // Ensure update2 patches are applied (idempotent — safe to call every time)
+  if (typeof window !== 'undefined' && window.LifeXPUpdate2) {
+    if (typeof window.LifeXPUpdate2.patchQuests === 'function') window.LifeXPUpdate2.patchQuests();
+    if (typeof window.LifeXPUpdate2.patchExpansionQuestLanguage === 'function') window.LifeXPUpdate2.patchExpansionQuestLanguage();
+  }
+
   const activeQuests    = Array.isArray(gameState.activeQuests)    ? gameState.activeQuests    : [];
   const completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
   const playerLevel     = gameState.level || 1;
@@ -3414,19 +3455,14 @@ function showItemModal(itemId, container) {
     html += '</div>';
   }
 
-  // ── REQUIREMENTS ──────────────────────────────────────────────────────────
-  var hasReqs = Object.keys(item.requirements && item.requirements.stats || {}).length || (item.requirements && item.requirements.trainingId);
-  if (hasReqs) {
-    html += '<div class="item-panel" style="margin-top:8px;">';
-    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--text-muted);">Requisitos</div>';
-    if (req.canEquip) {
-      html += '<div style="font-size:12px;color:var(--green);">✓ Cumplidos</div>';
-    } else {
-      req.reasons.forEach(function(r) {
-        html += '<div style="font-size:12px;color:var(--red);">✗ ' + escapeItemHtml(r) + '</div>';
-      });
-    }
-    html += '</div>';
+  // ── REQUIREMENTS — progressive discovery, no spoilers ───────────────────
+  // Requirements are never shown as a stat list. The player discovers them
+  // by attempting to equip. If they've tried before, show a single flavor hint.
+  var equipAttempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
+  if (!req.canEquip && equipAttempts > 0) {
+    // Show a vague hint — evocative, not a stat sheet
+    var hint = (req.flavorReasons && req.flavorReasons[0]) || 'Algo en ti todavía no está listo para esto.';
+    html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-style:italic;padding:8px;background:var(--bg-surface);border-radius:6px;border-left:2px solid var(--border);">⟳ ' + escapeItemHtml(hint) + '</div>';
   }
 
   // ── ATTUNEMENT (only if stage > 0 or equipped) ───────────────────────────
@@ -3470,14 +3506,10 @@ function showItemModal(itemId, container) {
     actionBtn.textContent = 'Sacar al inventario';
     actionBtn.onclick = function() { moveItemToInventory(itemId); };
   } else if (type.slot) {
-    if (req.canEquip) {
-      actionBtn.textContent = 'Equipar';
-      actionBtn.onclick = function() { equipItemFromInventory(itemId); };
-    } else {
-      var flavorMsg = (req.flavorReasons && req.flavorReasons[0]) || req.reasons[0] || 'No puedes equiparlo aún.';
-      actionBtn.textContent = flavorMsg.length > 32 ? 'No puedes equiparlo aún' : flavorMsg;
-      actionBtn.disabled = true;
-    }
+    // Always show "Equipar" — player discovers requirements by trying
+    actionBtn.textContent = 'Equipar';
+    actionBtn.disabled = false;
+    actionBtn.onclick = function() { equipItemFromInventory(itemId); };
   } else if (item.type === 'consumable') {
     actionBtn.textContent = 'Usar';
     actionBtn.onclick = function() { useConsumable(itemId); };

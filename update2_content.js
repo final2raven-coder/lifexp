@@ -241,7 +241,7 @@
     if (typeof saveGame === 'function') saveGame();
   }
 
-  window.LifeXPUpdate2 = { install, restoreAshbrand, patchQuests };
+  window.LifeXPUpdate2 = { install, restoreAshbrand, patchQuests, patchExpansionQuestLanguage };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();
 })();
