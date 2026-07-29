@@ -1091,7 +1091,7 @@ function equipItemFromInventory(itemId) {
     // Show equip_success flavor on first equip
     if (isFirst && typeof showToast === 'function') {
       var successText = getItemFlavorText(itemId, 'equip_success');
-      showToast(successText, 'success');
+      showFlavorDialog(successText, 'success');
     }
   } else {
     // Record the attempt
@@ -1101,7 +1101,7 @@ function equipItemFromInventory(itemId) {
     // Show flavor toast — evocative, not a stat sheet
     var situation = prevAttempts === 0 ? 'equip_fail_1' : 'equip_fail_n';
     var flavor = getItemFlavorText(itemId, situation);
-    if (typeof showToast === 'function') showToast(flavor, 'error');
+    if (typeof showToast === 'function') showFlavorDialog(flavor, 'error');
 
     // Refresh modal so the hint appears
     showItemModal(itemId, 'inventory');
@@ -1568,13 +1568,13 @@ function getItemFlavorText(itemId, situation) {
 // ── ATTUNEMENT FLAVOR TRIGGER ─────────────────────────────────────────────────
 function showAttunementFlavor(itemId, newStage) {
   var text = getItemFlavorText(itemId, 'attune_' + newStage);
-  if (typeof showToast === 'function') showToast(text, 'success');
+  showFlavorDialog(text, 'success');
 }
 
 // ── RITUAL FLAVOR TRIGGER ─────────────────────────────────────────────────────
 function showRitualFlavor(itemId) {
   var text = getItemFlavorText(itemId, 'ritual');
-  if (typeof showToast === 'function') showToast(text, 'success');
+  showFlavorDialog(text, 'success');
 }
 
 // ── LEGACY SHIM ───────────────────────────────────────────────────────────────
@@ -3036,6 +3036,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let toastTimeout = null;
 
+function showFlavorDialog(message, type = 'default') {
+  if (!message) return;
+  var existing = document.querySelector('.flavor-dialog');
+  if (existing) existing.remove();
+
+  var dialog = document.createElement('section');
+  dialog.className = 'flavor-dialog ' + type;
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-label', 'Item discovery');
+  dialog.innerHTML = '<div class="flavor-dialog-text"></div>' +
+    '<button class="btn btn-ghost flavor-dialog-dismiss" type="button">Continue</button>';
+  dialog.querySelector('.flavor-dialog-text').textContent = message;
+  document.body.appendChild(dialog);
+
+  var dismiss = function() {
+    dialog.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  var onKey = function(event) {
+    if (event.key === 'Escape' || event.key === 'Enter') dismiss();
+  };
+  dialog.querySelector('.flavor-dialog-dismiss').addEventListener('click', dismiss);
+  document.addEventListener('keydown', onKey);
+  dialog.querySelector('.flavor-dialog-dismiss').focus();
+}
+
 function showToast(message, type = 'default') {
   // Remove existing toast
   const existing = document.querySelector('.toast');
@@ -3850,7 +3876,7 @@ function renderItemEffectList(itemId) {
 function attemptActivationFromModal(itemId) {
   const result = attemptItemActivation(itemId);
   if (!result.success) { if (typeof showToast === 'function') showToast('The ritual is not ready.', 'error'); return; }
-  showToast('Ritual complete.', 'gold');
+  showFlavorDialog('Ritual complete.', 'gold');
   showItemModal(itemId, 'inventory');
 }
 
@@ -3869,7 +3895,7 @@ function showItemModal(itemId, container) {
       saveGame();
       setTimeout(function() {
         var flavorText = getItemFlavorText(itemId, 'first_look');
-        if (flavorText && typeof showToast === 'function') showToast(flavorText, 'default');
+        if (flavorText) showFlavorDialog(flavorText, 'default');
       }, 400);
     }
   }

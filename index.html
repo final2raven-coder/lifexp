@@ -608,6 +608,74 @@ body {
   border-radius: 2px;
   margin: 0 auto 16px;
 }
+
+/* Item modal actions: primary action owns the space; close stays compact. */
+.item-modal-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 16px;
+}
+.item-modal-actions #btn-item-action {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+  min-height: 50px;
+  padding: 14px 20px;
+  font-size: 15px;
+}
+.item-modal-actions .item-modal-close {
+  flex: 0 0 50px;
+  width: 50px !important;
+  min-height: 50px;
+  padding: 0;
+  font-size: 15px;
+  opacity: 0.72;
+}
+.item-modal-actions .item-modal-close:hover { opacity: 1; }
+
+/* Flavor text is a deliberate, user-dismissed reading moment. */
+.flavor-dialog {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 28px));
+  background: var(--bg-surface);
+  border: 1px solid var(--gold);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 16px 18px 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  z-index: 1200;
+  animation: flavorRise .22s ease-out;
+}
+.flavor-dialog.success { border-color: var(--green); border-left-color: var(--green); }
+.flavor-dialog.error { border-color: var(--red); border-left-color: var(--red); }
+.flavor-dialog.gold { border-color: var(--gold); border-left-color: var(--gold); }
+.flavor-dialog-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+.flavor-dialog-dismiss {
+  display: block;
+  width: auto !important;
+  min-width: 112px;
+  margin: 14px 0 0 auto;
+  padding: 9px 16px;
+  font-size: 12px;
+}
+@keyframes flavorRise {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@media (max-width: 420px) {
+  .item-modal-actions #btn-item-action { padding-left: 12px; padding-right: 12px; }
+  .flavor-dialog { bottom: 78px; }
+}
+
 .modal-title {
   font-size: 18px;
   font-weight: 800;
@@ -1392,9 +1460,9 @@ body {
   <div class="modal">
     <div class="modal-handle"></div>
     <div id="modal-item-content"></div>
-    <div style="display: flex; gap: 8px; margin-top: 16px;">
-      <button class="btn btn-primary" id="btn-item-action" style="flex: 1; min-height: 44px; font-size: 15px;"></button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-item')" style="flex-shrink: 0; padding: 0 14px; font-size: 13px; opacity: 0.7;">✕</button>
+    <div class="item-modal-actions">
+      <button class="btn btn-primary" id="btn-item-action"></button>
+      <button class="btn btn-ghost item-modal-close" onclick="closeModal('modal-item')" aria-label="Close item details">✕</button>
     </div>
   </div>
 </div>
