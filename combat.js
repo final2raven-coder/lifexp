@@ -8,74 +8,6 @@
 
 let combatState = null;
 
-// ============================================================================
-// LifeXP Block 1 - status effects and equipment effects
-// ============================================================================
-function getCombatEffectDefinition(effect) {
-  return effect?.effect || effect?.data || effect || {};
-}
-
-function applyStatusEffect(target, status, data = {}, source = 'unknown') {
-  if (!target || !status) return false;
-  const resistance = target.statusResistances?.[status] ?? (target.statusResistances?.includes?.(status) ? 1 : 0);
-  if (resistance >= 1) return false;
-  const list = target.debuffs || (target.debuffs = []);
-  const existing = list.find(x => x.status === status);
-  const duration = Math.max(1, Number(data.duration || 1) * (1 - Math.min(0.75, Number(resistance || 0))));
-  const stacks = Math.max(1, Number(data.stacks || 1));
-  const damage = Number(data.damage || (['burn', 'poison', 'bleed'].includes(status) ? 3 : 0));
-  if (existing) {
-    existing.duration = Math.max(existing.duration, duration);
-    existing.stacks = Math.min(Number(data.maxStacks || 5), (existing.stacks || 1) + stacks);
-    existing.damage = Math.max(existing.damage || 0, damage);
-  } else {
-    list.push({ status, duration, stacks, damage, source, control: Boolean(data.control) });
-  }
-  return true;
-}
-
-function tickCombatStatuses(target, label = 'Objetivo') {
-  if (!target?.debuffs) return [];
-  const messages = [];
-  for (const effect of target.debuffs) {
-    const damageStatuses = ['burn', 'poison', 'bleed'];
-    if (damageStatuses.includes(effect.status)) {
-      const damage = Math.max(1, Number(effect.damage || 3) * Number(effect.stacks || 1));
-      target.hp = Math.max(0, target.hp - damage);
-      messages.push(`${label} suffers ${damage} from ${effect.status}.`);
-    }
-    effect.duration -= 1;
-  }
-  target.debuffs = target.debuffs.filter(x => x.duration > 0);
-  messages.forEach(addCombatLog);
-  return messages;
-}
-
-function hasCombatControl(target, status) {
-  return Boolean(target?.debuffs?.some(effect => effect.status === status));
-}
-
-function applyEquipmentOnHitEffects(attacker, defender, result) {
-  if (attacker !== combatState?.player || !defender || !result) return [];
-  const applied = [];
-  if (typeof getEquippedItemEffects !== 'function') return applied;
-  for (const effect of getEquippedItemEffects()) {
-    const data = getCombatEffectDefinition(effect);
-    const trigger = effect.trigger || data.trigger || 'on_hit';
-    if (trigger !== 'on_hit') continue;
-    const chance = Number(effect.chance ?? data.chance ?? 1);
-    if (Math.random() > chance) continue;
-    const status = effect.status || data.status;
-    if (!status) continue;
-    applyStatusEffect(defender, status, { ...data, damage: data.damage || (status === 'burn' ? 4 : 0) }, effect.itemId);
-    applied.push(status);
-    if (typeof advanceItemProgressFromCombat === 'function') advanceItemProgressFromCombat(effect.itemId, { trigger: 'on_hit' });
-    addCombatLog(`${effect.name || status} aplicado.`);
-  }
-  return applied;
-}
-
-
 function initCombat(enemy, isTactical = false) {
   const playerStats = typeof getDerivedStats === 'function' ? getDerivedStats() : gameState.stats;
   const resources = typeof calculateResources === 'function' ? calculateResources(playerStats) : {
@@ -308,12 +240,6 @@ function executePlayerAction(actionId) {
   p.defending = false;
   
   const action = PLAYER_SKILLS[actionId] || { id: actionId };
-  if (hasCombatControl(p, 'sleep') || hasCombatControl(p, 'fear')) {
-    addCombatLog('You cannot act this turn.');
-    p.debuffs = p.debuffs.filter(x => !['sleep', 'fear'].includes(x.status));
-    combatState.phase = 'enemy';
-    return { action: actionId, success: false, effects: [] };
-  }
   let result = { action: actionId, success: true, effects: [] };
   
   switch (action.type || actionId) {
@@ -332,7 +258,6 @@ function executePlayerAction(actionId) {
       // Calculate and apply damage
       const dmgResult = calculateDamage(p, e, action);
       e.hp = Math.max(0, e.hp - dmgResult.damage);
-      result.effects.push(...applyEquipmentOnHitEffects(p, e, dmgResult));
       
       // Gain focus from attacking
       p.focus = Math.min(p.focusMax, p.focus + 10);
@@ -378,7 +303,6 @@ function executePlayerAction(actionId) {
       break;
   }
   
-  if (typeof registerCombatQuestEvents === 'function') registerCombatQuestEvents(result);
   // Check victory
   if (e.hp <= 0) {
     combatState.phase = 'victory';
@@ -402,17 +326,8 @@ function executeEnemyTurn() {
   const p = combatState.player;
   const e = combatState.enemy;
   
-  tickCombatStatuses(e, e.name || 'Enemigo');
-  if (e.hp <= 0) { combatState.phase = 'victory'; calculateCombatRewards(); return { action: 'status', victory: true, effects: [] }; }
-  
   // Reset enemy defending
   e.defending = false;
-  if (hasCombatControl(e, 'sleep') || hasCombatControl(e, 'fear')) {
-    addCombatLog(`${e.name} cannot act this turn.`);
-    e.debuffs = e.debuffs.filter(x => !['sleep', 'fear'].includes(x.status));
-    combatState.phase = 'player'; combatState.turn++;
-    return { action: 'control', success: false, effects: [] };
-  }
   
   let result = { action: 'attack', effects: [] };
   
@@ -447,10 +362,6 @@ function executeEnemyTurn() {
     } else {
       const dmgResult = calculateDamage(e, p, chosenSkill);
       p.hp = Math.max(0, p.hp - dmgResult.damage);
-      if (chosenSkill.effect && typeof applyStatusEffect === 'function') {
-        applyStatusEffect(p, chosenSkill.effect, { duration: chosenSkill.duration || 2, damage: chosenSkill.statusDamage || 3 }, e.name);
-        result.effects.push(chosenSkill.effect);
-      }
       result.damage = dmgResult.damage;
       result.isCrit = dmgResult.isCrit;
       addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);

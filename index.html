@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
 <meta name="theme-color" content="#0a0a12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1084,26 +1082,8 @@ body {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
 }
-
-/* LifeXP Block 1 item modal */
-.item-hero{text-align:center;margin-bottom:14px}.item-icon{font-size:48px}.item-name{font-size:20px;font-weight:800}.item-subtitle{font-size:12px;color:var(--text-muted);margin-top:3px}.item-lore{font-size:14px;line-height:1.5;margin:10px 0 14px}.item-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.item-panel-label{font-size:10px;letter-spacing:.08em;color:var(--text-muted);margin-bottom:5px}.item-effect{margin:5px 0}.item-warning{color:var(--orange)}.item-ok{color:var(--green)}.item-curse{border-color:var(--red);color:var(--red)}.item-stats{margin-top:10px;font-size:12px}.item-value{font-size:11px;color:var(--text-muted);margin-top:12px}.attunement-track{height:5px;background:var(--border);border-radius:3px;margin:6px 0;overflow:hidden}.attunement-track span{display:block;height:100%;background:var(--gold);border-radius:3px}
-#modal-item .modal-actions{display:flex;gap:10px;margin-top:16px}#modal-item .modal-actions .btn-primary{flex:1.6;min-height:46px;font-size:14px}#modal-item .modal-actions .btn-ghost{flex:.7;width:auto;min-height:42px;padding:10px 16px}
-
-
-/* Block 2.1 item identity and icon treatment */
-.item-card{background:var(--bg-card);border:2px solid;border-radius:10px;padding:8px;text-align:center;cursor:pointer;position:relative;min-height:86px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.item-card-icon{height:42px;display:flex;align-items:center;justify-content:center}.item-icon-svg{filter:drop-shadow(0 0 5px currentColor)}.item-card-name{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.item-card-qty{position:absolute;right:5px;bottom:4px;font-size:10px;color:var(--text-muted)}.inv-slot-recovery{background:var(--bg-card);border:2px solid var(--orange);border-radius:10px;padding:8px;text-align:center;min-height:86px;cursor:pointer;color:var(--orange);font-size:10px}.recovery-icon{font-size:30px;color:var(--orange)}
-
-
-/* Block 2.2 attunement and ritual states */
-.item-effect-locked{color:var(--text-muted);border-left:2px solid var(--border);padding-left:8px}.item-activation-active{border-color:var(--gold);color:var(--gold)}.ritual-progress{font-family:monospace;color:var(--gold);margin-top:6px}.item-ritual-button{margin-top:10px;min-height:40px}.item-ritual-button:hover{filter:brightness(1.08)}
-
-/* Hidden item knowledge */
-.item-effect:empty{display:none}
-
-/* Lore update */
-.quest-setting,.quest-lore{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.quest-setting span,.quest-lore span{display:block;color:var(--text-muted);font-size:9px;letter-spacing:.08em;margin-bottom:4px}.quest-lore{border-left:3px solid var(--gold)}.lore-journal{display:grid;gap:10px}.lore-entry{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;line-height:1.5}.lore-entry-title{font-weight:800;color:var(--gold);font-size:15px}.lore-entry-category{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-
 </style>
+<style>.quest-setting,.quest-lore{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.quest-setting{border-left:3px solid var(--gold)}.quest-lore{border-left:3px solid var(--purple)}</style>
 </head>
 <body>
 
@@ -1305,7 +1285,6 @@ body {
     </div>
     <div style="display: flex; gap: 8px; margin-top: 8px;">
       <button class="btn btn-small btn-gold" onclick="showAvailableQuests()">+ Nueva quest</button>
-      <button class="btn btn-small btn-ghost" onclick="openLoreJournal()">Journal</button>
     </div>
   </div>
   
@@ -1413,8 +1392,8 @@ body {
   <div class="modal">
     <div class="modal-handle"></div>
     <div id="modal-item-content"></div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="btn-item-action"></button>
+    <div style="display: flex; gap: 8px; margin-top: 16px;">
+      <button class="btn btn-primary" id="btn-item-action" style="flex: 1;"></button>
       <button class="btn btn-ghost" onclick="closeModal('modal-item')">Cerrar</button>
     </div>
   </div>
@@ -1516,11 +1495,16 @@ body {
   <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continuar</button>
 </div>
 
-<script src="classes.js?build=v15.2.3-save-recovery"></script>
-<script src="items.js?build=v15.2.3-save-recovery"></script>
-<script src="enemies.js?build=v15.2.3-save-recovery"></script>
-<script src="combat.js?build=v15.2.3-save-recovery"></script>
-<script src="quests.js?build=v15.2.3-save-recovery"></script>
-<script src="game.js?build=v15.2.3-save-recovery"></script>
+<script src="classes.js"></script>
+<script src="items.js"></script>
+<script src="enemies.js"></script>
+<script src="combat.js"></script>
+<script src="quests.js"></script>
+<script src="game.js"></script>
+<script src="expansion_items.js"></script>
+<script src="expansion_enemies.js"></script>
+<script src="expansion_quests.js"></script>
+<script src="expansion_tasks.js"></script>
+<script src="update2_content.js"></script>
 </body>
 </html>

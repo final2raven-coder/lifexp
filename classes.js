@@ -221,11 +221,3 @@ function getClassChain(classId) {
 function getTierName(tier) {
   return ['', 'Base', 'Avanzada', 'Transcendente', 'Ascendida'][tier] || '';
 }
-
-
-// Block 3 equipment training registry. Quests/content may grant these IDs.
-const ITEM_TRAINING = {
-  fire_handling: { name: 'Fire handling', description: 'The basics of handling heat-bound weapons.' },
-  edge_control: { name: 'Edge control', description: 'Training for weapons whose effects depend on pressure and timing.' },
-  ritual_practice: { name: 'Ritual practice', description: 'Recognising when an item is ready to answer.' }
-};

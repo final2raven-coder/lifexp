@@ -571,27 +571,3 @@ function getThemeEnemies(theme) {
   const enemyIds = THEME_ENEMIES[theme] || [];
   return enemyIds.map(id => ENEMIES[id]).filter(Boolean);
 }
-
-
-// Block 3: optional status resistance metadata. Existing enemies remain valid.
-if (typeof ENEMIES !== 'undefined') {
-  Object.values(ENEMIES).forEach(enemy => {
-    if (!Array.isArray(enemy.statusResistances)) enemy.statusResistances = [];
-  });
-}
-
-
-// Block 3.2 status balance: resistance is expressed as 0..1 duration reduction.
-const ENEMY_STATUS_BALANCE = {
-  slime_acido: { poison: 0.75 },
-  elemental_fuego: { burn: 1 },
-  elemental_hielo: { chill: 1, burn: 0.25 },
-  elemental_agua: { burn: 0.5 },
-  dragon_ancestral: { burn: 0.75, bleed: 0.5 },
-  espectro_mental: { sleep: 0.75, fear: 0.5 }
-};
-if (typeof ENEMIES !== 'undefined') {
-  Object.entries(ENEMY_STATUS_BALANCE).forEach(([id, resistances]) => {
-    if (ENEMIES[id]) ENEMIES[id].statusResistances = { ...(ENEMIES[id].statusResistances || {}), ...resistances };
-  });
-}
