@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v13';
+const CACHE_NAME = 'lifexp-v14-ashbrand-runtime-repair';
 const urlsToCache = [
   '/',
   '/index.html',
