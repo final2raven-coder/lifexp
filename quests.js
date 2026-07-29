@@ -479,7 +479,9 @@ function checkQuestCompletion(questId) {
 
 function applyQuestRewards(rewards) {
   if (!rewards) return;
+  if (rewards.loreEntries && typeof discoverLoreEntries === "function") discoverLoreEntries(rewards.loreEntries);
   if (typeof applyItemQuestReward === "function") applyItemQuestReward(rewards);
+  if (rewards.trainingId && typeof grantItemTraining === 'function') grantItemTraining(rewards.trainingId);
   
   if (rewards.xp) {
     if (typeof addXp === 'function') {
@@ -595,4 +597,99 @@ function formatObjective(obj) {
     progress: `${obj.progress}/${obj.count}`,
     done
   };
+}
+
+
+// ============================================================================
+// Lore Update - campaign entries and fantasy-facing quest presentation
+// ============================================================================
+
+const LORE = {
+  refuge_first_fire: {
+    id: 'refuge_first_fire', title: 'The First Fire', category: 'places',
+    text: 'Every journey begins with a place that can hold through the night. The old refuge has no banner, no gate and no sworn keeper. It is still standing. For now.'
+  },
+  ashbrand_shrine: {
+    id: 'ashbrand_shrine', title: 'The Burned Shrine', category: 'relics',
+    text: 'The shrine was not destroyed by the fire. The fire was what remained after the shrine had finished with its keeper.'
+  },
+  hills_wolf_sign: {
+    id: 'hills_wolf_sign', title: 'Tracks Above the Road', category: 'threats',
+    text: 'The tracks are too deep for a wolf and too clean for a bear. Whatever made them walked the ridge alone and came back carrying something heavy.'
+  },
+  road_without_markers: {
+    id: 'road_without_markers', title: 'The Unmarked Road', category: 'places',
+    text: 'The road used to have markers. Someone removed them one by one, leaving the travellers to choose their own direction.'
+  }
+};
+
+const QUEST_LORE_UPDATE = {
+  quest_first_steps: {
+    name: 'The First Watch',
+    desc: 'The refuge is standing, but no one has kept watch since the last roadwarden left. Before the lamps are lit, prove that the place can answer to a new hand.',
+    setting: 'The old refuge at the edge of the unmarked road.',
+    lore: 'A cold hearth, a split watch-bell and a door that still closes from the inside.',
+    objectiveText: 'Answer the first call from the refuge.',
+    rewards: { loreEntries: ['refuge_first_fire'] }
+  },
+  quest_home_master: {
+    name: 'The House That Holds',
+    desc: 'The refuge has accepted your presence. It has not yet accepted your habits. Restore order to the rooms before the weather turns and the old things begin to move again.',
+    setting: 'The lower rooms of the old refuge.',
+    lore: 'The previous keeper marked certain doors with ash. None of the marks have been washed away.',
+    objectiveText: 'Make the refuge fit for a longer stay.',
+    rewards: { loreEntries: ['road_without_markers'] }
+  },
+  quest_body_temple: {
+    name: 'A Body for the Road',
+    desc: 'The road beyond the refuge is longer than it looks. Strengthen yourself before you follow the first trail beyond the boundary stones.',
+    setting: 'The training yard behind the refuge.',
+    lore: 'The yard contains practice posts cut from a tree that no longer grows in this region.',
+    objectiveText: 'Prepare yourself for the road ahead.'
+  },
+  story_wolf_hills: {
+    name: 'The Wolf Above the Road',
+    desc: 'A presence has taken the high ground above the road. Travellers hear it at dusk, but the tracks vanish before they reach the valley.',
+    setting: 'The ridges beyond the unmarked road.',
+    lore: 'The first report was written by a roadwarden who never returned to sign it.',
+    rewards: { loreEntries: ['hills_wolf_sign'] }
+  }
+};
+
+function applyQuestLoreUpdate() {
+  Object.entries(QUEST_LORE_UPDATE).forEach(([id, patch]) => {
+    if (QUESTS[id]) QUESTS[id] = { ...QUESTS[id], ...patch };
+  });
+}
+applyQuestLoreUpdate();
+
+function initLoreState() {
+  if (!gameState.lore || typeof gameState.lore !== 'object') gameState.lore = { discovered: [] };
+  if (!Array.isArray(gameState.lore.discovered)) gameState.lore.discovered = [];
+  return gameState.lore;
+}
+
+function discoverLore(entryId) {
+  if (!LORE[entryId]) return false;
+  const state = initLoreState();
+  if (state.discovered.includes(entryId)) return false;
+  state.discovered.push(entryId);
+  if (typeof saveGame === 'function') saveGame();
+  return true;
+}
+
+function discoverLoreEntries(entryIds = []) {
+  let changed = false;
+  entryIds.forEach(id => { if (discoverLore(id)) changed = true; });
+  return changed;
+}
+
+function getDiscoveredLore() {
+  const state = initLoreState();
+  return state.discovered.map(id => LORE[id]).filter(Boolean);
+}
+
+function getQuestLore(questId) {
+  const quest = QUESTS?.[questId];
+  return quest ? { setting: quest.setting, lore: quest.lore } : null;
 }

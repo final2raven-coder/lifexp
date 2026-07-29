@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v14.1-block3-integration-hotfix';
+const LIFE_XP_BUILD = 'v15.1-lore-update';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -3216,7 +3216,7 @@ function recordItemAttunementFromTask(task) {
     const item = getItemDefinition(id);
     if (!item?.attunement?.required) return;
     const themes = item.attunement.themes || item.themes || [];
-    const taskThemes = task.drops?.theme ? [task.drops.theme] : [];
+    const taskThemes = [task.drops?.theme, task.theme, task.element].filter(Boolean);
     const matches = !themes.length || themes.some(t => taskThemes.includes(t));
     if (matches) { recordItemAttunement(id, 1); advanceItemRitual(id, task); }
   });
@@ -3691,4 +3691,87 @@ function applyItemQuestReward(reward = {}) {
     if (state.ready) changed = attemptItemActivation(reward.activateItem).success || changed;
   }
   return changed;
+}
+
+
+// Block 3.2 - final integration hooks
+function getItemTrainingState() {
+  initializeTrainingState();
+  return gameState.itemSystem.training;
+}
+
+function registerCombatQuestEvents(result) {
+  if (typeof updateAdvancedQuestProgress !== 'function' || !result) return;
+  if (result.effects) result.effects.forEach(status => updateAdvancedQuestProgress('statusApplied', { status }));
+  if (result.victory) updateAdvancedQuestProgress('combatVictory', { enemy: combatState?.enemy?.id });
+}
+
+
+// Block 3.3 - isolated advanced quest event bridge.
+// Kept separate from the legacy updateQuestProgress(task) function in game.js.
+function updateAdvancedQuestProgress(eventType, data = {}) {
+  const active = Array.isArray(gameState?.activeQuests) ? gameState.activeQuests : [];
+  if (!active.length || typeof QUESTS === 'undefined') return;
+  for (const state of active) {
+    const quest = QUESTS[state.questId];
+    if (!quest) continue;
+    const objectives = state.objectives || state.chapterObjectives || [];
+    for (const objective of objectives) {
+      const matches = (eventType === 'statusApplied' && objective.type === 'applyStatus' && objective.status === data.status)
+        || (eventType === 'combatVictory' && objective.type === 'defeatEnemy' && (!objective.enemyId || objective.enemyId === data.enemy));
+      if (matches) objective.progress = Math.min(objective.count || 1, (objective.progress || 0) + 1);
+    }
+  }
+  saveGame();
+}
+
+
+// Lore Update - quest context and Journal view
+function questFantasyContextHtml(quest) {
+  if (!quest) return '';
+  return `${quest.setting ? `<div class="quest-setting"><span>SETTING</span>${escapeItemHtml(quest.setting)}</div>` : ''}${quest.lore ? `<div class="quest-lore"><span>FIELD NOTE</span>${escapeItemHtml(quest.lore)}</div>` : ''}`;
+}
+
+function renderLoreJournal() {
+  const entries = typeof getDiscoveredLore === 'function' ? getDiscoveredLore() : [];
+  const html = entries.length ? entries.map(entry => `<div class="lore-entry"><div class="lore-entry-title">${escapeItemHtml(entry.title)}</div><div class="lore-entry-category">${escapeItemHtml(entry.category)}</div><div>${escapeItemHtml(entry.text)}</div></div>`).join('') : '<div class="card text-muted">No entries have been recorded yet.</div>';
+  return `<div class="section-title">Journal</div><div class="lore-journal">${html}</div>`;
+}
+
+function showQuestDetail(questId) {
+  const questState = gameState.activeQuests.find(q => q.questId === questId);
+  if (!questState || typeof QUESTS === 'undefined') return;
+  const quest = QUESTS[questId]; if (!quest) return;
+  const content = document.getElementById('modal-item-content');
+  const currentStep = quest.steps ? quest.steps[questState.stepIndex || 0] : null;
+  content.innerHTML = `<div class="item-hero"><div class="item-icon">${quest.icon || '✦'}</div><div class="item-name">${escapeItemHtml(quest.name)}</div><div class="item-subtitle">${escapeItemHtml(quest.type || 'quest')}</div></div><div class="item-lore">${escapeItemHtml(quest.desc || '')}</div>${questFantasyContextHtml(quest)}${currentStep ? `<div class="card"><div class="section-title">CURRENT OBJECTIVE</div>${escapeItemHtml(currentStep.desc || currentStep.objectiveText || '')}</div>` : ''}<div class="item-value">${quest.rewards?.xp || 0} XP · ${quest.rewards?.gold || 0} gold</div>`;
+  const btn=document.getElementById('btn-item-action'); btn.textContent='Abandon quest'; btn.disabled=false; btn.onclick=()=>abandonQuest(questId); openModal('modal-item');
+}
+
+
+// Lore Update 1.1 - available quest cards and visible Journal entry point
+function showAvailableQuests() {
+  const modal = document.getElementById('modal-tasks');
+  const list = document.getElementById('modal-tasks-list');
+  const title = document.getElementById('modal-tasks-title');
+  if (!modal || !list || !title) return;
+  title.textContent = 'Available quests';
+  const active = Array.isArray(gameState.activeQuests) ? gameState.activeQuests : [];
+  const completed = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
+  list.innerHTML = '';
+  const level = gameState.level || 1;
+  Object.entries(QUESTS || {}).forEach(([id, quest]) => {
+    if (active.some(q => q.questId === id) || (completed.includes(id) && !quest.repeatable)) return;
+    if ((quest.minLevel || quest.levelReq || 1) > level) return;
+    const color = ({story:'var(--gold)',simple:'var(--blue)',daily:'var(--green)',class_quest:'var(--cyan)',bounty:'var(--red)',compound:'var(--purple)'}[quest.type] || 'var(--text-muted)');
+    list.innerHTML += `<div class="card quest-available-card" style="cursor:pointer;border-left:3px solid ${color}" onclick="acceptQuest('${id}')"><div class="quest-type" style="color:${color}">${escapeItemHtml(quest.type || 'quest')}</div><div class="quest-title">${escapeItemHtml(quest.name)}</div><div class="quest-description">${escapeItemHtml(quest.desc || '')}</div>${questFantasyContextHtml(quest)}<div class="quest-reward-line">+${quest.rewards?.xp || 0} XP · +${quest.rewards?.gold || 0} gold</div></div>`;
+  });
+  if (!list.innerHTML) list.innerHTML = '<div class="text-muted text-center">No quests are available yet.</div>';
+  openModal('modal-tasks');
+}
+
+function openLoreJournal() {
+  const content = document.getElementById('quests-container');
+  if (!content) return;
+  content.innerHTML = renderLoreJournal() + '<button class="btn btn-ghost" style="margin-top:12px" onclick="renderQuests()">Back to quests</button>';
 }

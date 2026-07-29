@@ -16,14 +16,21 @@ function getCombatEffectDefinition(effect) {
 }
 
 function applyStatusEffect(target, status, data = {}, source = 'unknown') {
-  if (!target) return false;
+  if (!target || !status) return false;
+  const resistance = target.statusResistances?.[status] ?? (target.statusResistances?.includes?.(status) ? 1 : 0);
+  if (resistance >= 1) return false;
   const list = target.debuffs || (target.debuffs = []);
   const existing = list.find(x => x.status === status);
-  const duration = Math.max(1, Number(data.duration || 1));
+  const duration = Math.max(1, Number(data.duration || 1) * (1 - Math.min(0.75, Number(resistance || 0))));
   const stacks = Math.max(1, Number(data.stacks || 1));
-  if (target.statusResistances?.includes?.(status)) return false;
-  if (existing) { existing.duration = Math.max(existing.duration, duration); existing.stacks = Math.min(Number(data.maxStacks || 99), (existing.stacks || 1) + stacks); }
-  else list.push({ status, duration, stacks, damage: Number(data.damage || 0), source });
+  const damage = Number(data.damage || (['burn', 'poison', 'bleed'].includes(status) ? 3 : 0));
+  if (existing) {
+    existing.duration = Math.max(existing.duration, duration);
+    existing.stacks = Math.min(Number(data.maxStacks || 5), (existing.stacks || 1) + stacks);
+    existing.damage = Math.max(existing.damage || 0, damage);
+  } else {
+    list.push({ status, duration, stacks, damage, source, control: Boolean(data.control) });
+  }
   return true;
 }
 
@@ -31,16 +38,21 @@ function tickCombatStatuses(target, label = 'Objetivo') {
   if (!target?.debuffs) return [];
   const messages = [];
   for (const effect of target.debuffs) {
-    if (effect.status === 'burn' || effect.status === 'poison' || effect.status === 'bleed') {
+    const damageStatuses = ['burn', 'poison', 'bleed'];
+    if (damageStatuses.includes(effect.status)) {
       const damage = Math.max(1, Number(effect.damage || 3) * Number(effect.stacks || 1));
       target.hp = Math.max(0, target.hp - damage);
-      messages.push(`${label} sufre ${damage} de daño por ${effect.status}.`);
+      messages.push(`${label} suffers ${damage} from ${effect.status}.`);
     }
     effect.duration -= 1;
   }
   target.debuffs = target.debuffs.filter(x => x.duration > 0);
   messages.forEach(addCombatLog);
   return messages;
+}
+
+function hasCombatControl(target, status) {
+  return Boolean(target?.debuffs?.some(effect => effect.status === status));
 }
 
 function applyEquipmentOnHitEffects(attacker, defender, result) {
@@ -296,6 +308,12 @@ function executePlayerAction(actionId) {
   p.defending = false;
   
   const action = PLAYER_SKILLS[actionId] || { id: actionId };
+  if (hasCombatControl(p, 'sleep') || hasCombatControl(p, 'fear')) {
+    addCombatLog('You cannot act this turn.');
+    p.debuffs = p.debuffs.filter(x => !['sleep', 'fear'].includes(x.status));
+    combatState.phase = 'enemy';
+    return { action: actionId, success: false, effects: [] };
+  }
   let result = { action: actionId, success: true, effects: [] };
   
   switch (action.type || actionId) {
@@ -360,6 +378,7 @@ function executePlayerAction(actionId) {
       break;
   }
   
+  if (typeof registerCombatQuestEvents === 'function') registerCombatQuestEvents(result);
   // Check victory
   if (e.hp <= 0) {
     combatState.phase = 'victory';
@@ -388,6 +407,12 @@ function executeEnemyTurn() {
   
   // Reset enemy defending
   e.defending = false;
+  if (hasCombatControl(e, 'sleep') || hasCombatControl(e, 'fear')) {
+    addCombatLog(`${e.name} cannot act this turn.`);
+    e.debuffs = e.debuffs.filter(x => !['sleep', 'fear'].includes(x.status));
+    combatState.phase = 'player'; combatState.turn++;
+    return { action: 'control', success: false, effects: [] };
+  }
   
   let result = { action: 'attack', effects: [] };
   

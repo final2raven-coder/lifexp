@@ -1099,6 +1099,10 @@ body {
 
 /* Hidden item knowledge */
 .item-effect:empty{display:none}
+
+/* Lore update */
+.quest-setting,.quest-lore{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.quest-setting span,.quest-lore span{display:block;color:var(--text-muted);font-size:9px;letter-spacing:.08em;margin-bottom:4px}.quest-lore{border-left:3px solid var(--gold)}.lore-journal{display:grid;gap:10px}.lore-entry{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;line-height:1.5}.lore-entry-title{font-weight:800;color:var(--gold);font-size:15px}.lore-entry-category{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+
 </style>
 </head>
 <body>
@@ -1301,6 +1305,7 @@ body {
     </div>
     <div style="display: flex; gap: 8px; margin-top: 8px;">
       <button class="btn btn-small btn-gold" onclick="showAvailableQuests()">+ Nueva quest</button>
+      <button class="btn btn-small btn-ghost" onclick="openLoreJournal()">Journal</button>
     </div>
   </div>
   
@@ -1511,11 +1516,11 @@ body {
   <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continuar</button>
 </div>
 
-<script src="classes.js?build=v14.1-block3-integration-hotfix"></script>
-<script src="items.js?build=v14.1-block3-integration-hotfix"></script>
-<script src="enemies.js?build=v14.1-block3-integration-hotfix"></script>
-<script src="combat.js?build=v14.1-block3-integration-hotfix"></script>
-<script src="quests.js?build=v14.1-block3-integration-hotfix"></script>
-<script src="game.js?build=v14.1-block3-integration-hotfix"></script>
+<script src="classes.js?build=v15.1-lore-update"></script>
+<script src="items.js?build=v15.1-lore-update"></script>
+<script src="enemies.js?build=v15.1-lore-update"></script>
+<script src="combat.js?build=v15.1-lore-update"></script>
+<script src="quests.js?build=v15.1-lore-update"></script>
+<script src="game.js?build=v15.1-lore-update"></script>
 </body>
 </html>
