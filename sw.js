@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v11';
+const CACHE_NAME = 'lifexp-rpg-v12-block1';
 const urlsToCache = [
   '/',
   '/index.html',

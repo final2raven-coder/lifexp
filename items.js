@@ -699,3 +699,7 @@ function emergencyRerollLegacyItem(slotIndex) {
 function getLegacyInventorySlotIndex(slot) {
   return Array.isArray(gameState.inventory) ? gameState.inventory.indexOf(slot) : -1;
 }
+
+
+// Block 1 bootstrap: item definitions are extended at runtime by game.js.
+// This marker is intentionally harmless for older saves and older content.

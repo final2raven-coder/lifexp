@@ -1082,6 +1082,11 @@ body {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
 }
+
+/* LifeXP Block 1 item modal */
+.item-hero{text-align:center;margin-bottom:14px}.item-icon{font-size:48px}.item-name{font-size:20px;font-weight:800}.item-subtitle{font-size:12px;color:var(--text-muted);margin-top:3px}.item-lore{font-size:14px;line-height:1.5;margin:10px 0 14px}.item-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.item-panel-label{font-size:10px;letter-spacing:.08em;color:var(--text-muted);margin-bottom:5px}.item-effect{margin:5px 0}.item-warning{color:var(--orange)}.item-ok{color:var(--green)}.item-curse{border-color:var(--red);color:var(--red)}.item-stats{margin-top:10px;font-size:12px}.item-value{font-size:11px;color:var(--text-muted);margin-top:12px}.attunement-track{height:5px;background:var(--border);border-radius:3px;margin:6px 0;overflow:hidden}.attunement-track span{display:block;height:100%;background:var(--gold);border-radius:3px}
+#modal-item .modal-actions{display:flex;gap:10px;margin-top:16px}#modal-item .modal-actions .btn-primary{flex:1.6;min-height:46px;font-size:14px}#modal-item .modal-actions .btn-ghost{flex:.7;width:auto;min-height:42px;padding:10px 16px}
+
 </style>
 </head>
 <body>
@@ -1391,8 +1396,8 @@ body {
   <div class="modal">
     <div class="modal-handle"></div>
     <div id="modal-item-content"></div>
-    <div style="display: flex; gap: 8px; margin-top: 16px;">
-      <button class="btn btn-primary" id="btn-item-action" style="flex: 1;"></button>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btn-item-action"></button>
       <button class="btn btn-ghost" onclick="closeModal('modal-item')">Cerrar</button>
     </div>
   </div>

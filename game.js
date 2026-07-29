@@ -3,7 +3,7 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
-const LIFE_XP_BUILD = 'v11';
+const LIFE_XP_BUILD = 'v12-block1';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -760,7 +760,7 @@ function loadGame() {
       gameState.stashCapacity = Number.isFinite(gameState.stashCapacity) ? gameState.stashCapacity : 30;
       gameState.inventoryCapacityBonus = Number.isFinite(gameState.inventoryCapacityBonus) ? gameState.inventoryCapacityBonus : 0;
       gameState.pendingLoot = gameState.pendingLoot || null;
-      gameState.saveVersion = 2;
+      gameState.saveVersion = 3;
     }
   } catch (e) {
     console.warn('Could not load game:', e);
@@ -773,6 +773,7 @@ function loadGame() {
   
   // Recover legacy item entries before rendering the inventory.
   if (typeof migrateLegacyInventory === 'function') migrateLegacyInventory();
+  if (typeof initializeItemSystem === 'function') initializeItemSystem();
 
   // Merge official content added in later versions without touching custom task data.
   const existingTaskIds = new Set((gameState.tasks || []).map(task => task.id));
@@ -1575,6 +1576,7 @@ function finalizeCompletion(sideQuestCompleted) {
   // Update quest progress
   if (typeof updateQuestProgress === 'function') {
     updateQuestProgress(task);
+  if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
   }
 }
 
@@ -3121,8 +3123,206 @@ function completeQuest(questId) {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js?v=11').catch(() => {
+    navigator.serviceWorker.register('sw.js?v=12').catch(() => {
       console.log('Service worker registration failed (expected in dev)');
     });
   });
+}
+
+
+// ============================================================================
+// LifeXP Block 1 - item system compatibility layer
+// ============================================================================
+
+function escapeItemHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function initializeItemSystem() {
+  if (!gameState.itemSystem || typeof gameState.itemSystem !== 'object') gameState.itemSystem = {};
+  if (!gameState.itemSystem.attunement || typeof gameState.itemSystem.attunement !== 'object') gameState.itemSystem.attunement = {};
+  if (!gameState.itemSystem.rituals || typeof gameState.itemSystem.rituals !== 'object') gameState.itemSystem.rituals = {};
+  if (!gameState.itemSystem.curses || typeof gameState.itemSystem.curses !== 'object') gameState.itemSystem.curses = {};
+  gameState.itemSystem.version = 1;
+  if (typeof ITEMS !== 'undefined') {
+    Object.values(ITEMS).forEach(normalizeItemDefinition);
+  }
+}
+
+function normalizeItemDefinition(item) {
+  if (!item) return item;
+  if (!Array.isArray(item.effects)) item.effects = [];
+  if (item.effect && typeof item.effect === 'object' && !item.effects.some(e => e.id === 'legacy_effect')) {
+    item.effects.push({ id: 'legacy_effect', name: 'Legacy effect', description: item.passive || '', legacy: item.effect });
+  }
+  if (item.passive && !item.effects.some(e => e.description === item.passive)) {
+    item.effects.push({ id: 'legacy_passive', name: 'Passive', description: item.passive, legacy: true });
+  }
+  item.lore = item.lore || item.desc || '';
+  item.requirements = item.requirements || {};
+  item.requirements.stats = item.requirements.stats || {};
+  item.requirements.trainingId = item.requirements.trainingId || null;
+  item.attunement = item.attunement || { required: false, current: 0, max: 3, stages: [] };
+  item.attunement.max = Number(item.attunement.max || 3);
+  item.activation = item.activation || null;
+  item.curse = item.curse || null;
+  return item;
+}
+
+function getItemDefinition(itemId) {
+  return typeof ITEMS !== 'undefined' && ITEMS[itemId] ? normalizeItemDefinition(ITEMS[itemId]) : null;
+}
+
+function getItemAttunement(itemId) {
+  initializeItemSystem();
+  const item = getItemDefinition(itemId);
+  const max = Math.max(1, Number(item?.attunement?.max || 3));
+  const saved = gameState.itemSystem.attunement[itemId] || {};
+  return { xp: Number(saved.xp || 0), stage: Math.min(max, Number(saved.stage || 0)), max };
+}
+
+function getItemAttunementStage(itemId) {
+  return getItemAttunement(itemId).stage;
+}
+
+function recordItemAttunement(itemId, amount = 1) {
+  const item = getItemDefinition(itemId);
+  if (!item || !item.attunement?.required) return false;
+  initializeItemSystem();
+  const state = getItemAttunement(itemId);
+  state.xp += Math.max(0, Number(amount) || 0);
+  state.stage = Math.min(state.max, Math.floor(state.xp / 3));
+  gameState.itemSystem.attunement[itemId] = state;
+  saveGame();
+  return true;
+}
+
+function recordItemAttunementFromTask(task) {
+  if (!task || !gameState?.equipment) return;
+  Object.values(gameState.equipment).filter(Boolean).forEach(id => {
+    const item = getItemDefinition(id);
+    if (!item?.attunement?.required) return;
+    const themes = item.attunement.themes || item.themes || [];
+    const taskThemes = task.drops?.theme ? [task.drops.theme] : [];
+    const matches = !themes.length || themes.some(t => taskThemes.includes(t));
+    if (matches) recordItemAttunement(id, 1);
+  });
+}
+
+function getPlayerStatForRequirement(stat) {
+  return Number(gameState?.stats?.[stat] || 0) + Number(getEquipmentStats?.()[stat] || 0);
+}
+
+function getItemRequirementStatus(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'] };
+  const reasons = [];
+  for (const [stat, needed] of Object.entries(item.requirements?.stats || {})) {
+    const actual = getPlayerStatForRequirement(stat);
+    if (actual < needed) reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+  }
+  if (item.requirements?.trainingId && !(gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
+    reasons.push(`Necesita entrenamiento: ${item.requirements.trainingName || item.requirements.trainingId}`);
+  }
+  const att = getItemAttunement(itemId);
+  if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
+  return { canEquip: reasons.length === 0, reasons, attunement: att };
+}
+
+// Override equipment entry point while preserving old item behavior.
+function equipItem(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item || !item.type) return false;
+  const status = getItemRequirementStatus(itemId);
+  if (!status.canEquip) {
+    if (typeof showToast === 'function') showToast(status.reasons[0], 'error');
+    return false;
+  }
+  const type = ITEM_TYPE[item.type];
+  if (!type || !type.slot) return false;
+  let slot = type.slot;
+  if (slot === 'accessory') slot = !gameState.equipment.accessory1 ? 'accessory1' : (!gameState.equipment.accessory2 ? 'accessory2' : 'accessory1');
+  const current = gameState.equipment[slot];
+  if (current && !addToInventory(current)) return false;
+  if (!removeFromInventory(itemId)) return false;
+  gameState.equipment[slot] = itemId;
+  initializeItemSystem();
+  if (item.attunement?.required && !gameState.itemSystem.attunement[itemId]) gameState.itemSystem.attunement[itemId] = { xp: 0, stage: 0 };
+  saveGame();
+  return true;
+}
+
+function getEquippedItemEffects() {
+  const effects = [];
+  Object.values(gameState?.equipment || {}).filter(Boolean).forEach(id => {
+    const item = getItemDefinition(id);
+    if (item?.effects) item.effects.forEach(effect => effects.push({ ...effect, itemId: id }));
+  });
+  return effects;
+}
+
+function registerItemCurse(itemId, curseState = {}) {
+  initializeItemSystem();
+  gameState.itemSystem.curses[itemId] = { active: true, marks: 0, ...curseState };
+  saveGame();
+}
+
+function getItemCurseState(itemId) {
+  initializeItemSystem();
+  return gameState.itemSystem.curses[itemId] || { active: false, marks: 0 };
+}
+
+function canUnequipItem(slot) {
+  const itemId = gameState.equipment?.[slot];
+  if (!itemId) return { ok: false, reason: 'No hay objeto equipado.' };
+  const curse = getItemCurseState(itemId);
+  const item = getItemDefinition(itemId);
+  if (curse.active && item?.curse?.cannotUnequip) return { ok: false, reason: item.curse.removeHint || 'El objeto no puede desequiparse todavía.' };
+  return { ok: true };
+}
+
+function unequipItem(slot) {
+  const check = canUnequipItem(slot);
+  if (!check.ok) { if (typeof showToast === 'function') showToast(check.reason, 'error'); return false; }
+  const itemId = gameState.equipment[slot];
+  if (!itemId || !canAddToInventory()) return false;
+  if (!addToInventory(itemId)) return false;
+  gameState.equipment[slot] = null;
+  saveGame();
+  return true;
+}
+
+// Item modal: effect-first information hierarchy and balanced actions.
+function showItemModal(itemId, container = 'inventory') {
+  selectedItemId = itemId;
+  const item = getItemDefinition(itemId); if (!item) return;
+  const rarity = RARITY[item.rarity] || RARITY.common;
+  const type = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
+  const qty = container === 'stash' ? (gameState.stash?.find(s => s.id === itemId)?.qty || 1) : getItemCount(itemId);
+  const effects = item.effects || [];
+  const req = getItemRequirementStatus(itemId);
+  const att = req.attunement;
+  const effectsHtml = effects.length ? `<div class="item-panel"><div class="item-panel-label">EFFECTS</div>${effects.map(e => `<div class="item-effect"><strong>${escapeItemHtml(e.name || 'Effect')}</strong><br>${escapeItemHtml(e.description || '')}</div>`).join('')}</div>` : '';
+  const reqHtml = (Object.keys(item.requirements?.stats || {}).length || item.requirements?.trainingId) ? `<div class="item-panel"><div class="item-panel-label">REQUIREMENTS</div>${req.reasons.length ? `<div class="item-warning">${req.reasons.map(escapeItemHtml).join('<br>')}</div>` : '<div class="item-ok">Requirements met</div>'}</div>` : '';
+  const attHtml = item.attunement?.required ? `<div class="item-panel"><div class="item-panel-label">ATTUNEMENT</div><div>${att.stage}/${att.max}</div><div class="attunement-track"><span style="width:${Math.min(100, att.stage / att.max * 100)}%"></span></div>${item.attunement.stages?.[att.stage] ? `<small>${escapeItemHtml(item.attunement.stages[att.stage])}</small>` : ''}</div>` : '';
+  const ritualHtml = item.activation ? `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || item.activation.requirement || 'A hidden condition.')}</div></div>` : '';
+  const curseHtml = item.curse ? `<div class="item-panel item-curse"><div class="item-panel-label">CURSE</div><div>${escapeItemHtml(item.curse.description || 'The item carries a curse.')}</div></div>` : '';
+  const statsHtml = item.stats && Object.keys(item.stats).length ? `<div class="item-stats">${Object.entries(item.stats).map(([s,v]) => `<span style="color:var(--stat-${s})">${STATS[s]?.abbr || s} +${v}</span>`).join(' ')}</div>` : '';
+  document.getElementById('modal-item-content').innerHTML = `<div class="item-hero"><div class="item-icon">${item.icon || '◆'}</div><div class="item-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div><div class="item-subtitle">${escapeItemHtml(type.name)} · ${escapeItemHtml(rarity.name)}${qty > 1 ? ` · x${qty}` : ''}</div></div><div class="item-lore">${escapeItemHtml(item.lore || item.desc)}</div>${effectsHtml}${reqHtml}${attHtml}${ritualHtml}${curseHtml}${statsHtml}<div class="item-value">${item.value || 0} oro</div>`;
+  const actionBtn = document.getElementById('btn-item-action'); actionBtn.disabled = false;
+  if (container === 'stash') { actionBtn.textContent = 'Sacar al inventario'; actionBtn.onclick = () => moveItemToInventory(itemId); }
+  else if (type.slot) { actionBtn.textContent = req.canEquip ? 'Equipar' : req.reasons[0]; actionBtn.disabled = !req.canEquip; actionBtn.onclick = () => equipItemFromInventory(itemId); }
+  else if (item.type === 'consumable') { actionBtn.textContent = 'Usar'; actionBtn.onclick = () => useConsumable(itemId); }
+  else { actionBtn.textContent = 'Guardar en baúl'; actionBtn.onclick = () => moveItemToStash(itemId); }
+  openModal('modal-item');
+}
+
+function showEquippedItemModal(slot) {
+  const itemId = gameState.equipment?.[slot]; if (!itemId) return;
+  showItemModal(itemId, 'equipped');
+  const actionBtn = document.getElementById('btn-item-action');
+  const check = canUnequipItem(slot);
+  actionBtn.textContent = check.ok ? 'Desequipar' : check.reason;
+  actionBtn.disabled = !check.ok;
+  actionBtn.onclick = () => unequipItemToInventory(slot);
 }
