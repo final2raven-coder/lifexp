@@ -344,6 +344,209 @@ const ITEMS = {
     value: 80, themes: ['naturaleza', 'exploracion']
   },
 
+
+  // ══════════ DROPS DE ENEMIGOS (materiales y consumibles) ══════════
+
+  // Hallazgos / Casa
+  cola_rata: {
+    id: 'cola_rata', name: 'Cola de Rata', type: 'material', rarity: 'common',
+    icon: '🐀', desc: 'Repugnante pero útil para ciertos alquimistas.',
+    value: 4, themes: ['hallazgos', 'agua_quimicos']
+  },
+  seda_araña: {
+    id: 'seda_araña', name: 'Seda de Araña', type: 'material', rarity: 'common',
+    icon: '🕸️', desc: 'Más resistente de lo que parece. Se usa para cuerdas y trampas.',
+    value: 8, themes: ['hallazgos', 'agua_quimicos']
+  },
+  objeto_olvidado: {
+    id: 'objeto_olvidado', name: 'Objeto Olvidado', type: 'material', rarity: 'common',
+    icon: '📦', desc: 'Algo que alguien dejó atrás. Quizás tenga valor para alguien.',
+    value: 6, themes: ['hallazgos']
+  },
+  esencia_espectral: {
+    id: 'esencia_espectral', name: 'Esencia Espectral', type: 'material', rarity: 'uncommon',
+    icon: '👻', desc: 'Residuo de un espíritu disuelto. Frío al tacto.',
+    value: 35, themes: ['hallazgos']
+  },
+
+  // Naturaleza / Bosque
+  corazon_bosque: {
+    id: 'corazon_bosque', name: 'Corazón del Bosque', type: 'material', rarity: 'rare',
+    icon: '🌳', desc: 'Pulsa con una cadencia lenta, como los árboles viejos.',
+    value: 90, themes: ['naturaleza']
+  },
+  esencia_vida: {
+    id: 'esencia_vida', name: 'Esencia de Vida', type: 'material', rarity: 'uncommon',
+    icon: '🌿', desc: 'Concentrado de energía vital. Huele a tierra mojada.',
+    value: 40, themes: ['naturaleza']
+  },
+  semilla_rara: {
+    id: 'semilla_rara', name: 'Semilla Rara', type: 'material', rarity: 'uncommon',
+    icon: '🌱', desc: 'Nadie sabe qué crecerá si la plantas.',
+    value: 25, themes: ['naturaleza', 'fuego_comida']
+  },
+  amuleto_bosque: {
+    id: 'amuleto_bosque', name: 'Amuleto del Bosque', type: 'accessory', rarity: 'uncommon',
+    icon: '🍀', desc: 'Tallado en madera viva. Protege a quien lo lleva.',
+    stats: { vit: 2, vol: 1 },
+    value: 50, themes: ['naturaleza']
+  },
+  colmillo_hielo: {
+    id: 'colmillo_hielo', name: 'Colmillo de Hielo', type: 'material', rarity: 'uncommon',
+    icon: '🧊', desc: 'Nunca se derrite. Frío como el invierno que lo formó.',
+    value: 30, themes: ['naturaleza', 'hielo']
+  },
+
+  // Fuego / Cocina
+  corazon_fuego: {
+    id: 'corazon_fuego', name: 'Corazón de Fuego', type: 'material', rarity: 'rare',
+    icon: '🔥', desc: 'El núcleo fundido de un golem. Arde sin consumirse.',
+    value: 85, themes: ['fuego', 'fuego_comida']
+  },
+  escama_fuego: {
+    id: 'escama_fuego', name: 'Escama de Fuego', type: 'material', rarity: 'uncommon',
+    icon: '🦎', desc: 'Resistente al calor extremo. Usada en armaduras de forja.',
+    value: 38, themes: ['fuego', 'agua_quimicos']
+  },
+
+  // Agua / Profundidades
+  esencia_agua: {
+    id: 'esencia_agua', name: 'Esencia de Agua', type: 'material', rarity: 'uncommon',
+    icon: '💧', desc: 'Agua condensada de un elemental. Nunca se evapora.',
+    value: 32, themes: ['agua_quimicos', 'agua_profunda']
+  },
+  escama_marina: {
+    id: 'escama_marina', name: 'Escama Marina', type: 'material', rarity: 'uncommon',
+    icon: '🐍', desc: 'Iridiscente y dura. Repele el agua.',
+    value: 28, themes: ['agua_profunda']
+  },
+  tentaculo_kraken: {
+    id: 'tentaculo_kraken', name: 'Tentáculo de Kraken', type: 'material', rarity: 'rare',
+    icon: '🦑', desc: 'Aún se mueve un poco. Mejor no pensar en ello.',
+    value: 75, themes: ['agua_profunda']
+  },
+  pocion_agua_menor: {
+    id: 'pocion_agua_menor', name: 'Poción de Agua Menor', type: 'consumable', rarity: 'common',
+    icon: '🫧', desc: 'Restaura 20 HP. Sabe a río en verano.',
+    value: 12, themes: ['agua_quimicos'],
+    effect: { heal: 20 }
+  },
+
+  // Mente / Oscuridad
+  esencia_oscura: {
+    id: 'esencia_oscura', name: 'Esencia Oscura', type: 'material', rarity: 'rare',
+    icon: '🌑', desc: 'Residuo de una pesadilla materializada. Absorbe la luz.',
+    value: 80, themes: ['mente', 'destino']
+  },
+  fragmento_sueño: {
+    id: 'fragmento_sueño', name: 'Fragmento de Sueño', type: 'material', rarity: 'uncommon',
+    icon: '💭', desc: 'Un pensamiento que se volvió sólido. Cambia de forma si lo miras fijo.',
+    value: 42, themes: ['mente']
+  },
+
+  // Conocimiento / Oriente
+  pagina_arcana: {
+    id: 'pagina_arcana', name: 'Página Arcana', type: 'material', rarity: 'uncommon',
+    icon: '📄', desc: 'Arrancada de un libro que no quería ser leído.',
+    value: 30, themes: ['conocimiento', 'oriente']
+  },
+  tinta_magica: {
+    id: 'tinta_magica', name: 'Tinta Mágica', type: 'material', rarity: 'uncommon',
+    icon: '🖋️', desc: 'Escribe sola si la dejas en un pergamino en blanco.',
+    value: 35, themes: ['conocimiento', 'oriente']
+  },
+  grimorio_antiguo: {
+    id: 'grimorio_antiguo', name: 'Grimorio Antiguo', type: 'material', rarity: 'rare',
+    icon: '📕', desc: 'Lleno de anotaciones en un idioma que nadie recuerda.',
+    value: 95, themes: ['conocimiento', 'mente']
+  },
+  filacteria: {
+    id: 'filacteria', name: 'Filacteria', type: 'material', rarity: 'epic',
+    icon: '💀', desc: 'El recipiente del alma de un liche. Frágil. Peligroso.',
+    value: 200, themes: ['conocimiento', 'mente']
+  },
+  baculo_liche: {
+    id: 'baculo_liche', name: 'Báculo del Liche', type: 'weapon', rarity: 'epic',
+    icon: '🪄', desc: 'Canaliza magia de muerte. Frío al tacto, cálido al usarlo.',
+    stats: { int: 6, vol: 3 },
+    value: 220, themes: ['conocimiento', 'mente']
+  },
+
+  // Oriente / Social
+  cola_kitsune: {
+    id: 'cola_kitsune', name: 'Cola de Kitsune', type: 'material', rarity: 'rare',
+    icon: '🦊', desc: 'Suave y plateada. Conserva un rastro de ilusión.',
+    value: 88, themes: ['oriente']
+  },
+  cuerno_oni: {
+    id: 'cuerno_oni', name: 'Cuerno de Oni', type: 'material', rarity: 'rare',
+    icon: '👹', desc: 'Duro como el acero. Huele a sake y a tormenta.',
+    value: 82, themes: ['oriente', 'mente']
+  },
+  sake_demonio: {
+    id: 'sake_demonio', name: 'Sake del Demonio', type: 'consumable', rarity: 'uncommon',
+    icon: '🍶', desc: '+4 FUE, -2 INT durante 1 combate. Arde al bajar.',
+    value: 40, themes: ['oriente', 'fuego_comida'],
+    effect: { buffFue: 4, debuffInt: 2, duration: 1 }
+  },
+
+  // Exploración / Social
+  botas_viajero: {
+    id: 'botas_viajero', name: 'Botas del Viajero', type: 'armor', rarity: 'uncommon',
+    icon: '👢', desc: 'Gastadas por mil caminos. Aún tienen kilómetros por delante.',
+    stats: { des: 2, vit: 1 },
+    value: 48, themes: ['exploracion']
+  },
+  caparazon: {
+    id: 'caparazon', name: 'Caparazón', type: 'material', rarity: 'common',
+    icon: '🦀', desc: 'Duro y ligero. Buen material para armaduras improvisadas.',
+    value: 14, themes: ['exploracion', 'agua_profunda']
+  },
+  mapa_tesoro: {
+    id: 'mapa_tesoro', name: 'Mapa del Tesoro', type: 'key', rarity: 'rare',
+    icon: '🗺️', desc: 'Marcas crípticas sobre pergamino viejo. Alguien lo quería mucho.',
+    value: 100, themes: ['exploracion', 'hallazgos']
+  },
+  daga_oxidada: {
+    id: 'daga_oxidada', name: 'Daga Oxidada', type: 'weapon', rarity: 'common',
+    icon: '🗡️', desc: 'Mellada y manchada. Aún corta si apuntas bien.',
+    stats: { fue: 1 },
+    value: 10, themes: ['exploracion']
+  },
+  daga_asesino: {
+    id: 'daga_asesino', name: 'Daga del Asesino', type: 'weapon', rarity: 'rare',
+    icon: '🔪', desc: 'Equilibrada para el lanzamiento. Sin marcas de origen.',
+    stats: { des: 4, fue: 2 },
+    value: 110, themes: ['alianzas', 'exploracion']
+  },
+  capa_sombras: {
+    id: 'capa_sombras', name: 'Capa de Sombras', type: 'armor', rarity: 'rare',
+    icon: '🌑', desc: 'Se funde con la oscuridad. Quien la lleva casi desaparece.',
+    stats: { des: 3, pre: 2 },
+    value: 120, themes: ['alianzas']
+  },
+  contrato_sospechoso: {
+    id: 'contrato_sospechoso', name: 'Contrato Sospechoso', type: 'key', rarity: 'uncommon',
+    icon: '📜', desc: 'La letra pequeña está escrita en un idioma que no existe.',
+    value: 55, themes: ['conocimiento', 'gestiones']
+  },
+  token_amistad: {
+    id: 'token_amistad', name: 'Token de Amistad', type: 'material', rarity: 'common',
+    icon: '🤝', desc: 'Una moneda grabada con dos manos. Significa algo para alguien.',
+    value: 15, themes: ['alianzas', 'social']
+  },
+  pluma_grifo: {
+    id: 'pluma_grifo', name: 'Pluma de Grifo', type: 'material', rarity: 'rare',
+    icon: '🦁', desc: 'Dorada y resistente. Símbolo de nobleza en muchas culturas.',
+    value: 78, themes: ['sol_viento', 'exploracion']
+  },
+  veneno_letal: {
+    id: 'veneno_letal', name: 'Veneno Letal', type: 'consumable', rarity: 'rare',
+    icon: '☠️', desc: 'Aplica veneno severo al arma (5 turnos, daño alto).',
+    value: 90, themes: ['agua_quimicos', 'alianzas'],
+    effect: { applyPoison: 5, poisonDamage: 8 }
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -351,29 +554,29 @@ const ITEMS = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const DROP_TABLES = {
-
-  destino: ['piedra_del_umbral', 'fragmento_del_umbral', 'esencia_de_retorno'],
-  exploracion: ['piedra_del_umbral', 'fragmento_del_umbral', 'botas_viajero'],
-  refugio: ['broche_del_refugio', 'moneda_antigua'],
-  conocimiento: ['sello_de_la_pregunta', 'grimorio_arcano'],
-  creacion: ['guantes_del_trazo', 'dado_destino'],
-  agua_quimicos: ['pocion_agua', 'veneno_basico', 'frasco_vacio', 'daga_corrosiva', 'escudo_antiveneno', 'antidoto'],
-  fuego: ['gema_fuego', 'skill_llamarada', 'cuchilla_llameante'],
-  fuego_comida: ['racion_combate', 'gema_fuego', 'especia_rara', 'elixir_vitalidad', 'cuchilla_llameante'],
-  naturaleza: ['hierba_curativa', 'antidoto', 'arco_espino'],
-  sol_viento: ['fragmento_solar', 'pluma_viento', 'amuleto_brisa', 'capa_ligera', 'espada_radiante', 'capa_alba', 'cristal_solar'],
-  luz: ['fragmento_solar', 'cristal_solar', 'espada_radiante', 'capa_alba'],
-  hielo: ['fragmento_hielo', 'pocion_escarcha', 'hoja_gelida', 'armadura_invierno', 'skill_rayo_hielo'],
-  hallazgos: ['moneda_antigua', 'moneda_oro', 'llave_cofre', 'amuleto_espacio'],
-  agua_profunda: ['perla_marina', 'tridente_marino', 'escamas_sirena', 'pocion_respiracion'],
-  mente: ['rosario_concentracion', 'orbe_mental', 'skill_foco_interior'],
-  conocimiento: ['grimorio_arcano'],
-  oriente: ['cuentas_jade', 'talisman_oriental', 'katana_oriental', 'escama_dragon'],
-  social: ['sello_alianza', 'hidromiel'],
-  comercio: ['moneda_oro', 'llave_cofre', 'contrato_mercantil'],
-  creacion: ['dado_destino'],
-  descanso: ['hierba_curativa', 'pocion_agua']
+  hallazgos:    ['moneda_antigua', 'moneda_oro', 'llave_cofre', 'amuleto_espacio', 'objeto_olvidado', 'seda_araña', 'cola_rata', 'esencia_espectral', 'mapa_tesoro'],
+  exploracion:  ['botas_viajero', 'daga_oxidada', 'caparazon', 'mapa_tesoro', 'pluma_grifo', 'token_amistad'],
+  naturaleza:   ['hierba_curativa', 'antidoto', 'arco_espino', 'semilla_rara', 'corazon_bosque', 'esencia_vida', 'amuleto_bosque', 'colmillo_hielo'],
+  fuego:        ['gema_fuego', 'skill_llamarada', 'cuchilla_llameante', 'corazon_fuego', 'escama_fuego'],
+  fuego_comida: ['racion_combate', 'gema_fuego', 'especia_rara', 'elixir_vitalidad', 'cuchilla_llameante', 'semilla_rara', 'sake_demonio'],
+  agua_quimicos:['pocion_agua', 'veneno_basico', 'frasco_vacio', 'daga_corrosiva', 'escudo_antiveneno', 'antidoto', 'esencia_agua', 'escama_fuego', 'pocion_agua_menor', 'seda_araña', 'cola_rata'],
+  agua_profunda:['perla_marina', 'tridente_marino', 'escamas_sirena', 'pocion_respiracion', 'escama_marina', 'tentaculo_kraken', 'esencia_oscura', 'caparazon'],
+  hielo:        ['fragmento_hielo', 'pocion_escarcha', 'hoja_gelida', 'armadura_invierno', 'skill_rayo_hielo', 'colmillo_hielo'],
+  sol_viento:   ['fragmento_solar', 'pluma_viento', 'amuleto_brisa', 'capa_ligera', 'espada_radiante', 'capa_alba', 'cristal_solar', 'pluma_grifo'],
+  luz:          ['fragmento_solar', 'cristal_solar', 'espada_radiante', 'capa_alba'],
+  mente:        ['rosario_concentracion', 'orbe_mental', 'skill_foco_interior', 'fragmento_sueño', 'esencia_oscura', 'pagina_arcana'],
+  conocimiento: ['grimorio_arcano', 'grimorio_antiguo', 'pagina_arcana', 'tinta_magica', 'filacteria', 'contrato_sospechoso'],
+  oriente:      ['cuentas_jade', 'talisman_oriental', 'katana_oriental', 'escama_dragon', 'cola_kitsune', 'cuerno_oni', 'sake_demonio', 'tinta_magica', 'pagina_arcana'],
+  social:       ['sello_alianza', 'hidromiel', 'token_amistad'],
+  alianzas:     ['sello_alianza', 'token_amistad', 'contrato_sospechoso', 'daga_asesino', 'capa_sombras', 'veneno_letal'],
+  comercio:     ['moneda_oro', 'llave_cofre', 'contrato_mercantil', 'contrato_sospechoso'],
+  destino:      ['dado_destino', 'fragmento_hielo', 'esencia_oscura', 'fragmento_sueño'],
+  creacion:     ['dado_destino', 'tinta_magica'],
+  refugio:      ['moneda_antigua', 'objeto_olvidado'],
+  descanso:     ['hierba_curativa', 'pocion_agua', 'pocion_agua_menor'],
+  oro_comercio: ['moneda_oro', 'contrato_mercantil', 'token_amistad'],
 };
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INVENTORY FUNCTIONS
