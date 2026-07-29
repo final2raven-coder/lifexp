@@ -3,6 +3,8 @@
 // Bloque 1: Estructura base + Sistema de tareas + Stats
 // ═══════════════════════════════════════════════════════════════════════════
 
+const LIFE_XP_BUILD = 'v11';
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1291,7 +1293,7 @@ function renderSettings() {
     <div class="section-title">Info</div>
     <div class="card">
       <p style="font-size: 13px; color: var(--text-muted);">
-        LifeXP RPG v1.0<br>
+        LifeXP RPG v1.0 · Build v11<br>
         Tareas: ${gameState.tasks.length}<br>
         Nivel: ${gameState.level}<br>
         XP Total: ${gameState.taskHistory.reduce((a, h) => a + h.xp, 0)}
