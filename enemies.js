@@ -463,6 +463,47 @@ const ENEMIES = {
     ],
     themes: ['alianzas']
   }
+
+  // ══════════ BOSSES (quest-required) ══════════
+
+  lobo_alfa: {
+    id: 'lobo_alfa', name: 'Lobo Alfa', icon: '🐺',
+    type: 'boss', level: 15,
+    hp: 400, maxHp: 400,
+    fue: 20, vit: 18, des: 16, int: 8, vol: 14, pre: 12,
+    xp: 200, gold: 100,
+    skills: [
+      { id: 'mordisco_feroz', name: 'Mordisco Feroz', type: 'attack', power: 35, scaling: { fue: 0.8 } },
+      { id: 'aullido_alfa', name: 'Aullido Aterrador', type: 'debuff', effect: 'fear', duration: 2 },
+      { id: 'zarpazo_rapido', name: 'Zarpazo Rápido', type: 'attack', power: 22, scaling: { des: 0.6 } }
+    ],
+    drops: [
+      { itemId: 'piel_lobo', chance: 0.6 },
+      { itemId: 'colmillo_alfa', chance: 0.8 }
+    ],
+    themes: ['naturaleza', 'exploracion']
+  },
+
+  espejo_oscuro: {
+    id: 'espejo_oscuro', name: 'Espejo Oscuro', icon: '🪞',
+    type: 'boss', level: 30,
+    hp: 650, maxHp: 650,
+    fue: 18, vit: 20, des: 20, int: 28, vol: 22, pre: 25,
+    xp: 500, gold: 250,
+    skills: [
+      { id: 'reflejo_dolor', name: 'Reflejo de Dolor', type: 'attack', power: 40, scaling: { int: 1.0 }, damageType: 'magical' },
+      { id: 'confusion_profunda', name: 'Confusión Profunda', type: 'debuff', effect: 'confusion', duration: 3 },
+      { id: 'drenaje_mental', name: 'Drenaje Mental', type: 'debuff', effect: 'mp_drain', duration: 2, damage: 8 },
+      { id: 'miedo_interior', name: 'Miedo Interior', type: 'debuff', effect: 'fear', duration: 2 },
+      { id: 'imagen_perfecta', name: 'Imagen Perfecta', type: 'buff', effect: 'all_stats_up', duration: 3 }
+    ],
+    drops: [
+      { itemId: 'esencia_oscura', chance: 0.7 },
+      { itemId: 'fragmento_sueño', chance: 0.5 }
+    ],
+    themes: ['mente', 'destino']
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

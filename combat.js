@@ -29,15 +29,142 @@ function applyStatusEffect(target, status, data = {}, source = 'unknown') {
 function tickCombatStatuses(target, label = 'Objetivo') {
   if (!target?.debuffs) return [];
   const messages = [];
+
   for (const effect of target.debuffs) {
-    if (effect.status === 'burn') {
-      const damage = Math.max(1, Number(effect.damage || 3) * Number(effect.stacks || 1));
-      target.hp = Math.max(0, target.hp - damage);
-      messages.push(`${label} sufre ${damage} de daño por quemadura.`);
+    const stacks = Math.max(1, Number(effect.stacks || 1));
+
+    switch (effect.status) {
+
+      // ── BURN: damage per turn ──────────────────────────────────────────
+      case 'burn': {
+        const dmg = Math.max(1, Number(effect.damage || 3) * stacks);
+        target.hp = Math.max(0, target.hp - dmg);
+        messages.push(`🔥 ${label} sufre ${dmg} de daño por quemadura.`);
+        break;
+      }
+
+      // ── POISON: damage per turn (scales with stacks) ───────────────────
+      case 'poison': {
+        const dmg = Math.max(1, Math.floor((Number(effect.damage || 2) + stacks) * stacks));
+        target.hp = Math.max(0, target.hp - dmg);
+        messages.push(`☠️ ${label} sufre ${dmg} de daño por veneno.`);
+        break;
+      }
+
+      // ── BLEED: flat damage per turn ────────────────────────────────────
+      case 'bleed': {
+        const dmg = Math.max(1, Number(effect.damage || 3) * stacks);
+        target.hp = Math.max(0, target.hp - dmg);
+        messages.push(`🩸 ${label} sangra: ${dmg} de daño.`);
+        break;
+      }
+
+      // ── FEAR: 50% chance to skip action ───────────────────────────────
+      case 'fear': {
+        if (Math.random() < 0.5) {
+          target._skipTurn = true;
+          messages.push(`😨 ${label} está aterrorizado y no puede actuar.`);
+        }
+        break;
+      }
+
+      // ── SLOW: reduces action count / speed ────────────────────────────
+      case 'slow': {
+        target._slowed = true;
+        messages.push(`🐢 ${label} está ralentizado.`);
+        break;
+      }
+
+      // ── BLIND: reduces accuracy (applied as flag, checked in calculateDamage) ──
+      case 'blind': {
+        target._blinded = true;
+        messages.push(`🌑 ${label} está cegado (precisión reducida).`);
+        break;
+      }
+
+      // ── SLEEP: skip turn; breaks on damage ────────────────────────────
+      case 'sleep': {
+        target._skipTurn = true;
+        messages.push(`💤 ${label} está dormido y no puede actuar.`);
+        break;
+      }
+
+      // ── CONFUSION: 40% chance to attack self/ally ─────────────────────
+      case 'confusion': {
+        if (Math.random() < 0.4) {
+          target._confused = true;
+          messages.push(`🌀 ${label} está confundido y podría atacarse a sí mismo.`);
+        }
+        break;
+      }
+
+      // ── MP_DRAIN: drains MP each turn ─────────────────────────────────
+      case 'mp_drain': {
+        const drain = Math.max(1, Number(effect.damage || 5) * stacks);
+        if (target.mp !== undefined) {
+          target.mp = Math.max(0, target.mp - drain);
+          messages.push(`💙 ${label} pierde ${drain} MP por drenaje.`);
+        }
+        break;
+      }
+
+      // ── LIFESTEAL: heals attacker on hit (flag for calculateDamage) ───
+      case 'lifesteal': {
+        target._lifesteal = true;
+        break;
+      }
+
+      // ── ATTACK_UP: buff — increases damage dealt ───────────────────────
+      case 'attack_up': {
+        target._attackMult = (target._attackMult || 1) * 1.25;
+        messages.push(`⚔️ ${label} tiene ataque aumentado.`);
+        break;
+      }
+
+      // ── DEFENSE_UP: buff — reduces damage received ─────────────────────
+      case 'defense_up': {
+        target._defenseMult = (target._defenseMult || 1) * 0.75;
+        messages.push(`🛡️ ${label} tiene defensa aumentada.`);
+        break;
+      }
+
+      // ── EVASION_UP: buff — increases dodge chance ──────────────────────
+      case 'evasion_up': {
+        target._evasionBonus = (target._evasionBonus || 0) + 20;
+        messages.push(`💨 ${label} tiene evasión aumentada.`);
+        break;
+      }
+
+      // ── ALL_STATS_UP: buff — all multipliers ──────────────────────────
+      case 'all_stats_up': {
+        target._attackMult  = (target._attackMult  || 1) * 1.15;
+        target._defenseMult = (target._defenseMult || 1) * 0.85;
+        target._evasionBonus = (target._evasionBonus || 0) + 10;
+        messages.push(`✨ ${label} tiene todos los atributos aumentados.`);
+        break;
+      }
     }
+
     effect.duration -= 1;
   }
+
+  // Remove expired effects; also clear per-turn buff flags before next tick
   target.debuffs = target.debuffs.filter(x => x.duration > 0);
+
+  // Clear per-turn flags that must be re-applied each tick
+  if (!target.debuffs.some(x => x.status === 'attack_up' || x.status === 'all_stats_up'))
+    delete target._attackMult;
+  if (!target.debuffs.some(x => x.status === 'defense_up' || x.status === 'all_stats_up'))
+    delete target._defenseMult;
+  if (!target.debuffs.some(x => x.status === 'evasion_up' || x.status === 'all_stats_up'))
+    delete target._evasionBonus;
+  if (!target.debuffs.some(x => x.status === 'slow'))   delete target._slowed;
+  if (!target.debuffs.some(x => x.status === 'blind'))  delete target._blinded;
+  if (!target.debuffs.some(x => x.status === 'lifesteal')) delete target._lifesteal;
+  // _skipTurn and _confused are consumed by the caller each turn
+  delete target._skipTurn;
+  delete target._confused;
+
   messages.forEach(addCombatLog);
   return messages;
 }
@@ -159,9 +286,34 @@ function calculateDamage(attacker, defender, skill = null) {
   if (defender.defending) {
     baseDamage = Math.floor(baseDamage * 0.5);
   }
-  
+
+  // Status: attacker attack_up / all_stats_up
+  if (attacker._attackMult) baseDamage = Math.floor(baseDamage * attacker._attackMult);
+
+  // Status: defender defense_up / all_stats_up
+  if (defender._defenseMult) baseDamage = Math.floor(baseDamage * defender._defenseMult);
+
+  // Status: attacker blind — 35% chance to miss entirely
+  if (attacker._blinded && Math.random() < 0.35) {
+    return { damage: 0, isCrit: false, damageType, missed: true };
+  }
+
+  // Status: defender evasion_up — extra dodge chance
+  if (defender._evasionBonus) {
+    const dodgeRoll = Math.random() * 100;
+    if (dodgeRoll < defender._evasionBonus) {
+      return { damage: 0, isCrit: false, damageType, dodged: true };
+    }
+  }
+
   const finalDamage = Math.max(1, baseDamage - reduction);
-  
+
+  // Status: attacker lifesteal — heal 30% of damage dealt
+  if (attacker._lifesteal) {
+    const heal = Math.floor(finalDamage * 0.3);
+    attacker.hp = Math.min(attacker.maxHp || attacker.hp + heal, attacker.hp + heal);
+  }
+
   return { damage: finalDamage, isCrit, damageType };
 }
 
@@ -286,10 +438,21 @@ function getAvailableActions() {
 
 function executePlayerAction(actionId) {
   if (!combatState || combatState.phase !== 'player') return null;
-  
+
   const p = combatState.player;
   const e = combatState.enemy;
-  
+
+  // Tick player status effects at start of player turn
+  tickCombatStatuses(p, 'Tú');
+  if (p.hp <= 0) { combatState.phase = 'defeat'; return { action: 'status', defeat: true, effects: [] }; }
+
+  // Skip turn if feared or asleep
+  if (p._skipTurn) {
+    delete p._skipTurn;
+    combatState.phase = 'enemy';
+    return { action: 'skip', success: false, message: 'No puedes actuar este turno.', effects: [] };
+  }
+
   // Reset defending
   p.defending = false;
   
@@ -383,7 +546,15 @@ function executeEnemyTurn() {
   
   tickCombatStatuses(e, e.name || 'Enemigo');
   if (e.hp <= 0) { combatState.phase = 'victory'; calculateCombatRewards(); return { action: 'status', victory: true, effects: [] }; }
-  
+
+  // Skip turn if feared or asleep
+  if (e._skipTurn) {
+    delete e._skipTurn;
+    combatState.phase = 'player';
+    addCombatLog(`${e.icon || '👾'} ${e.name} no puede actuar este turno.`);
+    return { action: 'skip', effects: [] };
+  }
+
   // Reset enemy defending
   e.defending = false;
   

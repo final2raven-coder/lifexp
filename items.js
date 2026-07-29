@@ -301,6 +301,49 @@ const ITEMS = {
     cantSell: true,
     effect: { merchantDiscount: 10 }
   }
+
+  // ══════════ QUEST REWARDS (missing items) ══════════
+
+  pocion_vida_menor: {
+    id: 'pocion_vida_menor', name: 'Poción de Vida Menor', type: 'consumable', rarity: 'common',
+    icon: '🧪', desc: 'Restaura 40 HP. El sabor es amargo, pero funciona.',
+    value: 18, themes: ['agua_quimicos', 'hallazgos'],
+    effect: { heal: 40 }
+  },
+
+  pocion_fuerza: {
+    id: 'pocion_fuerza', name: 'Poción de Fuerza', type: 'consumable', rarity: 'uncommon',
+    icon: '💪', desc: '+3 FUE durante 1 combate. Huele a hierro y sudor.',
+    value: 35, themes: ['cuerpo', 'fuego'],
+    effect: { buffFue: 3, duration: 1 }
+  },
+
+  escoba_encantada: {
+    id: 'escoba_encantada', name: 'Escoba Encantada', type: 'artifact', rarity: 'uncommon',
+    icon: '🧹', desc: 'Se mueve sola si la dejas en paz el tiempo suficiente.',
+    stats: { vol: 2, vit: 1 },
+    value: 55, themes: ['casa', 'hallazgos'],
+    passive: 'Casa: +5% XP en tareas de limpieza'
+  },
+
+  nucleo_slime: {
+    id: 'nucleo_slime', name: 'Núcleo de Slime', type: 'material', rarity: 'uncommon',
+    icon: '🟢', desc: 'Pulsa con una energía viscosa. Útil para alquimia.',
+    value: 30, themes: ['agua_quimicos', 'hallazgos']
+  },
+
+  piel_lobo: {
+    id: 'piel_lobo', name: 'Piel de Lobo', type: 'material', rarity: 'uncommon',
+    icon: '🐺', desc: 'Gruesa y cálida. Huele a bosque y a batalla.',
+    value: 45, themes: ['naturaleza', 'exploracion']
+  },
+
+  colmillo_alfa: {
+    id: 'colmillo_alfa', name: 'Colmillo del Alfa', type: 'material', rarity: 'rare',
+    icon: '🦷', desc: 'El colmillo del lobo que lideraba la manada. Aún conserva el calor de la pelea.',
+    value: 80, themes: ['naturaleza', 'exploracion']
+  },
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
