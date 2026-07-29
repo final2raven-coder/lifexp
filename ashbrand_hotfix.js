@@ -7,6 +7,8 @@
   const COMPLETE = {
     id: ID,
     name: 'Ashbrand',
+    rarity: 'rare',
+    type: 'weapon',
     lore: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
     desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
     // Ashbrand intentionally has no direct stat bonus. Its power is earned through use.
