@@ -616,3 +616,86 @@ function resolvePendingLoot(action, itemId = null) {
   } else return false;
   gameState.pendingLoot = null; saveGame(); return true;
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INVENTORY UPDATE 10: legacy item recovery / emergency reroll
+// ═══════════════════════════════════════════════════════════════════════════
+
+function normalizeItemText(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function findItemIdByLegacyName(name) {
+  const wanted = normalizeItemText(name);
+  if (!wanted) return null;
+  const entry = Object.entries(ITEMS).find(([id, item]) => normalizeItemText(item.name) === wanted);
+  if (entry) return entry[0];
+  const partial = Object.entries(ITEMS).find(([id, item]) => {
+    const itemName = normalizeItemText(item.name);
+    return itemName.includes(wanted) || wanted.includes(itemName);
+  });
+  return partial ? partial[0] : null;
+}
+
+function migrateLegacyInventory() {
+  if (!Array.isArray(gameState.inventory)) gameState.inventory = [];
+  let changed = false;
+  for (const slot of gameState.inventory) {
+    if (slot.id && ITEMS[slot.id]) continue;
+    const recoveredId = findItemIdByLegacyName(slot.name || slot.legacyName);
+    if (recoveredId) {
+      slot.id = recoveredId;
+      delete slot.name;
+      delete slot.legacyName;
+      slot.recovered = true;
+      changed = true;
+    } else {
+      slot.recoveryStatus = 'unrecoverable';
+      slot.recoveryUsed = Boolean(slot.recoveryUsed);
+    }
+  }
+  if (changed) saveGame();
+  return changed;
+}
+
+function getRecoveryCandidates(slot) {
+  const desiredTheme = slot?.theme;
+  const entries = Object.entries(ITEMS).filter(([id, item]) => {
+    if (!item || item.rarity === 'legendary') return false;
+    if (desiredTheme && Array.isArray(item.themes) && item.themes.includes(desiredTheme)) return true;
+    return !desiredTheme;
+  });
+  const pool = entries.length ? entries : Object.entries(ITEMS).filter(([id, item]) => item && item.rarity !== 'legendary');
+  return pool.map(([id]) => id);
+}
+
+function emergencyRerollLegacyItem(slotIndex) {
+  const slot = gameState.inventory?.[slotIndex];
+  if (!slot || slot.recoveryUsed) return { success: false, reason: 'already_used' };
+  const recoveredId = findItemIdByLegacyName(slot.name || slot.legacyName);
+  if (recoveredId) {
+    slot.id = recoveredId;
+    delete slot.name;
+    delete slot.legacyName;
+    slot.recoveryStatus = 'recovered_by_name';
+    slot.recoveryUsed = true;
+    saveGame();
+    return { success: true, itemId: recoveredId, method: 'name' };
+  }
+  const candidates = getRecoveryCandidates(slot);
+  if (!candidates.length) return { success: false, reason: 'no_candidates' };
+  const itemId = candidates[Math.floor(Math.random() * candidates.length)];
+  slot.id = itemId;
+  slot.qty = slot.qty || 1;
+  delete slot.name;
+  delete slot.legacyName;
+  slot.recoveryStatus = 'rerolled';
+  slot.recoveryUsed = true;
+  saveGame();
+  return { success: true, itemId, method: 'reroll' };
+}
+
+function getLegacyInventorySlotIndex(slot) {
+  return Array.isArray(gameState.inventory) ? gameState.inventory.indexOf(slot) : -1;
+}

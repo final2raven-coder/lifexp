@@ -769,6 +769,9 @@ function loadGame() {
     gameState.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
   }
   
+  // Recover legacy item entries before rendering the inventory.
+  if (typeof migrateLegacyInventory === 'function') migrateLegacyInventory();
+
   // Merge official content added in later versions without touching custom task data.
   const existingTaskIds = new Set((gameState.tasks || []).map(task => task.id));
   for (const officialTask of DEFAULT_TASKS) {
@@ -1007,7 +1010,9 @@ function renderInventoryGrid() {
   for (const slot of gameState.inventory) {
     const item = typeof ITEMS !== 'undefined' ? ITEMS[slot.id] : null;
     if (!item) {
-      grid.innerHTML += `<div class="inv-slot" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;"><div style="font-size:24px;">❔</div><div style="font-size:10px;color:var(--text-muted);">Objeto desconocido</div></div>`;
+      const slotIndex = gameState.inventory.indexOf(slot);
+      const oldName = slot.name || slot.legacyName || 'Recompensa sin identificar';
+      grid.innerHTML += `<div class="inv-slot" onclick="showLegacyItemModal(${slotIndex})" style="background:var(--bg-card);border:2px solid var(--orange);border-radius:8px;padding:8px;text-align:center;cursor:pointer;position:relative;"><div style="font-size:24px;">❔</div><div style="font-size:10px;color:var(--orange);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${oldName}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px;">Revisar recompensa</div></div>`;
       continue;
     }
     
@@ -1142,6 +1147,7 @@ function showItemModal(itemId, container = 'inventory') {
   `;
   
   const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.disabled = false;
   if (container === 'stash') {
     actionBtn.textContent = 'Sacar al inventario';
     actionBtn.onclick = () => { moveItemToInventory(itemId); };
@@ -1157,6 +1163,34 @@ function showItemModal(itemId, container = 'inventory') {
   }
   
   document.getElementById('modal-item').classList.add('show');
+}
+
+function showLegacyItemModal(slotIndex) {
+  const slot = gameState.inventory?.[slotIndex];
+  if (!slot) return;
+  const oldName = slot.name || slot.legacyName || 'Recompensa sin identificar';
+  const used = Boolean(slot.recoveryUsed);
+  document.getElementById('modal-item-content').innerHTML = `
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:48px;">❔</div>
+      <div style="font-size:18px;font-weight:700;color:var(--orange);">Recompensa ilegible</div>
+      <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
+    </div>
+    <div style="font-size:13px;color:var(--text);line-height:1.5;">Esta recompensa procede de una versión antigua y no conserva un identificador válido. Puedes intentar reconstruirla o rehacerla una sola vez sin perder progreso.</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">El reroll de emergencia es una herramienta de recuperación de datos, no una mecánica normal.</div>
+  `;
+  const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.textContent = used ? 'Recuperación ya usada' : '🔄 Rehacer recompensa';
+  actionBtn.disabled = used;
+  actionBtn.onclick = () => {
+    if (used || typeof emergencyRerollLegacyItem !== 'function') return;
+    const result = emergencyRerollLegacyItem(slotIndex);
+    if (!result.success) { showToast('No se pudo recuperar la recompensa.', 'error'); return; }
+    closeModal('modal-item');
+    renderInventory();
+    showToast(result.method === 'name' ? 'Recompensa reconstruida.' : 'Recompensa rehecha.', 'gold');
+  };
+  openModal('modal-item');
 }
 
 function showEquippedItemModal(slot) {
