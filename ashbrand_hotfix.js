@@ -1,8 +1,8 @@
-// LifeXP Hotfix 2.1 - restore the complete Ashbrand item contract.
+// LifeXP Hotfix 2.2 - deterministic runtime repair for Ashbrand.
 // Load after game.js, items.js and optional expansion modules.
 (function () {
   'use strict';
-  const HOTFIX_ID = 'lifexp_hotfix_2_1_ashbrand_complete';
+  const HOTFIX_ID = 'lifexp_hotfix_2_2_ashbrand_runtime_repair';
   const ID = 'cuchilla_llameante';
   const COMPLETE = {
     id: ID,
@@ -41,9 +41,9 @@
   function backup() {
     try {
       const raw = localStorage.getItem('lifexp_save');
-      if (raw && !localStorage.getItem('lifexp_hotfix_2_1_backup')) {
-        localStorage.setItem('lifexp_hotfix_2_1_backup', raw);
-        localStorage.setItem('lifexp_hotfix_2_1_backup_time', new Date().toISOString());
+      if (raw && !localStorage.getItem('lifexp_hotfix_2_2_backup')) {
+        localStorage.setItem('lifexp_hotfix_2_2_backup', raw);
+        localStorage.setItem('lifexp_hotfix_2_2_backup_time', new Date().toISOString());
       }
     } catch (e) { console.warn('Ashbrand hotfix backup unavailable:', e); }
   }
@@ -56,13 +56,17 @@
       .trim();
   }
 
+  function isAshbrand(value) {
+    return ['ashbrand', 'cuchilla llameante', 'cuchilla_llameante'].includes(normalize(value));
+  }
+
   // Recover every known legacy shape without changing quantity or metadata.
   function canonicalize(container) {
     if (!Array.isArray(container)) return;
     for (const slot of container) {
       if (!slot || typeof slot !== 'object') continue;
-      const candidates = [slot.id, slot.name, slot.legacyName, slot.itemName].map(normalize);
-      if (candidates.some(value => ['ashbrand', 'cuchilla llameante', 'cuchilla_llameante'].includes(value))) {
+      const candidates = [slot.id, slot.name, slot.legacyName, slot.itemName];
+      if (candidates.some(isAshbrand)) {
         slot.id = ID;
         delete slot.name;
         delete slot.legacyName;
@@ -71,22 +75,38 @@
     }
   }
 
+  function canonicalizeEquipment(equipment) {
+    if (!equipment || typeof equipment !== 'object') return;
+    for (const slot of Object.keys(equipment)) {
+      if (isAshbrand(equipment[slot])) equipment[slot] = ID;
+    }
+  }
+
   function install() {
     if (typeof gameState === 'undefined' || typeof ITEMS === 'undefined') return;
-    if (gameState.__lifexpHotfix === HOTFIX_ID) return;
+
+    // Always apply the canonical definition before checking the migration marker.
+    // This repairs saves that were marked by an earlier hotfix but still contain
+    // legacy item data or a stale/common rarity in the runtime definition.
     backup();
     Object.assign(ITEMS, { [ID]: { ...(ITEMS[ID] || {}), ...COMPLETE } });
     canonicalize(gameState.inventory);
     canonicalize(gameState.stash);
-    if (gameState.equipment) {
-      for (const slot of Object.keys(gameState.equipment)) {
-        if (['Ashbrand', 'ashbrand', 'Cuchilla Llameante', 'cuchilla_llameante'].map(normalize).includes(normalize(gameState.equipment[slot]))) gameState.equipment[slot] = ID;
-      }
-    }
+    canonicalizeEquipment(gameState.equipment);
+
     gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
+    gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
     const owned = gameState.inventory.some(x => x?.id === ID) ||
-      (gameState.stash || []).some(x => x?.id === ID) || Object.values(gameState.equipment || {}).includes(ID);
-    if (!owned) gameState.inventory.push({ id: ID, qty: 1, obtainedAt: typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10) });
+      gameState.stash.some(x => x?.id === ID) ||
+      Object.values(gameState.equipment || {}).includes(ID);
+    if (!owned) {
+      gameState.inventory.push({
+        id: ID,
+        qty: 1,
+        obtainedAt: typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0, 10)
+      });
+    }
+
     gameState.__lifexpHotfix = HOTFIX_ID;
     if (typeof initializeItemSystem === 'function') initializeItemSystem();
     if (typeof renderInventory === 'function') renderInventory();
