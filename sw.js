@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v13';
+const CACHE_NAME = 'lifexp-v14-ashbrand-runtime-repair';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -41,7 +41,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const isAppAsset = request.method === 'GET' &&
-    /\/(?:index\.html|game\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|ashbrand_hotfix\.js|sw\.js)$/.test(new URL(request.url).pathname);
+    /\\/(?:index\\.html|game\\.js|items\\.js|classes\\.js|enemies\\.js|combat\\.js|quests\\.js|expansion_[^/]+\\.js|update2_content\\.js|ashbrand_hotfix\\.js|sw\\.js)$/.test(new URL(request.url).pathname);
 
   if (isAppAsset) {
     // Network-first keeps GitHub Pages updates visible instead of serving an
