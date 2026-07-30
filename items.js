@@ -28,90 +28,46 @@ const ITEMS = {
     stats: { fue: 3, des: 2 }, value: 50, themes: ['agua_quimicos']
   },
   cuchilla_llameante: {
-    id: 'cuchilla_llameante',
-    name: 'Ashbrand',
-    type: 'weapon',
-    rarity: 'common',
-    icon: 'FIRE',
-    lore: 'Ashbrand remembers a fire that refused to become a ruin.',
+    id: 'cuchilla_llameante', name: 'Ashbrand', type: 'weapon', rarity: 'common',
+    icon: 'FIRE', lore: 'Ashbrand remembers a fire that refused to become a ruin.',
     desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
-    stats: {},
-    value: 120,
-    themes: ['fuego', 'fuego_comida', 'ash'],
-    effects: [
-      { id: 'burning_edge', name: 'Burning Edge', trigger: 'passive', unlockStage: 1, description: 'Attacks can apply Burn for 3 turns.' },
-      { id: 'pressure', name: 'Pressure', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'A burning target can receive another, shorter Burn.' }
-    ],
-    requirements: { stats: { fue: 12, des: 12 }, trainingId: null },
-    attunement: {
-      required: true,
-      max: 3,
-      minimumStage: 1,
-      themes: ['fuego', 'fuego_comida', 'ash'],
-      stages: ['The blade resists your hand with sudden heat.', 'The edge catches on fire when you press the attack.', 'The old heat answers without being forced.']
-    },
-    activation: {
-      type: 'task_threshold',
-      description: 'Complete three fire-related tasks, then attempt the ritual in the app.',
-      instruction: 'The old fire is ready to answer.',
-      requirement: { themes: ['fuego', 'fuego_comida'], count: 3 },
-      unlocks: ['pressure']
-    }
+    stats: {}, value: 25, themes: ['fuego', 'fuego_comida', 'ash']
   },
-  espada_radiante: { id: 'espada_radiante', name: 'Daybreak', type: 'weapon', rarity: 'rare', icon: 'LIGHT', desc: 'A polished blade that shows the sky more clearly than a mirror.', stats: { fue: 4, vol: 3 }, value: 150, themes: ['sol_viento', 'luz'] },
-  hoja_gelida: { id: 'hoja_gelida', name: 'Winterbite', type: 'weapon', rarity: 'uncommon', icon: 'ICE', desc: 'A chipped blade with frost sealed under the fuller.', stats: { fue: 3, int: 3 }, value: 80, themes: ['hielo'] },
-  arco_espino: { id: 'arco_espino', name: 'Thornwake', type: 'weapon', rarity: 'uncommon', icon: 'BOW', desc: 'A bow cut from a living branch.', stats: { des: 5, vit: 1 }, value: 70, themes: ['naturaleza'] },
-  tridente_marino: { id: 'tridente_marino', name: 'Drownwake', type: 'weapon', rarity: 'rare', icon: 'TRIDENT', desc: 'Water gathers around the shaft even in a dry room.', stats: { fue: 4, des: 3 }, value: 140, themes: ['agua_profunda'] },
-  katana_oriental: { id: 'katana_oriental', name: 'Quiet Measure', type: 'weapon', rarity: 'rare', icon: 'KATANA', desc: 'A plain scabbard and a blade that has never been sharpened in public.', stats: { des: 6, fue: 2 }, value: 160, themes: ['oriente'] },
-  escudo_antiveneno: { id: 'escudo_antiveneno', name: 'The Green Ward', type: 'armor', rarity: 'uncommon', icon: 'SHIELD', desc: 'A round shield sealed with dark resin.', stats: { vit: 4, vol: 2 }, value: 60, themes: ['agua_quimicos'] },
-  armadura_invierno: { id: 'armadura_invierno', name: 'Frostbound Mail', type: 'armor', rarity: 'rare', icon: 'ARMOR', desc: 'Ice forms in the gaps when the wearer stands still.', stats: { vit: 5, vol: 2 }, value: 130, themes: ['hielo'] },
-  capa_alba: { id: 'capa_alba', name: 'First Light Mantle', type: 'armor', rarity: 'rare', icon: 'DAWN', desc: 'A pale mantle with a burnt hem.', stats: { des: 3, pre: 3 }, value: 110, themes: ['sol_viento', 'luz'] },
-  capa_ligera: { id: 'capa_ligera', name: 'Wayfarer Wrap', type: 'armor', rarity: 'common', icon: 'CLOAK', desc: 'A travel wrap with one pocket sewn shut and another sewn twice.', stats: { des: 2, vit: 1 }, value: 25, themes: ['sol_viento'] },
-  escamas_sirena: { id: 'escamas_sirena', name: 'Siren Scale Coat', type: 'armor', rarity: 'epic', icon: 'SCALE', desc: 'Scales that flex like wet leather.', stats: { vit: 6, des: 4, pre: 2 }, value: 400, themes: ['agua_profunda'] },
-  amuleto_brisa: { id: 'amuleto_brisa', name: 'Windglass', type: 'accessory', rarity: 'common', icon: 'WIND', desc: 'A glass bead with a thread of air trapped inside.', stats: { des: 2 }, value: 20, themes: ['sol_viento'] },
-  cristal_solar: { id: 'cristal_solar', name: 'Sunshard', type: 'accessory', rarity: 'uncommon', icon: 'SUN', desc: 'A broken piece of something larger.', stats: { int: 3, vol: 1 }, value: 45, themes: ['sol_viento', 'luz'] },
-  perla_marina: { id: 'perla_marina', name: 'Drowned Pearl', type: 'accessory', rarity: 'rare', icon: 'PEARL', desc: 'A pearl with a dark centre.', stats: { int: 4, pre: 2 }, value: 100, themes: ['agua_profunda'] },
-  rosario_concentracion: { id: 'rosario_concentracion', name: 'Counting Beads', type: 'accessory', rarity: 'uncommon', icon: 'BEADS', desc: 'The cord has been repaired many times.', stats: { vol: 4 }, value: 55, themes: ['mente'] },
-  cuentas_jade: { id: 'cuentas_jade', name: 'Jade Knots', type: 'accessory', rarity: 'rare', icon: 'JADE', desc: 'Green stone tied on red cord.', stats: { vol: 3, pre: 3 }, value: 90, themes: ['oriente'] },
-  sello_alianza: { id: 'sello_alianza', name: 'Oathseal', type: 'accessory', rarity: 'uncommon', icon: 'SEAL', desc: 'A signet with no crest.', stats: { pre: 4 }, value: 50, themes: ['social'] },
-  amuleto_espacio: { id: 'amuleto_espacio', name: 'Poche of Elsewhere', type: 'accessory', rarity: 'rare', icon: 'POCKET', desc: 'A charm with a pocket on the inside.', stats: { int: 2, vol: 2 }, value: 80, themes: ['hallazgos'], effect: { inventoryBonus: 5 } },
-  orbe_mental: { id: 'orbe_mental', name: 'Thoughtstone', type: 'artifact', rarity: 'rare', icon: 'ORB', desc: 'A dark sphere that reflects a room with one extra chair.', stats: { int: 5, vol: 5 }, value: 200, themes: ['mente'], passive: 'Still Mind: Meditation-related tasks grant a small bonus to XP.' },
-  dado_destino: { id: 'dado_destino', name: 'The Loaded Bone', type: 'artifact', rarity: 'epic', icon: 'DIE', desc: 'Six faces, seven tally marks.', stats: { des: 3, pre: 3 }, value: 350, themes: ['creacion'], passive: 'One More Throw: The first failed drop roll after a completed task can be rolled once more.' },
-  escama_dragon: { id: 'escama_dragon', name: 'Scale of the Wyrm', type: 'artifact', rarity: 'epic', icon: 'SCALE', desc: 'A black scale split down the middle.', stats: { fue: 4, vit: 4, int: 2 }, value: 500, themes: ['oriente'], passive: 'Cinder Skin: Burn applied by your equipment lasts 1 turn longer.' },
-  grimorio_arcano: { id: 'grimorio_arcano', name: 'The Unfinished Grimoire', type: 'artifact', rarity: 'rare', icon: 'BOOK', desc: 'Most pages are blank.', stats: { int: 8 }, value: 250, themes: ['conocimiento'], passive: 'Open Line: Knowledge-related tasks can reveal hidden information.' },
-  pocion_agua: { id: 'pocion_agua', name: 'Water Potion', type: 'consumable', rarity: 'common', icon: 'WATER', desc: 'Restores 50 HP.', value: 10, themes: ['agua', 'agua_quimicos'], effect: { heal: 50 } },
-  pocion_escarcha: { id: 'pocion_escarcha', name: 'Frost Potion', type: 'consumable', rarity: 'uncommon', icon: 'ICE', desc: 'Freezes an enemy for 1 turn.', value: 30, themes: ['hielo'], effect: { freeze: 1 } },
-  racion_combate: { id: 'racion_combate', name: 'Combat Ration', type: 'consumable', rarity: 'common', icon: 'FOOD', desc: 'Restores 30 HP and 20 SP.', value: 15, themes: ['fuego_comida'], effect: { heal: 30, restoreSp: 20 } },
-  elixir_vitalidad: { id: 'elixir_vitalidad', name: 'Vitality Elixir', type: 'consumable', rarity: 'rare', icon: 'LIFE', desc: 'Restores 100% HP.', value: 100, themes: ['fuego_comida', 'naturaleza'], effect: { healPercent: 100 } },
-  hierba_curativa: { id: 'hierba_curativa', name: 'Healing Herb', type: 'consumable', rarity: 'common', icon: 'HERB', desc: 'Restores 30 HP.', value: 8, themes: ['naturaleza'], effect: { heal: 30 } },
-  antidoto: { id: 'antidoto', name: 'Antidote', type: 'consumable', rarity: 'common', icon: 'ANTIDOTE', desc: 'Cures Poison.', value: 12, themes: ['naturaleza', 'agua_quimicos'], effect: { curePoison: true } },
-  veneno_basico: { id: 'veneno_basico', name: 'Basic Poison', type: 'consumable', rarity: 'common', icon: 'POISON', desc: 'Applies Poison to a weapon for 3 turns.', value: 20, themes: ['agua_quimicos'], effect: { applyPoison: 3 } },
-  pocion_respiracion: { id: 'pocion_respiracion', name: 'Breathing Potion', type: 'consumable', rarity: 'uncommon', icon: 'BUBBLE', desc: 'Breathe underwater for 10 minutes.', value: 35, themes: ['agua_profunda'], effect: { waterBreathing: 10 } },
-  hidromiel: { id: 'hidromiel', name: 'Mead', type: 'consumable', rarity: 'uncommon', icon: 'MEAD', desc: '+20% Presence during 1 combat.', value: 25, themes: ['social'], effect: { buffPre: 20, duration: 1 } },
-  moneda_antigua: { id: 'moneda_antigua', name: 'Old Coin', type: 'material', rarity: 'common', icon: 'COIN', desc: 'Valuable to collectors.', value: 5, themes: ['hallazgos'] },
-  moneda_oro: { id: 'moneda_oro', name: 'Gold Coin', type: 'material', rarity: 'uncommon', icon: 'GOLD', desc: 'Pure gold.', value: 25, themes: ['hallazgos', 'comercio'] },
-  gema_fuego: { id: 'gema_fuego', name: 'Fire Gem', type: 'material', rarity: 'uncommon', icon: 'GEM', desc: 'Pulses with inner heat.', value: 40, themes: ['fuego', 'fuego_comida'] },
-  fragmento_hielo: { id: 'fragmento_hielo', name: 'Ice Fragment', type: 'material', rarity: 'common', icon: 'ICE', desc: 'It never melts.', value: 15, themes: ['hielo'] },
-  fragmento_solar: { id: 'fragmento_solar', name: 'Solar Fragment', type: 'material', rarity: 'uncommon', icon: 'SUN', desc: 'It shines even in darkness.', value: 30, themes: ['sol_viento', 'luz'] },
-  pluma_viento: { id: 'pluma_viento', name: 'Wind Feather', type: 'material', rarity: 'common', icon: 'FEATHER', desc: 'Light as air.', value: 12, themes: ['sol_viento'] },
-  especia_rara: { id: 'especia_rara', name: 'Rare Spice', type: 'material', rarity: 'uncommon', icon: 'SPICE', desc: 'Improves any recipe.', value: 20, themes: ['fuego_comida'] },
+  espada_radiante: { id: 'espada_radiante', name: 'Radiant Sword', type: 'weapon', rarity: 'rare', icon: 'SWORD', desc: 'A blade that catches the morning light.', stats: { fue: 4, pre: 2 }, value: 125, themes: ['sol_viento'] },
+  hoja_gelida: { id: 'hoja_gelida', name: 'Frostblade', type: 'weapon', rarity: 'rare', icon: 'ICE', desc: 'Cold enough to numb the hand.', stats: { des: 3, int: 2 }, value: 120, themes: ['hielo'] },
+  arco_espino: { id: 'arco_espino', name: 'Thornbow', type: 'weapon', rarity: 'uncommon', icon: 'BOW', desc: 'A bow grown rather than made.', stats: { des: 3 }, value: 65, themes: ['naturaleza'] },
+  tridente_marino: { id: 'tridente_marino', name: 'Sea Trident', type: 'weapon', rarity: 'rare', icon: 'TRIDENT', desc: 'A three-pronged weapon from the deep.', stats: { fue: 3, vit: 2 }, value: 135, themes: ['agua_profunda'] },
+  katana_oriental: { id: 'katana_oriental', name: 'Eastern Katana', type: 'weapon', rarity: 'rare', icon: 'KATANA', desc: 'A precise blade with a quiet edge.', stats: { des: 4 }, value: 140, themes: ['oriente'] },
+  talisman_espiritu: { id: 'talisman_espiritu', name: 'Spirit Talisman', type: 'accessory', rarity: 'rare', icon: 'TALISMAN', desc: 'A charm against restless spirits.', stats: { vol: 3, int: 1 }, value: 100, themes: ['oriente', 'mente'] },
+  amuleto_espacio: { id: 'amuleto_espacio', name: 'Space Amulet', type: 'accessory', rarity: 'epic', icon: 'AMULET', desc: 'Its surface contains more distance than it should.', stats: { int: 4, vol: 2 }, value: 210, themes: ['destino', 'hallazgos'] },
+  escudo_antiveneno: { id: 'escudo_antiveneno', name: 'Antivenom Shield', type: 'armor', rarity: 'rare', icon: 'SHIELD', desc: 'A shield layered with protective resin.', stats: { vit: 4 }, value: 115, themes: ['agua_quimicos'] },
+  armadura_cuero: { id: 'armadura_cuero', name: 'Leather Armor', type: 'armor', rarity: 'common', icon: 'ARMOR', desc: 'Simple protection for the road.', stats: { vit: 2 }, value: 30, themes: ['exploracion'] },
+  racion_combate: { id: 'racion_combate', name: 'Combat Ration', type: 'consumable', rarity: 'common', icon: 'FOOD', desc: 'Restores 15 HP.', value: 8, themes: ['fuego_comida'], effect: { heal: 15 } },
+  elixir_vitalidad: { id: 'elixir_vitalidad', name: 'Vitality Elixir', type: 'consumable', rarity: 'rare', icon: 'ELIXIR', desc: 'Restores 100 HP.', value: 90, themes: ['cuerpo'], effect: { heal: 100 } },
+  pocion_agua: { id: 'pocion_agua', name: 'Water Potion', type: 'consumable', rarity: 'common', icon: 'BUBBLE', desc: 'Restores 25 HP.', value: 15, themes: ['agua_quimicos'], effect: { heal: 25 } },
+  veneno_basico: { id: 'veneno_basico', name: 'Basic Poison', type: 'consumable', rarity: 'common', icon: 'POISON', desc: 'Deals 10 damage over time.', value: 18, themes: ['agua_quimicos'], effect: { poison: 10, duration: 3 } },
+  antidoto: { id: 'antidoto', name: 'Antidote', type: 'consumable', rarity: 'common', icon: 'ANTIDOTE', desc: 'Removes poison.', value: 20, themes: ['agua_quimicos'], effect: { curePoison: true } },
   frasco_vacio: { id: 'frasco_vacio', name: 'Empty Flask', type: 'material', rarity: 'common', icon: 'FLASK', desc: 'For making potions.', value: 5, themes: ['agua_quimicos'] },
-  talisman_oriental: { id: 'talisman_oriental', name: 'Eastern Talisman', type: 'material', rarity: 'rare', icon: 'TALISMAN', desc: 'Protects against spirits.', value: 70, themes: ['oriente'] },
-  skill_foco_interior: { id: 'skill_foco_interior', name: 'Scroll: Inner Focus', type: 'skill', rarity: 'rare', icon: 'SCROLL', desc: 'Teaches Inner Focus.', value: 150, themes: ['mente'], teachesSkill: 'foco_interior' },
-  skill_llamarada: { id: 'skill_llamarada', name: 'Scroll: Flare', type: 'skill', rarity: 'uncommon', icon: 'SCROLL', desc: 'Teaches Flare.', value: 80, themes: ['fuego'], teachesSkill: 'llamarada' },
-  skill_rayo_hielo: { id: 'skill_rayo_hielo', name: 'Scroll: Ice Ray', type: 'skill', rarity: 'uncommon', icon: 'SCROLL', desc: 'Teaches Ice Ray.', value: 80, themes: ['hielo'], teachesSkill: 'rayo_hielo' },
+  daga_oxidada: { id: 'daga_oxidada', name: 'Rusty Dagger', type: 'weapon', rarity: 'common', icon: 'DAGGER', desc: 'Notched and stained, but still sharp.', stats: { fue: 1 }, value: 10, themes: ['exploracion'] },
+  mapa_tesoro: { id: 'mapa_tesoro', name: 'Treasure Map', type: 'key', rarity: 'rare', icon: 'MAP', desc: 'Cryptic marks on old parchment.', value: 100, themes: ['exploracion', 'hallazgos'] },
   llave_cofre: { id: 'llave_cofre', name: 'Chest Key', type: 'key', rarity: 'uncommon', icon: 'KEY', desc: 'Opens found chests.', value: 0, themes: ['comercio', 'hallazgos'], cantSell: true },
-  contrato_mercantil: { id: 'contrato_mercantil', name: 'Merchant Contract', type: 'key', rarity: 'rare', icon: 'CONTRACT', desc: 'Improves merchant prices.', value: 0, themes: ['comercio'], cantSell: true, effect: { merchantDiscount: 10 } },
-  pocion_vida_menor: { id: 'pocion_vida_menor', name: 'Minor Life Potion', type: 'consumable', rarity: 'common', icon: 'POTION', desc: 'Restores 40 HP.', value: 18, themes: ['agua_quimicos', 'hallazgos'], effect: { heal: 40 } },
-  pocion_fuerza: { id: 'pocion_fuerza', name: 'Strength Potion', type: 'consumable', rarity: 'uncommon', icon: 'STRENGTH', desc: '+3 Strength during 1 combat.', value: 35, themes: ['cuerpo', 'fuego'], effect: { buffFue: 3, duration: 1 } },
-  escoba_encantada: { id: 'escoba_encantada', name: 'Enchanted Broom', type: 'artifact', rarity: 'uncommon', icon: 'BROOM', desc: 'It moves by itself if left alone long enough.', stats: { vol: 2, vit: 1 }, value: 55, themes: ['casa', 'hallazgos'], passive: 'Home: +5% XP on cleaning tasks' },
-  nucleo_slime: { id: 'nucleo_slime', name: 'Slime Core', type: 'material', rarity: 'uncommon', icon: 'SLIME', desc: 'Useful for alchemy.', value: 30, themes: ['agua_quimicos', 'hallazgos'] },
-  piel_lobo: { id: 'piel_lobo', name: 'Wolf Hide', type: 'material', rarity: 'uncommon', icon: 'HIDE', desc: 'Thick and warm. It smells of forest and battle.', value: 45, themes: ['naturaleza', 'exploracion'] },
-  colmillo_alfa: { id: 'colmillo_alfa', name: 'Alpha Fang', type: 'material', rarity: 'rare', icon: 'FANG', desc: 'Still warm from the fight.', value: 80, themes: ['naturaleza', 'exploracion'] },
+  moneda_antigua: { id: 'moneda_antigua', name: 'Ancient Coin', type: 'material', rarity: 'common', icon: 'COIN', desc: 'An old coin with a worn face.', value: 12, themes: ['hallazgos'] },
+  moneda_oro: { id: 'moneda_oro', name: 'Gold Coin', type: 'material', rarity: 'uncommon', icon: 'GOLD', desc: 'A bright coin.', value: 25, themes: ['hallazgos'] },
   cola_rata: { id: 'cola_rata', name: 'Rat Tail', type: 'material', rarity: 'common', icon: 'RAT', desc: 'Repulsive but useful to alchemists.', value: 4, themes: ['hallazgos', 'agua_quimicos'] },
-  seda_araña: { id: 'seda_araña', name: 'Spider Silk', type: 'material', rarity: 'common', icon: 'WEB', desc: 'Stronger than it looks.', value: 8, themes: ['hallazgos', 'agua_quimicos'] },
+  seda_arana: { id: 'seda_arana', name: 'Spider Silk', type: 'material', rarity: 'common', icon: 'WEB', desc: 'Stronger than it looks.', value: 8, themes: ['hallazgos', 'agua_quimicos'] },
   objeto_olvidado: { id: 'objeto_olvidado', name: 'Forgotten Object', type: 'material', rarity: 'common', icon: 'BOX', desc: 'Something someone left behind.', value: 6, themes: ['hallazgos'] },
   esencia_espectral: { id: 'esencia_espectral', name: 'Spectral Essence', type: 'material', rarity: 'uncommon', icon: 'GHOST', desc: 'Cold residue of a dissolved spirit.', value: 35, themes: ['hallazgos'] },
+  nucleo_slime: { id: 'nucleo_slime', name: 'Slime Core', type: 'material', rarity: 'uncommon', icon: 'SLIME', desc: 'Useful for alchemy.', value: 30, themes: ['agua_quimicos', 'hallazgos'] },
+  fragmento_sueno: { id: 'fragmento_sueno', name: 'Dream Fragment', type: 'material', rarity: 'uncommon', icon: 'DREAM', desc: 'A thought that became solid.', value: 42, themes: ['mente'] },
+  pagina_arcana: { id: 'pagina_arcana', name: 'Arcane Page', type: 'material', rarity: 'uncommon', icon: 'PAGE', desc: 'Torn from a book that did not want to be read.', value: 30, themes: ['conocimiento', 'oriente'] },
+  tinta_magica: { id: 'tinta_magica', name: 'Magic Ink', type: 'material', rarity: 'uncommon', icon: 'INK', desc: 'It writes by itself on blank parchment.', value: 35, themes: ['conocimiento', 'oriente'] },
+  grimorio_antiguo: { id: 'grimorio_antiguo', name: 'Ancient Grimoire', type: 'material', rarity: 'rare', icon: 'BOOK', desc: 'Filled with notes in a forgotten language.', value: 95, themes: ['conocimiento', 'mente'] },
+  filacteria: { id: 'filacteria', name: 'Phylactery', type: 'material', rarity: 'epic', icon: 'SKULL', desc: 'A lich soul vessel. Fragile and dangerous.', value: 200, themes: ['conocimiento', 'mente'] },
+  baculo_liche: { id: 'baculo_liche', name: 'Lich Staff', type: 'weapon', rarity: 'epic', icon: 'STAFF', desc: 'Channels death magic.', stats: { int: 6, vol: 3 }, value: 220, themes: ['conocimiento', 'mente'] },
+  botas_viajero: { id: 'botas_viajero', name: 'Wayfarer Boots', type: 'armor', rarity: 'uncommon', icon: 'BOOTS', desc: 'Worn by a thousand roads.', stats: { des: 2, vit: 1 }, value: 48, themes: ['exploracion'] },
+  caparazon: { id: 'caparazon', name: 'Shell', type: 'material', rarity: 'common', icon: 'SHELL', desc: 'Hard and light.', value: 14, themes: ['exploracion', 'agua_profunda'] },
+  piel_lobo: { id: 'piel_lobo', name: 'Wolf Hide', type: 'material', rarity: 'uncommon', icon: 'HIDE', desc: 'Thick and warm. It smells of forest and battle.', value: 45, themes: ['naturaleza', 'exploracion'] },
+  colmillo_alfa: { id: 'colmillo_alfa', name: 'Alpha Fang', type: 'material', rarity: 'rare', icon: 'FANG', desc: 'Still warm from the fight.', value: 80, themes: ['naturaleza', 'exploracion'] },
   corazon_bosque: { id: 'corazon_bosque', name: 'Heart of the Forest', type: 'material', rarity: 'rare', icon: 'TREE', desc: 'It pulses like an old tree.', value: 90, themes: ['naturaleza'] },
   esencia_vida: { id: 'esencia_vida', name: 'Essence of Life', type: 'material', rarity: 'uncommon', icon: 'LIFE', desc: 'Concentrated vital energy.', value: 40, themes: ['naturaleza'] },
   semilla_rara: { id: 'semilla_rara', name: 'Rare Seed', type: 'material', rarity: 'uncommon', icon: 'SEED', desc: 'No one knows what it will grow into.', value: 25, themes: ['naturaleza', 'fuego_comida'] },
@@ -124,99 +80,83 @@ const ITEMS = {
   tentaculo_kraken: { id: 'tentaculo_kraken', name: 'Kraken Tentacle', type: 'material', rarity: 'rare', icon: 'TENTACLE', desc: 'It still moves a little.', value: 75, themes: ['agua_profunda'] },
   pocion_agua_menor: { id: 'pocion_agua_menor', name: 'Minor Water Potion', type: 'consumable', rarity: 'common', icon: 'BUBBLE', desc: 'Restores 20 HP.', value: 12, themes: ['agua_quimicos'], effect: { heal: 20 } },
   esencia_oscura: { id: 'esencia_oscura', name: 'Dark Essence', type: 'material', rarity: 'rare', icon: 'DARK', desc: 'Residue of a materialized nightmare.', value: 80, themes: ['mente', 'destino'] },
-  fragmento_sueño: { id: 'fragmento_sueño', name: 'Dream Fragment', type: 'material', rarity: 'uncommon', icon: 'DREAM', desc: 'A thought that became solid.', value: 42, themes: ['mente'] },
-  pagina_arcana: { id: 'pagina_arcana', name: 'Arcane Page', type: 'material', rarity: 'uncommon', icon: 'PAGE', desc: 'Torn from a book that did not want to be read.', value: 30, themes: ['conocimiento', 'oriente'] },
-  tinta_magica: { id: 'tinta_magica', name: 'Magic Ink', type: 'material', rarity: 'uncommon', icon: 'INK', desc: 'It writes by itself on blank parchment.', value: 35, themes: ['conocimiento', 'oriente'] },
-  grimorio_antiguo: { id: 'grimorio_antiguo', name: 'Ancient Grimoire', type: 'material', rarity: 'rare', icon: 'BOOK', desc: 'Filled with notes in a forgotten language.', value: 95, themes: ['conocimiento', 'mente'] },
-  filacteria: { id: 'filacteria', name: 'Phylactery', type: 'material', rarity: 'epic', icon: 'SKULL', desc: 'A lich soul vessel. Fragile and dangerous.', value: 200, themes: ['conocimiento', 'mente'] },
-  baculo_liche: { id: 'baculo_liche', name: 'Lich Staff', type: 'weapon', rarity: 'epic', icon: 'STAFF', desc: 'Channels death magic.', stats: { int: 6, vol: 3 }, value: 220, themes: ['conocimiento', 'mente'] },
   cola_kitsune: { id: 'cola_kitsune', name: 'Kitsune Tail', type: 'material', rarity: 'rare', icon: 'FOX', desc: 'Soft and silver, carrying a trace of illusion.', value: 88, themes: ['oriente'] },
   cuerno_oni: { id: 'cuerno_oni', name: 'Oni Horn', type: 'material', rarity: 'rare', icon: 'HORN', desc: 'Hard as steel and smelling of sake.', value: 82, themes: ['oriente', 'mente'] },
   sake_demonio: { id: 'sake_demonio', name: 'Demon Sake', type: 'consumable', rarity: 'uncommon', icon: 'SAKE', desc: '+4 Strength and -2 Intellect during 1 combat.', value: 40, themes: ['oriente', 'fuego_comida'], effect: { buffFue: 4, debuffInt: 2, duration: 1 } },
-  botas_viajero: { id: 'botas_viajero', name: 'Wayfarer Boots', type: 'armor', rarity: 'uncommon', icon: 'BOOTS', desc: 'Worn by a thousand roads.', stats: { des: 2, vit: 1 }, value: 48, themes: ['exploracion'] },
-  caparazon: { id: 'caparazon', name: 'Shell', type: 'material', rarity: 'common', icon: 'SHELL', desc: 'Hard and light.', value: 14, themes: ['exploracion', 'agua_profunda'] },
-  mapa_tesoro: { id: 'mapa_tesoro', name: 'Treasure Map', type: 'key', rarity: 'rare', icon: 'MAP', desc: 'Cryptic marks on old parchment.', value: 100, themes: ['exploracion', 'hallazgos'] },
-  daga_oxidada: { id: 'daga_oxidada', name: 'Rusty Dagger', type: 'weapon', rarity: 'common', icon: 'DAGGER', desc: 'Notched and stained, but still sharp.', stats: { fue: 1 }, value: 10, themes: ['exploracion'] },
+  contrato_mercantil: { id: 'contrato_mercantil', name: 'Merchant Contract', type: 'key', rarity: 'rare', icon: 'CONTRACT', desc: 'Improves merchant prices.', value: 0, themes: ['comercio'], cantSell: true, effect: { merchantDiscount: 10 } },
+  pocion_vida_menor: { id: 'pocion_vida_menor', name: 'Minor Life Potion', type: 'consumable', rarity: 'common', icon: 'POTION', desc: 'Restores 40 HP.', value: 18, themes: ['agua_quimicos', 'hallazgos'], effect: { heal: 40 } },
+  pocion_fuerza: { id: 'pocion_fuerza', name: 'Strength Potion', type: 'consumable', rarity: 'uncommon', icon: 'STRENGTH', desc: '+3 Strength during 1 combat.', value: 35, themes: ['cuerpo', 'fuego'], effect: { buffFue: 3, duration: 1 } },
+  escoba_encantada: { id: 'escoba_encantada', name: 'Enchanted Broom', type: 'artifact', rarity: 'uncommon', icon: 'BROOM', desc: 'It moves by itself if left alone long enough.', stats: { vol: 2, vit: 1 }, value: 55, themes: ['casa', 'hallazgos'], passive: 'Home: +5% XP on cleaning tasks' },
   daga_asesino: { id: 'daga_asesino', name: 'Assassins Dagger', type: 'weapon', rarity: 'rare', icon: 'DAGGER', desc: 'Balanced for throwing.', stats: { des: 4, fue: 2 }, value: 110, themes: ['alianzas', 'exploracion'] },
-  capa_sombras: { id: 'capa_sombras', name: 'Shadow Cloak', type: 'armor', rarity: 'rare', icon: 'CLOAK', desc: 'It blends with darkness.', stats: { des: 3, pre: 2 }, value: 120, themes: ['alianzas'] },
-  contrato_sospechoso: { id: 'contrato_sospechoso', name: 'Suspicious Contract', type: 'key', rarity: 'uncommon', icon: 'SCROLL', desc: 'The small print is written in a language that does not exist.', value: 55, themes: ['conocimiento', 'gestiones'] },
-  token_amistad: { id: 'token_amistad', name: 'Friendship Token', type: 'material', rarity: 'common', icon: 'TOKEN', desc: 'A coin engraved with two hands.', value: 15, themes: ['alianzas', 'social'] },
-  pluma_grifo: { id: 'pluma_grifo', name: 'Griffin Feather', type: 'material', rarity: 'rare', icon: 'FEATHER', desc: 'Golden and resilient.', value: 78, themes: ['sol_viento', 'exploracion'] },
-  veneno_letal: { id: 'veneno_letal', name: 'Deadly Poison', type: 'consumable', rarity: 'rare', icon: 'POISON', desc: 'Applies severe Poison to a weapon for 5 turns.', value: 90, themes: ['agua_quimicos', 'alianzas'], effect: { applyPoison: 5, poisonDamage: 8 } }
+  gema_fuego: { id: 'gema_fuego', name: 'Fire Gem', type: 'material', rarity: 'rare', icon: 'GEM', desc: 'A ruby that holds a small flame.', value: 65, themes: ['fuego', 'fuego_comida'] },
+  especia_rara: { id: 'especia_rara', name: 'Rare Spice', type: 'material', rarity: 'uncommon', icon: 'SPICE', desc: 'Improves any recipe.', value: 20, themes: ['fuego_comida'] },
+  mapa_antiguo: { id: 'mapa_antiguo', name: 'Old Map', type: 'key', rarity: 'uncommon', icon: 'MAP', desc: 'A map with routes that no longer exist.', value: 35, themes: ['exploracion'] },
+  frasco_veneno: { id: 'frasco_veneno', name: 'Poison Flask', type: 'consumable', rarity: 'uncommon', icon: 'POISON', desc: 'A stronger poison.', value: 35, themes: ['agua_quimicos'], effect: { poison: 20, duration: 3 } },
+  escudo_basico: { id: 'escudo_basico', name: 'Basic Shield', type: 'armor', rarity: 'common', icon: 'SHIELD', desc: 'Reliable protection.', stats: { vit: 2 }, value: 25, themes: ['cuerpo'] },
+  skill_foco_interior: { id: 'skill_foco_interior', name: 'Scroll: Inner Focus', type: 'skill', rarity: 'rare', icon: 'SCROLL', desc: 'Teaches Inner Focus.', value: 150, themes: ['mente'], teachesSkill: 'foco_interior' },
+  skill_llamarada: { id: 'skill_llamarada', name: 'Scroll: Flare', type: 'skill', rarity: 'uncommon', icon: 'SCROLL', desc: 'Teaches Flare.', value: 80, themes: ['fuego'], teachesSkill: 'llamarada' },
+  skill_rayo_hielo: { id: 'skill_rayo_hielo', name: 'Scroll: Ice Ray', type: 'skill', rarity: 'uncommon', icon: 'SCROLL', desc: 'Teaches Ice Ray.', value: 80, themes: ['hielo'], teachesSkill: 'rayo_hielo' }
 };
 
 const DROP_TABLES = {
-  hallazgos: ['moneda_antigua', 'moneda_oro', 'llave_cofre', 'amuleto_espacio', 'objeto_olvidado', 'seda_araña', 'cola_rata', 'esencia_espectral', 'mapa_tesoro'],
-  exploracion: ['botas_viajero', 'daga_oxidada', 'caparazon', 'mapa_tesoro', 'pluma_grifo', 'token_amistad'],
-  naturaleza: ['hierba_curativa', 'antidoto', 'arco_espino', 'semilla_rara', 'corazon_bosque', 'esencia_vida', 'amuleto_bosque', 'colmillo_hielo'],
-  fuego: ['gema_fuego', 'skill_llamarada', 'cuchilla_llameante', 'corazon_fuego', 'escama_fuego'],
+  hallazgos: ['moneda_antigua', 'moneda_oro', 'llave_cofre', 'amuleto_espacio', 'objeto_olvidado', 'seda_arana', 'cola_rata', 'esencia_espectral', 'mapa_tesoro'],
+  exploracion: ['botas_viajero', 'daga_oxidada', 'caparazon', 'mapa_tesoro', 'piel_lobo', 'colmillo_alfa', 'daga_asesino'],
   fuego_comida: ['racion_combate', 'gema_fuego', 'especia_rara', 'elixir_vitalidad', 'cuchilla_llameante', 'semilla_rara', 'sake_demonio'],
-  agua_quimicos: ['pocion_agua', 'veneno_basico', 'frasco_vacio', 'daga_corrosiva', 'escudo_antiveneno', 'antidoto', 'esencia_agua', 'escama_fuego', 'pocion_agua_menor', 'seda_araña', 'cola_rata'],
-  agua_profunda: ['perla_marina', 'tridente_marino', 'escamas_sirena', 'pocion_respiracion', 'escama_marina', 'tentaculo_kraken', 'esencia_oscura', 'caparazon'],
-  hielo: ['fragmento_hielo', 'pocion_escarcha', 'hoja_gelida', 'armadura_invierno', 'skill_rayo_hielo', 'colmillo_hielo'],
-  sol_viento: ['fragmento_solar', 'pluma_viento', 'amuleto_brisa', 'capa_ligera', 'espada_radiante', 'capa_alba', 'cristal_solar', 'pluma_grifo'],
-  luz: ['fragmento_solar', 'cristal_solar', 'espada_radiante', 'capa_alba'],
-  mente: ['rosario_concentracion', 'orbe_mental', 'skill_foco_interior', 'fragmento_sueño', 'esencia_oscura', 'pagina_arcana'],
-  conocimiento: ['grimorio_arcano', 'grimorio_antiguo', 'pagina_arcana', 'tinta_magica', 'filacteria', 'contrato_sospechoso'],
-  oriente: ['cuentas_jade', 'talisman_oriental', 'katana_oriental', 'escama_dragon', 'cola_kitsune', 'cuerno_oni', 'sake_demonio', 'tinta_magica', 'pagina_arcana'],
-  social: ['sello_alianza', 'hidromiel', 'token_amistad'],
-  alianzas: ['sello_alianza', 'token_amistad', 'contrato_sospechoso', 'daga_asesino', 'capa_sombras', 'veneno_letal'],
-  comercio: ['moneda_oro', 'llave_cofre', 'contrato_mercantil', 'contrato_sospechoso'],
-  destino: ['dado_destino', 'fragmento_hielo', 'esencia_oscura', 'fragmento_sueño'],
-  creacion: ['dado_destino', 'tinta_magica'],
-  refugio: ['moneda_antigua', 'objeto_olvidado'],
-  descanso: ['hierba_curativa', 'pocion_agua', 'pocion_agua_menor'],
-  oro_comercio: ['moneda_oro', 'contrato_mercantil', 'token_amistad']
+  agua_quimicos: ['pocion_agua', 'veneno_basico', 'frasco_vacio', 'escudo_antiveneno', 'antidoto', 'esencia_agua', 'pocion_agua_menor', 'seda_arana', 'frasco_veneno'],
+  naturaleza: ['piel_lobo', 'colmillo_alfa', 'corazon_bosque', 'esencia_vida', 'semilla_rara', 'amuleto_bosque', 'colmillo_hielo'],
+  hielo: ['hoja_gelida', 'colmillo_hielo', 'skill_rayo_hielo'],
+  mente: ['esencia_oscura', 'fragmento_sueno', 'grimorio_antiguo', 'filacteria', 'baculo_liche', 'skill_foco_interior'],
+  oriente: ['talisman_oriental', 'cola_kitsune', 'cuerno_oni', 'sake_demonio', 'katana_oriental'],
+  agua_profunda: ['tridente_marino', 'escama_marina', 'tentaculo_kraken', 'esencia_agua', 'caparazon'],
+  sol_viento: ['pluma_viento', 'espada_radiante'],
+  conocimiento: ['pagina_arcana', 'tinta_magica', 'grimorio_antiguo', 'skill_foco_interior']
 };
 
-function getInventoryCapacity() {
-  let base = 20 + (gameState.inventoryCapacityBonus || 0);
-  for (const slot of Object.values(gameState.equipment || {})) {
-    const item = slot ? ITEMS[slot] : null;
-    if (item?.effect?.inventoryBonus) base += item.effect.inventoryBonus;
+function initializeItemSystem() {
+  if (typeof gameState === 'undefined') return;
+  if (!Array.isArray(gameState.inventory)) gameState.inventory = [];
+  if (!Array.isArray(gameState.stash)) gameState.stash = [];
+  if (!gameState.equipment || typeof gameState.equipment !== 'object') {
+    gameState.equipment = { weapon: null, armor: null, accessory1: null, accessory2: null, artifact: null };
   }
-  return base;
 }
 
-function containerHasSpace(container, itemId) {
-  const list = container === 'stash' ? (gameState.stash || []) : (gameState.inventory || []);
-  const item = ITEMS[itemId];
-  if (!item) return false;
-  if ((item.type === 'consumable' || item.type === 'material') && list.some(i => i.id === itemId)) return true;
-  return list.length < (container === 'stash' ? (gameState.stashCapacity || 30) : getInventoryCapacity());
-}
-
-function addToContainer(itemId, container = 'inventory', quantity = 1) {
-  const item = ITEMS[itemId];
-  if (!item) return { success: false, reason: 'unknown_item' };
-  const list = container === 'stash' ? (gameState.stash || (gameState.stash = [])) : (gameState.inventory || (gameState.inventory = []));
-  if (!containerHasSpace(container, itemId)) return { success: false, reason: 'full' };
-  if (item.type === 'consumable' || item.type === 'material') {
-    const existing = list.find(i => i.id === itemId);
-    if (existing) { existing.qty = (existing.qty || 1) + quantity; return { success: true, stacked: true }; }
-  }
-  list.push({ id: itemId, qty: quantity });
-  return { success: true, stacked: false };
-}
-
-function addToInventory(itemId, quantity = 1) { return addToContainer(itemId, 'inventory', quantity).success; }
-function getItemCount(itemId) { const slot = (gameState.inventory || []).find(i => i.id === itemId); return slot ? (slot.qty || 1) : 0; }
-function removeFromInventory(itemId, quantity = 1) {
-  const index = (gameState.inventory || []).findIndex(i => i.id === itemId);
-  if (index === -1) return false;
-  const slot = gameState.inventory[index];
-  slot.qty = (slot.qty || 1) - quantity;
-  if (slot.qty <= 0) gameState.inventory.splice(index, 1);
+function addToInventory(itemId, quantity = 1) {
+  if (typeof gameState === 'undefined' || !ITEMS[itemId]) return false;
+  initializeItemSystem();
+  const existing = gameState.inventory.find(x => x && x.id === itemId);
+  if (existing) existing.quantity = (existing.quantity || 1) + quantity;
+  else gameState.inventory.push({ id: itemId, quantity });
   return true;
 }
 
+function removeFromInventory(itemId, quantity = 1) {
+  if (typeof gameState === 'undefined') return false;
+  initializeItemSystem();
+  const index = gameState.inventory.findIndex(x => x && x.id === itemId);
+  if (index < 0) return false;
+  const entry = gameState.inventory[index];
+  entry.quantity = (entry.quantity || 1) - quantity;
+  if (entry.quantity <= 0) gameState.inventory.splice(index, 1);
+  return true;
+}
+
+function canAddToInventory() { return typeof gameState !== 'undefined'; }
+
 function equipItem(itemId) {
+  if (typeof gameState === 'undefined') return false;
   const item = ITEMS[itemId];
-  const type = item && ITEM_TYPE[item.type];
+  if (!item || !item.type) return false;
+  const type = ITEM_TYPE[item.type];
   if (!type || !type.slot) return false;
   let slot = type.slot;
-  if (slot === 'accessory') slot = gameState.equipment.accessory1 ? (gameState.equipment.accessory2 ? 'accessory1' : 'accessory2') : 'accessory1';
-  if (gameState.equipment[slot]) addToInventory(gameState.equipment[slot]);
+  if (slot === 'accessory') {
+    if (!gameState.equipment.accessory1) slot = 'accessory1';
+    else if (!gameState.equipment.accessory2) slot = 'accessory2';
+    else slot = 'accessory1';
+  }
+  const current = gameState.equipment[slot];
+  if (current) addToInventory(current);
   removeFromInventory(itemId);
   gameState.equipment[slot] = itemId;
   return true;
@@ -224,7 +164,8 @@ function equipItem(itemId) {
 
 function unequipItem(slot) {
   const itemId = gameState.equipment[slot];
-  if (!itemId || !addToInventory(itemId)) return false;
+  if (!itemId || !canAddToInventory()) return false;
+  addToInventory(itemId);
   gameState.equipment[slot] = null;
   return true;
 }
@@ -232,7 +173,7 @@ function unequipItem(slot) {
 function getEquipmentStats() {
   const stats = { fue: 0, vit: 0, des: 0, int: 0, vol: 0, pre: 0 };
   for (const itemId of Object.values(gameState.equipment || {})) {
-    const item = itemId ? ITEMS[itemId] : null;
+    const item = itemId && ITEMS[itemId];
     if (item && item.stats) for (const [stat, value] of Object.entries(item.stats)) stats[stat] = (stats[stat] || 0) + value;
   }
   return stats;
@@ -243,36 +184,15 @@ function rollDrop(theme, bonusChance = 0) {
   if (Math.random() > baseChance) return null;
   const pool = DROP_TABLES[theme];
   if (!pool || !pool.length) return null;
-  const weighted = [];
-  for (const itemId of pool) {
-    const item = ITEMS[itemId];
-    if (!item) continue;
-    const rarity = RARITY[item.rarity] || RARITY.common;
-    const weight = Math.max(1, Math.floor(rarity.dropRate * 1000));
-    for (let i = 0; i < weight; i++) weighted.push(itemId);
-  }
-  if (!weighted.length) return null;
-  const itemId = weighted[Math.floor(Math.random() * weighted.length)];
-  const item = ITEMS[itemId];
-  const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-  let finalRarity = item.rarity;
-  if (Math.random() < 0.05 + bonusChance * 0.5) {
-    const idx = rarityOrder.indexOf(finalRarity);
-    if (idx < rarityOrder.length - 1) finalRarity = rarityOrder[idx + 1];
-  }
-  return { itemId, rarity: finalRarity };
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function sellItem(itemId, quantity = 1) {
+  if (typeof gameState === 'undefined' || !ITEMS[itemId] || ITEMS[itemId].cantSell) return 0;
   const item = ITEMS[itemId];
-  if (!item || item.cantSell) return 0;
-  const count = getItemCount(itemId);
-  const toSell = Math.min(count, quantity);
-  if (toSell <= 0) return 0;
-  const rarity = RARITY[item.rarity] || RARITY.common;
-  const gold = Math.floor(item.value * rarity.sellMult * 0.3 * toSell);
-  removeFromInventory(itemId, toSell);
-  gameState.gold += gold;
+  if (!removeFromInventory(itemId, quantity)) return 0;
+  const gold = Math.floor((item.value || 0) * quantity * 0.5);
+  gameState.gold = (gameState.gold || 0) + gold;
   return gold;
 }
 
