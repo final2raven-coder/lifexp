@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v15-canonical-inventory';
+const CACHE_NAME = 'lifexp-v18-startup-inventory-safe';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -22,7 +22,11 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      .then(cache => Promise.all(urlsToCache.map(url =>
+        fetch(url)
+          .then(response => response.ok ? cache.put(url, response) : null)
+          .catch(() => null)
+      )))
       .then(() => self.skipWaiting())
   );
 });
@@ -51,5 +55,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  event.respondWith(caches.match(request).then(response => response || fetch(request)));
+  event.respondWith(
+    caches.match(request).then(response => response || fetch(request))
+  );
 });
