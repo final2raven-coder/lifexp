@@ -1,5 +1,17 @@
 // LifeXP canonical inventory compatibility layer.
 // Kept at this path only for backwards-compatible deployment; it is not item-specific.
+
+// game.js calls this during inventory identity repair. Define it in this earlier,
+// independently loaded compatibility layer so boot does not depend on a fragile
+// function declaration inside a particular game.js generation.
+function normalizeItemText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 (function () {
   'use strict';
 
@@ -16,8 +28,7 @@
     'katana oriental': 'katana_oriental'
   };
 
-  const normalize = value => String(value ?? '')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const normalize = value => normalizeItemText(value);
 
   function resolve(entry) {
     if (entry == null || typeof ITEMS === 'undefined') return null;
