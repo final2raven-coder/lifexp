@@ -49,7 +49,9 @@
     const status = getItemRequirementStatus(itemId);
     if (!status || !Array.isArray(status.reasons) || !status.reasons.length) return '';
     const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
-    return `No puedes equipar ${item?.name || 'este objeto'} todavía: ${status.reasons.join('; ')}.`;
+    const itemName = item?.name || itemId || 'este objeto';
+    const reasons = status.reasons.join('; ').replace(/^./, char => char.toLowerCase());
+    return `Intentas equipar ${itemName}, pero ${reasons}.`;
   }
 
   // Keep the existing narrative system, but make failed attempts explain the
