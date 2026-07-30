@@ -1,128 +1,100 @@
-// LifeXP Ashbrand compatibility, canonical repair and English equip feedback.
-// Loaded last so legacy content cannot overwrite the canonical definition.
+// LifeXP canonical inventory compatibility layer.
+// Kept at this path only for backwards-compatible deployment; it is not item-specific.
 (function () {
   'use strict';
 
-  const ID = 'cuchilla_llameante';
-  const ALIASES = new Set(['ashbrand', 'cuchilla llameante', 'cuchilla_llameante']);
+  const BUILD = 'v14-canonical-inventory';
+  const ALIASES = {
+    'cuchilla llameante': 'cuchilla_llameante',
+    'flaming blade': 'cuchilla_llameante',
+    'ashbrand': 'cuchilla_llameante',
+    'daga corrosiva': 'daga_corrosiva',
+    'espada radiante': 'espada_radiante',
+    'hoja gelida': 'hoja_gelida',
+    'arco de espino': 'arco_espino',
+    'tridente marino': 'tridente_marino',
+    'katana oriental': 'katana_oriental'
+  };
 
-  function normalize(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const normalize = value => String(value ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  function resolve(entry) {
+    if (entry == null || typeof ITEMS === 'undefined') return null;
+    const candidates = typeof entry === 'string'
+      ? [entry]
+      : [entry.id, entry.itemId, entry.itemID, entry.itemKey, entry.key,
+         entry.name, entry.legacyName, entry.itemName];
+    for (const candidate of candidates) {
+      if (candidate == null || typeof candidate === 'object') continue;
+      const value = String(candidate);
+      if (ITEMS[value]) return value;
+      const key = normalize(value);
+      if (ALIASES[key]) return ALIASES[key];
+      const byName = Object.entries(ITEMS).find(([_, item]) => normalize(item?.name) === key);
+      if (byName) return byName[0];
+      const byId = Object.keys(ITEMS).find(id =>
+        normalize(id) === key || normalize(id.replaceAll('_', ' ')) === key);
+      if (byId) return byId;
+    }
+    return null;
   }
 
-  function isAlias(value) { return ALIASES.has(normalize(value)); }
-
-  function canonicalizeList(list) {
-    if (!Array.isArray(list)) return;
-    list.forEach(slot => {
-      if (!slot || typeof slot !== 'object') return;
-      if ([slot.id, slot.name, slot.legacyName, slot.itemName].some(isAlias)) {
-        slot.id = ID;
-        delete slot.name;
-        delete slot.legacyName;
-        delete slot.itemName;
-      }
-    });
-  }
-
-  function repairDefinition() {
-    if (typeof ITEMS === 'undefined') return;
-    const current = ITEMS[ID] || {};
-    ITEMS[ID] = {
-      ...current,
-      id: ID,
-      name: 'Ashbrand',
-      type: 'weapon',
-      rarity: 'common',
-      icon: 'FIRE',
-      lore: 'Ashbrand remembers a fire that refused to become a ruin.',
-      desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
-      stats: {},
-      themes: ['fuego', 'fuego_comida', 'ash'],
-      effects: [
-        { id: 'burning_edge', name: 'Burning Edge', trigger: 'passive', unlockStage: 1, description: 'Attacks can apply Burn for 3 turns.' },
-        { id: 'pressure', name: 'Pressure', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'A burning target can receive another, shorter Burn.' }
-      ],
-      requirements: { stats: { fue: 12, des: 12 }, trainingId: null },
-      attunement: {
-        required: true,
-        max: 3,
-        minimumStage: 1,
-        themes: ['fuego', 'fuego_comida', 'ash'],
-        stages: ['The blade resists your hand with sudden heat.', 'The edge catches on fire when you press the attack.', 'The old heat answers without being forced.']
-      },
-      activation: {
-        type: 'task_threshold',
-        description: 'Complete three fire-related tasks, then attempt the ritual in the app.',
-        instruction: 'The old fire is ready to answer.',
-        requirement: { themes: ['fuego', 'fuego_comida'], count: 3 },
-        unlocks: ['pressure']
-      }
-    };
-  }
-
-  function backup() {
-    try {
-      const raw = localStorage.getItem('lifexp_save');
-      if (raw && !localStorage.getItem('lifexp_ashbrand_canonical_backup')) {
-        localStorage.setItem('lifexp_ashbrand_canonical_backup', raw);
-        localStorage.setItem('lifexp_ashbrand_canonical_backup_time', new Date().toISOString());
-      }
-    } catch (error) { console.warn('Ashbrand backup unavailable:', error); }
-  }
-
-  function migrate() {
-    if (typeof gameState === 'undefined') return;
-    backup();
-    canonicalizeList(gameState.inventory);
-    canonicalizeList(gameState.stash);
-    if (gameState.equipment && typeof gameState.equipment === 'object') {
-      Object.keys(gameState.equipment).forEach(slot => {
-        if (isAlias(gameState.equipment[slot])) gameState.equipment[slot] = ID;
+  function repair() {
+    if (typeof gameState === 'undefined') return false;
+    let changed = false;
+    for (const key of ['inventory', 'stash']) {
+      const list = Array.isArray(gameState[key]) ? gameState[key] : [];
+      gameState[key] = list.map(original => {
+        const id = resolve(original);
+        if (!id) return original; // unresolved data remains recoverable and visible
+        const slot = typeof original === 'string'
+          ? { id, qty: 1 }
+          : { ...original, id, qty: Math.max(1, Number(original.qty ?? original.quantity ?? 1) || 1) };
+        delete slot.itemId; delete slot.itemID; delete slot.itemKey; delete slot.key;
+        delete slot.name; delete slot.legacyName; delete slot.itemName;
+        slot.recoveredAtBuild = slot.recoveredAtBuild || BUILD;
+        if (JSON.stringify(slot) !== JSON.stringify(original)) changed = true;
+        return slot;
       });
     }
-    const itemSystem = gameState.itemSystem || {};
-    ['attunement', 'equipAttempts', 'firstEquipped'].forEach(key => {
-      const state = itemSystem[key];
-      if (!state || state[ID] != null || state.ashbrand == null) return;
-      state[ID] = state.ashbrand;
-      delete state.ashbrand;
-    });
-    if (typeof saveGame === 'function') saveGame();
+    if (changed && typeof saveGame === 'function') saveGame();
+    return changed;
   }
 
-  function failureText(itemId) {
-    if (typeof getItemRequirementStatus !== 'function') return '';
-    const status = getItemRequirementStatus(itemId) || {};
-    if (status.canEquip || !Array.isArray(status.reasons) || !status.reasons.length) return '';
-    const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
-    const name = item && item.name ? item.name : 'this item';
-    const reasons = status.reasons.join('; ').replace(/^./, c => c.toLowerCase());
-    return `You try to equip ${name}, but ${reasons}.`;
+  function icon(item, size = 40) {
+    const color = RARITY[item?.rarity]?.color || '#c9c5bb';
+    return `<svg class="item-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true" style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/></g></svg>`;
   }
 
-  function installFailureContext() {
-    if (typeof window.getItemFlavorText !== 'function' || window.getItemFlavorText.__lifexpAshbrandContext) return;
-    const original = window.getItemFlavorText;
-    function contextualFlavor(itemId, situation) {
-      const flavor = original(itemId, situation);
-      if (!String(situation || '').startsWith('equip_fail')) return flavor;
-      const reason = failureText(itemId);
-      return reason ? `${reason} ${flavor}` : flavor;
-    }
-    contextualFlavor.__lifexpAshbrandContext = true;
-    window.getItemFlavorText = contextualFlavor;
+  function card(entry, index, stash) {
+    const id = resolve(entry);
+    const item = id ? ITEMS[id] : null;
+    if (!item) return `<div class="inv-slot inv-slot-recovery" role="button" tabindex="0" onclick="showLegacyItemModal(${index})"><div class="recovery-icon">?</div><div>Objeto no identificado</div><small>Revisar recuperación</small></div>`;
+    const rarity = RARITY[item.rarity] || RARITY.common;
+    const qty = Number(entry.qty || entry.quantity || 1);
+    const fn = stash ? 'showStashItemModal' : 'showItemModal';
+    const action = `${fn}('${id}')`;
+    return `<div class="inv-slot item-card" role="button" tabindex="0" aria-label="Abrir objeto" onclick="${action}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${action}}" style="border-color:${rarity.color}"><div class="item-card-icon">${icon(item)}</div><div class="item-card-name" style="color:${rarity.color}">${escapeItemHtml(item.name)}</div>${qty > 1 ? `<div class="item-card-qty">x${qty}</div>` : ''}</div>`;
   }
 
-  function install() {
-    repairDefinition();
-    migrate();
-    installFailureContext();
-    if (typeof initializeItemSystem === 'function') initializeItemSystem();
-    if (typeof renderInventory === 'function') renderInventory();
+  function render(listId, emptyId, key, stash) {
+    const grid = document.getElementById(listId);
+    const empty = document.getElementById(emptyId);
+    if (!grid) return;
+    repair();
+    const list = Array.isArray(gameState[key]) ? gameState[key] : [];
+    empty?.classList.toggle('hidden', list.length > 0);
+    grid.innerHTML = list.map((entry, index) => card(entry, index, stash)).join('');
   }
 
-  window.LifeXPAshbrandHotfix = { install, repairDefinition, deprecated: false };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
-  else install();
+  const css = document.createElement('style');
+  css.textContent = '.inv-slot{position:relative;min-height:104px;padding:10px 6px;background:var(--bg-card);border:2px solid var(--border);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;cursor:pointer;transition:transform .12s ease,border-color .2s ease,background .2s ease}.inv-slot:hover{background:var(--bg-card-hover);transform:translateY(-1px)}.inv-slot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.item-card-icon{height:44px;display:flex;align-items:center;justify-content:center}.item-icon-svg{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}.item-card-name{max-width:100%;font-size:10px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}.item-card-qty{position:absolute;top:5px;right:6px;padding:2px 5px;border-radius:10px;background:var(--bg-surface);color:var(--text);font-size:10px;font-weight:800}.inv-slot-recovery{border-color:var(--orange);color:var(--orange);font-size:11px}.recovery-icon{font-size:28px;font-weight:800}.inv-slot-recovery small{color:var(--text-muted);font-size:9px}';
+  document.head.appendChild(css);
+
+  window.LifeXPInventory = { BUILD, resolve, repair };
+  window.renderInventoryGrid = () => render('inventory-grid', 'inventory-empty', 'inventory', false);
+  window.renderStashGrid = () => render('stash-grid', 'stash-empty', 'stash', true);
+
+  repair();
 })();
