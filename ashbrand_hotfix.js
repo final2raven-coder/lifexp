@@ -1,5 +1,5 @@
-// Deprecated compatibility shim for historical Ashbrand saves and item UX.
-// Ashbrand itself is defined canonically in items.js.
+// Compatibility shim for historical Ashbrand saves and item UX.
+// Ashbrand is repaired here after all additive content modules have loaded.
 (function () {
   'use strict';
 
@@ -25,7 +25,34 @@
     });
   }
 
+  function repairAshbrandDefinition() {
+    if (typeof ITEMS === 'undefined') return;
+    const current = ITEMS[CANONICAL_ID] || {};
+    ITEMS[CANONICAL_ID] = {
+      ...current,
+      id: CANONICAL_ID,
+      name: 'Ashbrand',
+      type: 'weapon',
+      rarity: 'common',
+      icon: current.icon || 'FIRE',
+      desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
+      lore: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
+      stats: Object.keys(current.stats || {}).length ? current.stats : { fue: 5, int: 2 },
+      value: current.value || 120,
+      themes: current.themes || ['fuego', 'fuego_comida', 'ash']
+    };
+  }
+
+  function translateReason(reason) {
+    return String(reason || '')
+      .replace(/^Requiere /, 'Requires ')
+      .replace(/\(actual /g, '(currently ')
+      .replace(/^Necesita entrenamiento: /, 'Requires training: ')
+      .replace(/^Necesita aclimatación /, 'Requires attunement ');
+  }
+
   function migrate() {
+    repairAshbrandDefinition();
     if (typeof gameState === 'undefined') return;
     canonicalizeList(gameState.inventory);
     canonicalizeList(gameState.stash);
@@ -49,13 +76,11 @@
     const status = getItemRequirementStatus(itemId);
     if (!status || !Array.isArray(status.reasons) || !status.reasons.length) return '';
     const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
-    const itemName = item?.name || itemId || 'este objeto';
-    const reasons = status.reasons.join('; ').replace(/^./, char => char.toLowerCase());
-    return `Intentas equipar ${itemName}, pero ${reasons}.`;
+    const itemName = item?.name || itemId || 'this item';
+    const reasons = status.reasons.map(translateReason).join('; ').replace(/^./, char => char.toLowerCase());
+    return `You try to equip ${itemName}, but ${reasons}.`;
   }
 
-  // Keep the existing narrative system, but make failed attempts explain the
-  // actual blocking requirement instead of hiding it behind pure atmosphere.
   function installFailureContext() {
     if (typeof window.getItemFlavorText !== 'function' || window.getItemFlavorText.__lifexpFailureContext) return;
     const original = window.getItemFlavorText;
