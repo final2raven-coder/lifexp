@@ -107,3 +107,50 @@ function normalizeItemText(value) {
 
   repair();
 })();
+
+// game.js wires the recovery button to this global entry point.
+// The operation is deterministic: known Ashbrand legacy data is restored as Ashbrand;
+// unknown data is not silently replaced with an arbitrary item.
+window.emergencyRerollLegacyItem = function (slotIndex) {
+  if (typeof gameState === 'undefined' || !Array.isArray(gameState.inventory)) {
+    return { success: false, reason: 'inventory_unavailable' };
+  }
+  const slot = gameState.inventory[slotIndex];
+  if (!slot || typeof slot !== 'object') return { success: false, reason: 'slot_unavailable' };
+  if (slot.recoveryUsed) return { success: false, reason: 'recovery_already_used' };
+
+  try {
+    const raw = localStorage.getItem('lifexp_save');
+    if (raw && !localStorage.getItem('lifexp_recovery_backup_v14')) {
+      localStorage.setItem('lifexp_recovery_backup_v14', raw);
+    }
+  } catch (error) {
+    console.warn('Recovery backup unavailable:', error);
+  }
+
+  const normalize = value => normalizeItemText(value);
+  const candidates = [slot.id, slot.itemId, slot.itemID, slot.itemKey, slot.key,
+    slot.name, slot.legacyName, slot.itemName].filter(value => value != null).map(normalize);
+  const text = candidates.join(' ');
+  const ashbrand = candidates.some(value => value === 'ashbrand' || value === 'cuchilla llameante' || value === 'flaming blade');
+  let id = null;
+  if (ashbrand) id = 'cuchilla_llameante';
+  else if (typeof ITEMS !== 'undefined') {
+    id = candidates.find(value => ITEMS[value]) || Object.keys(ITEMS).find(key =>
+      candidates.includes(normalize(key)) || candidates.includes(normalize(key.replaceAll('_', ' '))));
+  }
+  // A completely empty legacy slot is the known Ashbrand corruption case.
+  if (!id && !text && typeof ITEMS !== 'undefined' && ITEMS.cuchilla_llameante) id = 'cuchilla_llameante';
+  if (!id || typeof ITEMS === 'undefined' || !ITEMS[id]) {
+    return { success: false, reason: 'unresolved_legacy_reward' };
+  }
+
+  const recovered = { ...slot, id, qty: Math.max(1, Number(slot.qty ?? slot.quantity ?? 1) || 1) };
+  delete recovered.itemId; delete recovered.itemID; delete recovered.itemKey; delete recovered.key;
+  delete recovered.name; delete recovered.legacyName; delete recovered.itemName;
+  recovered.recoveryUsed = true;
+  recovered.recoveredAtBuild = 'v14-canonical-inventory';
+  gameState.inventory[slotIndex] = recovered;
+  if (typeof saveGame === 'function') saveGame();
+  return { success: true, method: ashbrand ? 'name' : 'id', id };
+};
