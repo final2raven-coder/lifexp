@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v14-ashbrand-runtime-repair';
+const CACHE_NAME = 'lifexp-v15-canonical-inventory';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -29,12 +29,9 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then(keys => Promise.all(
+      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+    )).then(() => self.clients.claim())
   );
 });
 
@@ -44,8 +41,6 @@ self.addEventListener('fetch', event => {
     /\/(?:index\.html|game\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|ashbrand_hotfix\.js|sw\.js)$/.test(new URL(request.url).pathname);
 
   if (isAppAsset) {
-    // Network-first keeps GitHub Pages updates visible instead of serving an
-    // old JavaScript bundle indefinitely. The cache remains the offline fallback.
     event.respondWith(
       fetch(request).then(response => {
         const copy = response.clone();
@@ -56,7 +51,5 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then(response => response || fetch(request))
-  );
+  event.respondWith(caches.match(request).then(response => response || fetch(request)));
 });
