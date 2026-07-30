@@ -2434,15 +2434,35 @@ function selectClass(classId) {
 // IMPORT/EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
 
-function exportData() {
-  const data = JSON.stringify(gameState, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `lifexp_save_${todayStr()}.json`;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function backupCurrentSave(reason = 'manual') {
+  try {
+    const current = localStorage.getItem('lifexp_save');
+    if (!current) return false;
+    const key = 'lifexp_save_backup_' + Date.now();
+    localStorage.setItem(key, current);
+    localStorage.setItem('lifexp_save_last_backup', key);
+    return true;
+  } catch (e) {
+    console.warn('Could not create save backup:', e);
+    return false;
+  }
+}
+
+function exportData(options = {}) {
+  const filename = options.filename || `lifexp_save_${todayStr()}.json`;
+  downloadJson(gameState, filename);
 }
 
 function exportSnapshot() {
@@ -2614,26 +2634,61 @@ function generateContentSuggestions() {
   return suggestions;
 }
 
+function importDataText(text) {
+  const data = JSON.parse(text);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('El fichero no contiene un save válido.');
+  }
+  if (!('level' in data) && !('tasks' in data) && !('taskHistory' in data)) {
+    throw new Error('Faltan datos reconocibles de LifeXP.');
+  }
+  backupCurrentSave('before-import');
+  gameState = { ...gameState, ...data };
+  gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
+  gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
+  gameState.taskHistory = Array.isArray(gameState.taskHistory) ? gameState.taskHistory : [];
+  gameState.completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
+  gameState.activeQuests = Array.isArray(gameState.activeQuests) ? gameState.activeQuests : [];
+  saveGame();
+  return true;
+}
+
 function showImportModal() {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.json';
+  input.accept = '.json,application/json';
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      gameState = { ...gameState, ...data };
-      saveGame();
+      importDataText(await file.text());
       alert('Datos importados correctamente');
-      showScreen('hub');
+      location.reload();
     } catch (err) {
       alert('Error al importar: ' + err.message);
     }
   };
   input.click();
 }
+
+function handleEmergencyDataRoute() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('export') === '1') {
+    exportData({ filename: `lifexp_save_${todayStr()}.json` });
+    history.replaceState({}, document.title, location.pathname);
+    return;
+  }
+  if (params.get('import') === '1') {
+    showImportModal();
+    history.replaceState({}, document.title, location.pathname);
+  }
+}
+
+window.LifeXPBackup = {
+  export: () => exportData(),
+  importText: (text) => importDataText(text),
+  backup: () => backupCurrentSave('manual')
+};
 
 function resetGame() {
   if (!confirm('¿Seguro que quieres borrar todo el progreso?')) return;
@@ -2975,6 +3030,9 @@ function renderGuild() {
 document.addEventListener('DOMContentLoaded', () => {
   // Load game
   loadGame();
+
+  // Emergency save tools also work when the Settings UI is unresponsive.
+  handleEmergencyDataRoute();
 
   // Quest discovery buttons: explicit listeners avoid issues with inline handlers
   // when the app is served from a PWA cache or a restrictive WebView.
