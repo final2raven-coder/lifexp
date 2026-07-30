@@ -1,5 +1,15 @@
 // LifeXP canonical inventory compatibility layer.
 // Kept at this path only for backwards-compatible deployment; it is not item-specific.
+
+// game.js can repair inventory identities before this file's IIFE runs.
+// Keep the normalizer global so the boot contract does not depend on load timing.
+function normalizeItemText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
 (function () {
   'use strict';
 
@@ -16,8 +26,7 @@
     'katana oriental': 'katana_oriental'
   };
 
-  const normalize = value => String(value ?? '')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const normalize = value => normalizeItemText(value);
 
   function resolve(entry) {
     if (entry == null || typeof ITEMS === 'undefined') return null;
@@ -47,7 +56,7 @@
       const list = Array.isArray(gameState[key]) ? gameState[key] : [];
       gameState[key] = list.map(original => {
         const id = resolve(original);
-        if (!id) return original; // unresolved data remains recoverable and visible
+        if (!id) return original;
         const slot = typeof original === 'string'
           ? { id, qty: 1 }
           : { ...original, id, qty: Math.max(1, Number(original.qty ?? original.quantity ?? 1) || 1) };
