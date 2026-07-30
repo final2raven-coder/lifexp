@@ -1,4 +1,4 @@
-// LifeXP Ashbrand compatibility and canonical item repair.
+// LifeXP Ashbrand compatibility, canonical repair and English equip feedback.
 // Loaded last so legacy content cannot overwrite the canonical definition.
 (function () {
   'use strict';
@@ -10,9 +10,7 @@
     return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   }
 
-  function isAlias(value) {
-    return ALIASES.has(normalize(value));
-  }
+  function isAlias(value) { return ALIASES.has(normalize(value)); }
 
   function canonicalizeList(list) {
     if (!Array.isArray(list)) return;
@@ -63,8 +61,19 @@
     };
   }
 
+  function backup() {
+    try {
+      const raw = localStorage.getItem('lifexp_save');
+      if (raw && !localStorage.getItem('lifexp_ashbrand_canonical_backup')) {
+        localStorage.setItem('lifexp_ashbrand_canonical_backup', raw);
+        localStorage.setItem('lifexp_ashbrand_canonical_backup_time', new Date().toISOString());
+      }
+    } catch (error) { console.warn('Ashbrand backup unavailable:', error); }
+  }
+
   function migrate() {
     if (typeof gameState === 'undefined') return;
+    backup();
     canonicalizeList(gameState.inventory);
     canonicalizeList(gameState.stash);
     if (gameState.equipment && typeof gameState.equipment === 'object') {
@@ -82,9 +91,33 @@
     if (typeof saveGame === 'function') saveGame();
   }
 
+  function failureText(itemId) {
+    if (typeof getItemRequirementStatus !== 'function') return '';
+    const status = getItemRequirementStatus(itemId) || {};
+    if (status.canEquip || !Array.isArray(status.reasons) || !status.reasons.length) return '';
+    const item = typeof getItemDefinition === 'function' ? getItemDefinition(itemId) : null;
+    const name = item && item.name ? item.name : 'this item';
+    const reasons = status.reasons.join('; ').replace(/^./, c => c.toLowerCase());
+    return `You try to equip ${name}, but ${reasons}.`;
+  }
+
+  function installFailureContext() {
+    if (typeof window.getItemFlavorText !== 'function' || window.getItemFlavorText.__lifexpAshbrandContext) return;
+    const original = window.getItemFlavorText;
+    function contextualFlavor(itemId, situation) {
+      const flavor = original(itemId, situation);
+      if (!String(situation || '').startsWith('equip_fail')) return flavor;
+      const reason = failureText(itemId);
+      return reason ? `${reason} ${flavor}` : flavor;
+    }
+    contextualFlavor.__lifexpAshbrandContext = true;
+    window.getItemFlavorText = contextualFlavor;
+  }
+
   function install() {
     repairDefinition();
     migrate();
+    installFailureContext();
     if (typeof initializeItemSystem === 'function') initializeItemSystem();
     if (typeof renderInventory === 'function') renderInventory();
   }
