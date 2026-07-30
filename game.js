@@ -1,20 +1,20 @@
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // LifeXP RPG - Game Engine v1.0
 // Bloque 1: Estructura base + Sistema de tareas + Stats
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const LIFE_XP_BUILD = 'v13.4-equip-action-fix';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const CATEGORIES = {
-  casa: { name: 'Casa', icon: '🏠', color: '#f87171' },
-  cuerpo: { name: 'Cuerpo', icon: '💪', color: '#4ade80' },
-  gestiones: { name: 'Gestiones', icon: '📋', color: '#fbbf24' },
-  social: { name: 'Social', icon: '👥', color: '#60a5fa' },
-  personal: { name: 'Personal', icon: '🌟', color: '#a78bfa' }
+  casa: { name: 'Casa', icon: '\uD83C\uDFE0', color: '#f87171' },
+  cuerpo: { name: 'Cuerpo', icon: '\uD83D\uDCAA', color: '#4ade80' },
+  gestiones: { name: 'Gestiones', icon: '\uD83D\uDCCB', color: '#fbbf24' },
+  social: { name: 'Social', icon: '\uD83D\uDC65', color: '#60a5fa' },
+  personal: { name: 'Personal', icon: '\uD83C\uDF1F', color: '#a78bfa' }
 };
 
 const STATS = {
@@ -36,12 +36,12 @@ const FREQ = {
   annual: { name: 'Anual', days: 365 }
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // DEFAULT TASKS (with side quests and drops)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const DEFAULT_TASKS = [
-  // ══════════ CASA ══════════
+  // ========== CASA ==========
   {
     id: 'casa_1', cat: 'casa', name: 'Limpiar baño completo', freq: 'weekly',
     desc: 'Empieza por el espejo, sigue con sanitarios, acaba con el suelo.',
@@ -223,7 +223,7 @@ const DEFAULT_TASKS = [
     }
   },
 
-  // ══════════ CUERPO ══════════
+  // ========== CUERPO ==========
   {
     id: 'cuerpo_1', cat: 'cuerpo', name: 'Entrenamiento de fuerza', freq: 'weekly',
     desc: 'Sesión de fuerza en casa: sentadillas, flexiones, planchas, peso corporal.',
@@ -309,7 +309,7 @@ const DEFAULT_TASKS = [
     }
   },
 
-  // ══════════ GESTIONES ══════════
+  // ========== GESTIONES ==========
   {
     id: 'gestiones_1', cat: 'gestiones', name: 'Declaración de la renta', freq: 'annual',
     desc: 'Hacer la declaración anual de IRPF.',
@@ -371,7 +371,7 @@ const DEFAULT_TASKS = [
     }
   },
 
-  // ══════════ SOCIAL ══════════
+  // ========== SOCIAL ==========
   {
     id: 'social_1', cat: 'social', name: 'Fecha especial con pareja', freq: 'weekly',
     desc: 'Tiempo de calidad dedicado solo a la relación.',
@@ -433,7 +433,7 @@ const DEFAULT_TASKS = [
     }
   },
 
-  // ══════════ PERSONAL ══════════
+  // ========== PERSONAL ==========
   {
     id: 'personal_1', cat: 'personal', name: 'Sesión TTRPG (30 min)', freq: 'weekly',
     desc: 'Bloque de trabajo enfocado en el proyecto de TTRPG.',
@@ -530,9 +530,9 @@ const DEFAULT_TASKS = [
   }
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // GAME STATE
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 let gameState = {
   // Player
@@ -600,9 +600,9 @@ let timerInterval = null;
 let timerSeconds = 0;
 let timerRunning = false;
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // UTILITY FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -656,9 +656,9 @@ function getMaxStat() {
   return Math.max(...Object.values(gameState.stats));
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // TASK LOGIC
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function getTaskById(id) {
   return gameState.tasks.find(t => t.id === id);
@@ -707,15 +707,15 @@ function getOverflowCount(cat) {
   return tasks.filter(t => isTaskOverdue(t)).length;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // DROP SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // SAVE/LOAD
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function saveGame() {
   try {
@@ -779,9 +779,9 @@ function updateStreak() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // UI RENDERING
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -829,7 +829,7 @@ function renderHub() {
   if (gameState.savedTasks.length > 0) {
     alertsDiv.innerHTML += `
       <div class="alert alert-saved" onclick="showSavedTasks()">
-        <div class="alert-icon">📌</div>
+        <div class="alert-icon">\uD83D\uDCCC</div>
         <div class="alert-text"><strong>${gameState.savedTasks.length} guardadas</strong> para luego</div>
       </div>
     `;
@@ -861,7 +861,7 @@ function renderCharacter() {
   
   // Basic info
   document.getElementById('char-name').textContent = gameState.name;
-  document.getElementById('char-class-icon').textContent = cls ? cls.icon : '🧑‍🌾';
+  document.getElementById('char-class-icon').textContent = cls ? cls.icon : '\uD83E\uDDD1‍\uD83C\uDF3E';
   document.getElementById('char-class-name').textContent = cls ? cls.name : 'Novato';
   document.getElementById('char-level').textContent = level;
   document.getElementById('char-tier-name').textContent = cls ? `Clase ${getTierName(cls.tier)}` : 'Sin clase';
@@ -917,7 +917,7 @@ function renderCharacter() {
         <div style="font-size: 11px; color: var(--text-muted);">HP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--blue);">💧 ${resources.mp}</div>
+        <div style="font-size: 24px; color: var(--blue);">\uD83D\uDCA7 ${resources.mp}</div>
         <div style="font-size: 11px; color: var(--text-muted);">MP</div>
       </div>
       <div style="text-align: center;">
@@ -925,7 +925,7 @@ function renderCharacter() {
         <div style="font-size: 11px; color: var(--text-muted);">SP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--purple);">🎯 ${resources.focusMax}</div>
+        <div style="font-size: 24px; color: var(--purple);">\uD83C\uDFAF ${resources.focusMax}</div>
         <div style="font-size: 11px; color: var(--text-muted);">Focus Max</div>
       </div>
     </div>
@@ -1003,10 +1003,10 @@ function renderEquipment() {
   
   const slotConfig = [
     { key: 'weapon', name: 'Arma', icon: '⚔️' },
-    { key: 'armor', name: 'Armadura', icon: '🛡️' },
-    { key: 'accessory1', name: 'Accesorio 1', icon: '💍' },
-    { key: 'accessory2', name: 'Accesorio 2', icon: '💍' },
-    { key: 'artifact', name: 'Artefacto', icon: '🔮' }
+    { key: 'armor', name: 'Armadura', icon: '\uD83D\uDEE1️' },
+    { key: 'accessory1', name: 'Accesorio 1', icon: '\uD83D\uDC8D' },
+    { key: 'accessory2', name: 'Accesorio 2', icon: '\uD83D\uDC8D' },
+    { key: 'artifact', name: 'Artefacto', icon: '\uD83D\uDD2E' }
   ];
   
   slots.innerHTML = '';
@@ -1060,7 +1060,7 @@ function showLegacyItemModal(slotIndex) {
     <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">El reroll de emergencia es una herramienta de recuperación de datos, no una mecánica normal.</div>
   `;
   const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = used ? 'Recuperación ya usada' : '🔄 Rehacer recompensa';
+  actionBtn.textContent = used ? 'Recuperación ya usada' : '\uD83D\uDD04 Rehacer recompensa';
   actionBtn.disabled = used;
   actionBtn.onclick = () => {
     if (used || typeof emergencyRerollLegacyItem !== 'function') return;
@@ -1108,7 +1108,7 @@ function equipItemFromInventory(itemId) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // ITEM FLAVOR TEXT SYSTEM
 // Per-item, per-situation English narrative text.
 // Situations:
@@ -1118,11 +1118,11 @@ function equipItemFromInventory(itemId) {
 //   equip_success  — first successful equip
 //   attune_1/2/3   — attunement stage advances
 //   ritual         — ritual/activation triggered
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const ITEM_FLAVOR_TEXT = {
 
-  // ── WEAPONS ──────────────────────────────────────────────────────────────
+  // == WEAPONS ==============================================================
 
   cuchilla_llameante: {
     first_look:    'The blade is warm to the touch. Not hot — warm, the way a stone holds heat long after the fire has moved on. You do not know yet what it asks of you.',
@@ -1225,7 +1225,7 @@ const ITEM_FLAVOR_TEXT = {
     attune_3:      'The rust is gone from the edge entirely. Whatever this blade was before, it is becoming something again.'
   },
 
-  // ── ARMOR ─────────────────────────────────────────────────────────────────
+  // == ARMOR =================================================================
 
   escudo_antiveneno: {
     first_look:    'The surface is marked with old stains that did not eat through. Whatever was thrown at this shield, it held. You wonder what the person behind it was protecting.',
@@ -1297,7 +1297,7 @@ const ITEM_FLAVOR_TEXT = {
     attune_3:      'The cape and the shadow are the same thing now. You do not hide. You simply choose when to be visible.'
   },
 
-  // ── ACCESSORIES ──────────────────────────────────────────────────────────
+  // == ACCESSORIES ==========================================================
 
   amuleto_brisa: {
     first_look:    'The charm is light enough that you keep checking whether you dropped it. The wind near it moves differently — not stronger, just more deliberate.',
@@ -1379,7 +1379,7 @@ const ITEM_FLAVOR_TEXT = {
     attune_3:      'The forest and the keeper are the same thing now. The amulet has finished its work.'
   },
 
-  // ── ARTIFACTS ────────────────────────────────────────────────────────────
+  // == ARTIFACTS ============================================================
 
   orbe_mental: {
     first_look:    'The sphere reflects a room with one extra chair. The chair is always empty. You are not sure whether that is a promise or a question.',
@@ -1435,7 +1435,7 @@ const ITEM_FLAVOR_TEXT = {
     attune_3:      'The enchantment and the intention are the same thing now. The broom has finished its assessment. The work is easier.'
   },
 
-  // ── CONSUMABLES (first_look only) ────────────────────────────────────────
+  // == CONSUMABLES (first_look only) ========================================
 
   pocion_agua:         { first_look: 'The liquid is clearer than water should be. Something was added to it — or something was removed. Either way, it will do what it promises.' },
   pocion_escarcha:     { first_look: 'The bottle is cold enough to fog the air around it. Whatever is inside has not forgotten where it came from.' },
@@ -1452,7 +1452,7 @@ const ITEM_FLAVOR_TEXT = {
   veneno_letal:        { first_look: 'The vial is heavier than it looks. The poison inside has weight that does not come from the liquid. Use this carefully. Use this once.' },
   pocion_agua_menor:   { first_look: 'Smaller than the others. Enough for what it needs to do. No more.' },
 
-  // ── MATERIALS (first_look only) ───────────────────────────────────────────
+  // == MATERIALS (first_look only) ===========================================
 
   moneda_antigua:      { first_look: 'The face on the coin is worn past recognition. The metal is heavier than modern coins. Someone spent this once and it came back. It always comes back.' },
   moneda_oro:          { first_look: 'Pure gold does not shine the way people expect. It is quieter than that. More certain.' },
@@ -1490,14 +1490,14 @@ const ITEM_FLAVOR_TEXT = {
   caparazon:           { first_look: 'The shell is harder than it looks and the inside is smooth. The crab that carried this was very patient. The patience is in the material.' },
   token_amistad:       { first_look: 'The token is small and the material is ordinary. What makes it valuable is not what it is made of — it is what it represents. Someone gave this to someone else. That matters.' },
 
-  // ── KEYS / SPECIAL ───────────────────────────────────────────────────────
+  // == KEYS / SPECIAL =======================================================
 
   llave_cofre:         { first_look: 'The key is specific. It was made for one lock. You do not know which one yet. That is the point of having it.' },
   contrato_mercantil:  { first_look: 'The terms are favorable. Someone negotiated carefully. The ink is dry and the seal is intact. This is a promise that has been kept so far.' },
   mapa_tesoro:         { first_look: 'The map is partial. The destination is marked but the route has gaps. Someone left those gaps deliberately. You will have to fill them in yourself.' },
   contrato_sospechoso: { first_look: 'The terms are written in very small letters. The seal is from a faction you do not recognize. This is either an opportunity or a trap. Possibly both.' },
 
-  // ── SKILLS ───────────────────────────────────────────────────────────────
+  // == SKILLS ===============================================================
 
   skill_foco_interior: { first_look: 'The scroll is dense with notation. The technique described requires stillness before movement. You will need to practice before it becomes instinct.' },
   skill_llamarada:     { first_look: 'The scroll is warm to the touch. The technique described is fast and direct. It does not ask for precision — it asks for commitment.' },
@@ -1506,7 +1506,7 @@ const ITEM_FLAVOR_TEXT = {
 
 };
 
-// ── FLAVOR TEXT ACCESSOR ─────────────────────────────────────────────────────
+// == FLAVOR TEXT ACCESSOR =====================================================
 // Returns the correct flavor text for a given item and situation.
 // Falls back gracefully: item-specific → type-generic → universal.
 
@@ -1565,19 +1565,19 @@ function getItemFlavorText(itemId, situation) {
   return UNIVERSAL[situation] || 'Something has changed.';
 }
 
-// ── ATTUNEMENT FLAVOR TRIGGER ─────────────────────────────────────────────────
+// == ATTUNEMENT FLAVOR TRIGGER =================================================
 function showAttunementFlavor(itemId, newStage) {
   var text = getItemFlavorText(itemId, 'attune_' + newStage);
   showFlavorDialog(text, 'success');
 }
 
-// ── RITUAL FLAVOR TRIGGER ─────────────────────────────────────────────────────
+// == RITUAL FLAVOR TRIGGER =====================================================
 function showRitualFlavor(itemId) {
   var text = getItemFlavorText(itemId, 'ritual');
   showFlavorDialog(text, 'success');
 }
 
-// ── LEGACY SHIM ───────────────────────────────────────────────────────────────
+// == LEGACY SHIM ===============================================================
 function _getEquipFlavorText(itemId) {
   var attempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
   return getItemFlavorText(itemId, attempts <= 1 ? 'equip_fail_1' : 'equip_fail_n');
@@ -1633,9 +1633,9 @@ function renderSettings() {
     <div class="section-title">Datos</div>
     <div class="card">
       <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Actualizar versión</button>
-      <button class="btn btn-secondary mb-8" onclick="exportData()">📤 Exportar save</button>
-      <button class="btn btn-secondary mb-8" onclick="showImportModal()">📥 Importar save</button>
-      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">🗑️ Resetear progreso</button>
+      <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Exportar save</button>
+      <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Importar save</button>
+      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Resetear progreso</button>
     </div>
     
     <div class="section-title">Content Planning</div>
@@ -1643,7 +1643,7 @@ function renderSettings() {
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
         Exporta un snapshot con métricas de uso y sugerencias para planificar actualizaciones de contenido con tu agente de Langdock.
       </p>
-      <button class="btn btn-gold" onclick="exportSnapshot()">📊 Exportar Snapshot para Agente</button>
+      <button class="btn btn-gold" onclick="exportSnapshot()">\uD83D\uDCCA Exportar Snapshot para Agente</button>
     </div>
     
     <div class="section-title">Info</div>
@@ -1658,9 +1658,9 @@ function renderSettings() {
   `;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // TASK SCREEN
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function openRandomTask() {
   currentCatFilter = null;
@@ -1765,9 +1765,9 @@ function renderTaskScreen() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // TASK COMPLETION
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function completeTask() {
   if (!currentTask) return;
@@ -1779,7 +1779,7 @@ function completeTask() {
   overlay.classList.add('show');
   
   // Icon & title
-  document.getElementById('complete-icon').textContent = currentIsOverflow ? '⚡' : '🏆';
+  document.getElementById('complete-icon').textContent = currentIsOverflow ? '⚡' : '\uD83C\uDFC6';
   document.getElementById('complete-title').textContent = currentIsOverflow 
     ? '¡Overflow eliminado!' 
     : '¡Tarea completada!';
@@ -1917,12 +1917,12 @@ function finalizeCompletion(sideQuestCompleted) {
   
   // Update rewards display with final values
   let rewardsHtml = `<div class="complete-reward gold">+${totalXp} XP</div>`;
-  rewardsHtml += `<div class="complete-reward">+${goldEarned} 🪙</div>`;
+  rewardsHtml += `<div class="complete-reward">+${goldEarned} \uD83E\uDE99</div>`;
   document.getElementById('complete-rewards').innerHTML = rewardsHtml;
   
   if (leveledUp) {
     document.getElementById('complete-title').textContent = '¡Subiste de nivel!';
-    document.getElementById('complete-icon').textContent = '🎉';
+    document.getElementById('complete-icon').textContent = '\uD83C\uDF89';
   }
   
   // Check for random encounter after task completion
@@ -1936,7 +1936,7 @@ function finalizeCompletion(sideQuestCompleted) {
 }
 
 // Drop system - connects to items.js
-// ─── Drop system ────────────────────────────────────────────────────────────
+// === Drop system ============================================================
 // rollDropFromTheme: bridge to items.js rollDrop(theme, bonusChance).
 // items.js must be loaded first. Returns {itemId, rarity} or null.
 function rollDropFromTheme(theme, bonusChance) {
@@ -1997,9 +1997,9 @@ function dismissComplete() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // ENCOUNTER SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function checkForEncounter(task) {
   // Check if combat system is available
@@ -2073,9 +2073,9 @@ function startCombatFromEncounter(encounter) {
   renderCombatScreen();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // COMBAT UI
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function renderCombatScreen() {
   if (!combatState) return;
@@ -2184,7 +2184,7 @@ function showCombatVictory() {
   const rewards = combatState?.rewards;
   
   // Show victory overlay
-  document.getElementById('combat-result-icon').textContent = '🏆';
+  document.getElementById('combat-result-icon').textContent = '\uD83C\uDFC6';
   document.getElementById('combat-result-title').textContent = '¡Victoria!';
   document.getElementById('combat-result-subtitle').textContent = `${combatState.enemy.name} derrotado`;
   
@@ -2192,12 +2192,12 @@ function showCombatVictory() {
   if (rewards) {
     rewardsHtml = `
       <div class="complete-reward gold">+${rewards.xp} XP</div>
-      <div class="complete-reward">+${rewards.gold} 🪙</div>
+      <div class="complete-reward">+${rewards.gold} \uD83E\uDE99</div>
     `;
     if (rewards.drops && rewards.drops.length > 0) {
       for (const drop of rewards.drops) {
         const item = typeof ITEMS !== 'undefined' ? ITEMS[drop] : null;
-        rewardsHtml += `<div class="complete-reward" style="color: var(--purple);">🎁 ${item?.name || drop}</div>`;
+        rewardsHtml += `<div class="complete-reward" style="color: var(--purple);">\uD83C\uDF81 ${item?.name || drop}</div>`;
       }
     }
   }
@@ -2207,7 +2207,7 @@ function showCombatVictory() {
 }
 
 function showCombatDefeat() {
-  document.getElementById('combat-result-icon').textContent = '💀';
+  document.getElementById('combat-result-icon').textContent = '\uD83D\uDC80';
   document.getElementById('combat-result-title').textContent = 'Derrotado...';
   document.getElementById('combat-result-subtitle').textContent = 'Vives para luchar otro día';
   document.getElementById('combat-result-rewards').innerHTML = '';
@@ -2224,9 +2224,9 @@ function endCombatAndReturn() {
   renderHub();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // SAVE FOR LATER
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function saveForLater() {
   if (!currentTask) return;
@@ -2239,7 +2239,7 @@ function saveForLater() {
 
 function showSavedTasks() {
   const list = document.getElementById('modal-tasks-list');
-  document.getElementById('modal-tasks-title').textContent = '📌 Tareas guardadas';
+  document.getElementById('modal-tasks-title').textContent = '\uD83D\uDCCC Tareas guardadas';
   
   list.innerHTML = '';
   for (const taskId of gameState.savedTasks) {
@@ -2323,9 +2323,9 @@ function closeModal(modalId) {
   modal.style.display = '';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // TIMER
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function toggleTimer() {
   if (timerRunning) {
@@ -2362,9 +2362,9 @@ function updateTimerDisplay() {
   document.getElementById('timer-display').textContent = `${mins}:${secs}`;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // CLASS CHANGE SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function showClassChangeModal() {
   const classId = gameState.classId === 'novato' ? null : gameState.classId;
@@ -2427,12 +2427,12 @@ function selectClass(classId) {
   renderHub();
   
   // Show celebration
-  alert(`🎉 ¡Te has convertido en ${cls.name}!\n\nTus stats han mejorado y tienes acceso a nuevas habilidades.`);
+  alert(`\uD83C\uDF89 ¡Te has convertido en ${cls.name}!\n\nTus stats han mejorado y tienes acceso a nuevas habilidades.`);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // IMPORT/EXPORT
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function downloadJson(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2698,9 +2698,9 @@ function resetGame() {
   location.reload();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // GUILD / COOP SYSTEM (Receipt-based sync)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function generatePlayerId() {
   return 'player_' + Math.random().toString(36).substr(2, 9);
@@ -2823,7 +2823,7 @@ function exportReceipt() {
     if (navigator.canShare({ files: [file] })) {
       navigator.share({
         title: `Recibo de ${gameState.name}`,
-        text: `🎮 Actualización de ${gameState.name} en ${gameState.guildName}`,
+        text: `\uD83C\uDFAE Actualización de ${gameState.name} en ${gameState.guildName}`,
         files: [file]
       }).catch(() => downloadReceipt(data, receipt));
       return;
@@ -2843,7 +2843,7 @@ function downloadReceipt(data, receipt) {
   a.click();
   URL.revokeObjectURL(url);
   
-  alert(`Recibo generado!\\n\\nCompártelo con tu guild por WhatsApp o donde prefieras.\\n\\n📊 ${receipt.recentAchievements.tasksCompleted} tareas | +${receipt.recentAchievements.xpEarned} XP`);
+  alert(`Recibo generado!\\n\\nCompártelo con tu guild por WhatsApp o donde prefieras.\\n\\n\uD83D\uDCCA ${receipt.recentAchievements.tasksCompleted} tareas | +${receipt.recentAchievements.xpEarned} XP`);
 }
 
 function exportGuildInvite() {
@@ -2862,7 +2862,7 @@ function exportGuildInvite() {
     if (navigator.canShare({ files: [file] })) {
       navigator.share({
         title: `Invitación a ${gameState.guildName}`,
-        text: `🎮 ¡Únete a mi guild "${gameState.guildName}" en LifeXP!`,
+        text: `\uD83C\uDFAE ¡Únete a mi guild "${gameState.guildName}" en LifeXP!`,
         files: [file]
       }).catch(() => downloadInvite(data));
       return;
@@ -2950,7 +2950,7 @@ function processReceipt(receipt) {
     gameState.receivedReceipts.push(receipt.receiptId);
     saveGame();
     
-    alert(`Recibo de ${receipt.playerName} procesado!\\n\\n📊 Nivel ${receipt.currentState.level} | ${receipt.recentAchievements.tasksCompleted} tareas recientes`);
+    alert(`Recibo de ${receipt.playerName} procesado!\\n\\n\uD83D\uDCCA Nivel ${receipt.currentState.level} | ${receipt.recentAchievements.tasksCompleted} tareas recientes`);
     renderGuild();
     return;
   }
@@ -2968,8 +2968,8 @@ function renderGuild() {
         <div style="font-size: 48px; margin-bottom: 12px;">⚔️</div>
         <h3 style="margin-bottom: 8px;">Sin Guild</h3>
         <p style="color: var(--text-muted); margin-bottom: 16px;">Crea un guild o únete a uno existente para compartir logros con amigos.</p>
-        <button class="btn btn-gold mb-8" onclick="exportGuildInvite()">🏰 Crear Guild</button>
-        <button class="btn btn-secondary" onclick="importReceipt()">📥 Unirme con invitación</button>
+        <button class="btn btn-gold mb-8" onclick="exportGuildInvite()">\uD83C\uDFF0 Crear Guild</button>
+        <button class="btn btn-secondary" onclick="importReceipt()">\uD83D\uDCE5 Unirme con invitación</button>
       </div>
     `;
     return;
@@ -2982,9 +2982,9 @@ function renderGuild() {
   let membersHtml = '';
   sorted.forEach((m, idx) => {
     const isMe = m.oderId === getPlayerId();
-    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '▪️';
+    const medal = idx === 0 ? '\uD83E\uDD47' : idx === 1 ? '\uD83E\uDD48' : idx === 2 ? '\uD83E\uDD49' : '▪️';
     const classIcon = typeof CLASS_TREE !== 'undefined' && CLASS_TREE[m.classId] 
-      ? CLASS_TREE[m.classId].icon : '🧑‍🌾';
+      ? CLASS_TREE[m.classId].icon : '\uD83E\uDDD1‍\uD83C\uDF3E';
     
     membersHtml += `
       <div class="card" style="display: flex; align-items: center; gap: 12px; ${isMe ? 'border-color: var(--gold);' : ''}">
@@ -2993,7 +2993,7 @@ function renderGuild() {
         <div style="flex: 1;">
           <div style="font-weight: 700;">${m.odeName} ${isMe ? '(tú)' : ''}</div>
           <div style="font-size: 12px; color: var(--text-muted);">
-            Lv ${m.level} · ${m.className || 'Novato'} · 🔥${m.streak || 0}
+            Lv ${m.level} · ${m.className || 'Novato'} · \uD83D\uDD25${m.streak || 0}
           </div>
         </div>
         <div style="text-align: right;">
@@ -3016,16 +3016,16 @@ function renderGuild() {
     
     <div class="section-title" style="margin-top: 20px;">Acciones</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-      <button class="btn btn-gold" onclick="exportReceipt()">📤 Enviar recibo</button>
-      <button class="btn btn-secondary" onclick="importReceipt()">📥 Recibir recibo</button>
+      <button class="btn btn-gold" onclick="exportReceipt()">\uD83D\uDCE4 Enviar recibo</button>
+      <button class="btn btn-secondary" onclick="importReceipt()">\uD83D\uDCE5 Recibir recibo</button>
     </div>
-    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="exportGuildInvite()">🔗 Invitar a alguien</button>
+    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="exportGuildInvite()">\uD83D\uDD17 Invitar a alguien</button>
   `;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // EVENT LISTENERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
   // Load game
@@ -3088,9 +3088,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHub();
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // UI POLISH: TOAST, ONBOARDING, FEEDBACK
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 let toastTimeout = null;
 
@@ -3167,7 +3167,7 @@ const onboardingSteps = [
     text: 'Un RPG donde progresas completando tareas de la vida real. Sube de nivel, consigue loot, y derrota enemigos.'
   },
   {
-    icon: '📋',
+    icon: '\uD83D\uDCCB',
     title: 'Sistema de Tareas',
     text: 'Cada día recibirás tareas aleatorias de tus categorías (Casa, Cuerpo, Gestiones, Social, Personal). Completa la tarea en la vida real y márcala como hecha.'
   },
@@ -3177,12 +3177,12 @@ const onboardingSteps = [
     text: 'Las tareas atrasadas entran en "overflow" y dan +50% XP. Tienen prioridad, así que intenta mantenerlas al día.'
   },
   {
-    icon: '🎲',
+    icon: '\uD83C\uDFB2',
     title: 'Drops y Combate',
     text: 'Al completar tareas puedes conseguir items y encontrar enemigos. El combate puede ser automático o táctico según la dificultad.'
   },
   {
-    icon: '🏰',
+    icon: '\uD83C\uDFF0',
     title: '¡A jugar!',
     text: 'Pulsa el botón central para recibir tu primera tarea. ¡Buena suerte, aventurero!'
   }
@@ -3256,9 +3256,9 @@ function skipOnboarding() {
   finishOnboarding();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // QUESTS RENDERING
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function renderQuests() {
   const container = document.getElementById('quests-container');
@@ -3287,7 +3287,7 @@ function renderQuests() {
   if (active.length === 0) {
     container.innerHTML = `
       <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 32px; margin-bottom: 12px;">📜</div>
+        <div style="font-size: 32px; margin-bottom: 12px;">\uD83D\uDCDC</div>
         <div style="color: var(--text-muted);">No tienes quests activas</div>
         <button class="btn btn-primary" style="margin-top: 16px;" onclick="showAvailableQuests()">
           Ver quests disponibles
@@ -3342,7 +3342,7 @@ function renderQuests() {
             ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 20px;">${quest.icon || '📜'}</div>
+            <div style="font-size: 20px;">${quest.icon || '\uD83D\uDCDC'}</div>
           </div>
         </div>
         <div style="margin-top: 12px;">
@@ -3368,7 +3368,7 @@ function showAvailableQuests() {
   const list  = document.getElementById('modal-tasks-list');
   const title = document.getElementById('modal-tasks-title');
   if (!modal || !list || !title) return;
-  title.textContent = '📜 Quests disponibles';
+  title.textContent = '\uD83D\uDCDC Quests disponibles';
 
   if (typeof QUESTS === 'undefined') {
     list.innerHTML = '<div class="text-muted">Sistema de quests no disponible</div>';
@@ -3387,13 +3387,13 @@ function showAvailableQuests() {
   const playerLevel     = gameState.level || 1;
 
   const typeConfig = {
-    daily:       { color: 'var(--green)',  label: 'Diaria',    icon: '📅' },
-    simple:      { color: 'var(--blue)',   label: 'Misión',    icon: '📜' },
-    compound:    { color: 'var(--purple)', label: 'Compuesta', icon: '📚' },
+    daily:       { color: 'var(--green)',  label: 'Diaria',    icon: '\uD83D\uDCC5' },
+    simple:      { color: 'var(--blue)',   label: 'Misión',    icon: '\uD83D\uDCDC' },
+    compound:    { color: 'var(--purple)', label: 'Compuesta', icon: '\uD83D\uDCDA' },
     story:       { color: 'var(--gold)',   label: 'Historia',  icon: '⭐' },
-    bounty:      { color: 'var(--red)',    label: 'Bounty',    icon: '🎯' },
+    bounty:      { color: 'var(--red)',    label: 'Bounty',    icon: '\uD83C\uDFAF' },
     class_quest: { color: 'var(--cyan)',   label: 'Clase',     icon: '⚔️' },
-    event:       { color: 'var(--orange)', label: 'Evento',    icon: '🎉' },
+    event:       { color: 'var(--orange)', label: 'Evento',    icon: '\uD83C\uDF89' },
   };
 
   list.innerHTML = '';
@@ -3404,7 +3404,7 @@ function showAvailableQuests() {
     if (completedQuests.includes(questId) && !quest.repeatable) continue;
     if ((quest.levelReq || quest.minLevel) && playerLevel < (quest.levelReq || quest.minLevel)) continue;
 
-    const cfg   = typeConfig[quest.type] || { color: 'var(--text-muted)', label: quest.type, icon: '📜' };
+    const cfg   = typeConfig[quest.type] || { color: 'var(--text-muted)', label: quest.type, icon: '\uD83D\uDCDC' };
     // Prefer EN fantasy name if patched by update2, fall back to ES name
     const displayName = quest.name || questId;
     // Lore line: setting > lore > desc (in that priority — setting is the world-flavour hook)
@@ -3428,7 +3428,7 @@ function showAvailableQuests() {
         </div>
         <div style="display:flex;gap:10px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
           ${rewardXp   ? `<span style="font-size:11px;color:var(--gold);">+${rewardXp} XP</span>` : ''}
-          ${rewardGold ? `<span style="font-size:11px;color:var(--gold);">+${rewardGold} 🪙</span>` : ''}
+          ${rewardGold ? `<span style="font-size:11px;color:var(--gold);">+${rewardGold} \uD83E\uDE99</span>` : ''}
           ${rewardItems ? `<span style="font-size:11px;color:var(--blue);">+${rewardItems} objeto${rewardItems>1?'s':''}</span>` : ''}
         </div>
       </div>
@@ -3473,7 +3473,7 @@ function showQuestDetail(questId) {
   
   content.innerHTML = `
     <div style="text-align: center; margin-bottom: 16px;">
-      <div style="font-size: 48px;">${quest.icon || '📜'}</div>
+      <div style="font-size: 48px;">${quest.icon || '\uD83D\uDCDC'}</div>
       <h3 style="margin-top: 8px;">${quest.name}</h3>
       <div style="font-size: 12px; color: var(--text-muted);">${quest.desc}</div>
     </div>
@@ -3484,7 +3484,7 @@ function showQuestDetail(questId) {
       </div>
     ` : ''}
     <div style="font-size: 12px; color: var(--gold);">
-      Recompensa: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} 🪙
+      Recompensa: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} \uD83E\uDE99
     </div>
   `;
   
@@ -3576,9 +3576,9 @@ function completeQuest(questId) {
   renderHub();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // PWA Service Worker Registration
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -3765,54 +3765,28 @@ function showEquippedItemModal(slot) {
 }
 
 
+
 // ============================================================================
-// Block 2.1 hotfix - inventory identity recovery and non-emoji item icons
+// Block 2.1 - inventory identity recovery
+// Alias resolution lives in inventory_system.js (single source of truth).
 // ============================================================================
 
-const LEGACY_ITEM_ALIASES = {
-  'cuchilla llameante': 'cuchilla_llameante',
-  'flaming blade': 'cuchilla_llameante',
-  'ashbrand': 'cuchilla_llameante',
-  'daga corrosiva': 'daga_corrosiva',
-  'espada radiante': 'espada_radiante',
-  'hoja gelida': 'hoja_gelida',
-  'hoja gélida': 'hoja_gelida',
-  'arco de espino': 'arco_espino',
-  'tridente marino': 'tridente_marino',
-  'katana oriental': 'katana_oriental'
-};
-
+// Delegates to the canonical inventory system loaded in inventory_system.js.
 function resolveInventoryItemId(slot) {
-  if (!slot) return null;
-  if (slot.id && typeof ITEMS !== 'undefined' && ITEMS[slot.id]) return slot.id;
-  const raw = slot.id || slot.name || slot.legacyName || slot.itemName || '';
-  const normalized = normalizeItemText(raw);
-  if (LEGACY_ITEM_ALIASES[normalized]) return LEGACY_ITEM_ALIASES[normalized];
-  if (typeof ITEMS !== 'undefined') {
-    const exact = Object.entries(ITEMS).find(([id, item]) => normalizeItemText(item.name) === normalized);
-    if (exact) return exact[0];
-    const byId = Object.keys(ITEMS).find(id => normalizeItemText(id) === normalized || normalizeItemText(id.replaceAll('_', ' ')) === normalized);
-    if (byId) return byId;
+  if (window.LifeXPInventory && typeof window.LifeXPInventory.resolve === 'function') {
+    return window.LifeXPInventory.resolve(slot);
   }
-  return null;
+  // Fallback: direct ID lookup only (no alias resolution without the canonical system).
+  if (!slot) return null;
+  const id = typeof slot === 'string' ? slot : slot.id;
+  return (id && typeof ITEMS !== 'undefined' && ITEMS[id]) ? id : null;
 }
 
 function repairInventoryIdentities() {
-  let changed = false;
-  for (const list of [gameState.inventory, gameState.stash]) {
-    if (!Array.isArray(list)) continue;
-    for (const slot of list) {
-      const resolved = resolveInventoryItemId(slot);
-      if (resolved && slot.id !== resolved) {
-        slot.id = resolved;
-        delete slot.name; delete slot.legacyName; delete slot.itemName;
-        slot.recoveredAtBuild = LIFE_XP_BUILD;
-        changed = true;
-      }
-    }
+  if (window.LifeXPInventory && typeof window.LifeXPInventory.repair === 'function') {
+    return window.LifeXPInventory.repair();
   }
-  if (changed) saveGame();
-  return changed;
+  return false;
 }
 
 function itemIconSvg(item, size = 38) {
@@ -3965,23 +3939,23 @@ function showItemModal(itemId, container) {
   var req = getItemRequirementStatus(itemId);
   var att = req.attunement;
 
-  // ── HEADER ────────────────────────────────────────────────────────────────
+  // == HEADER ================================================================
   var html = '';
   html += '<div style="text-align:center;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;">';
-  html += '<div style="font-size:48px;line-height:1;margin-bottom:6px;">' + (item.icon || '📦') + '</div>';
+  html += '<div style="font-size:48px;line-height:1;margin-bottom:6px;">' + (item.icon || '\uD83D\uDCE6') + '</div>';
   html += '<div style="font-size:18px;font-weight:700;color:' + rarity.color + ';letter-spacing:.3px;">' + escapeItemHtml(item.name) + '</div>';
   html += '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;">';
   html += escapeItemHtml(type.name) + ' · <span style="color:' + rarity.color + ';">' + escapeItemHtml(rarity.name) + '</span>';
   if (qty > 1) html += ' · ×' + qty;
   html += '</div></div>';
 
-  // ── LORE ──────────────────────────────────────────────────────────────────
+  // == LORE ==================================================================
   var lore = item.lore || item.desc || '';
   if (lore) {
     html += '<div style="font-size:13px;color:var(--text-muted);font-style:italic;line-height:1.5;margin-bottom:8px;">' + escapeItemHtml(lore) + '</div>';
   }
 
-  // ── STATS ─────────────────────────────────────────────────────────────────
+  // == STATS =================================================================
   var statsEntries = Object.entries(item.stats || {}).filter(function(e){ return e[1]; });
   if (statsEntries.length) {
     html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">';
@@ -3995,12 +3969,12 @@ function showItemModal(itemId, container) {
     html += '</div>';
   }
 
-  // ── PASSIVE ───────────────────────────────────────────────────────────────
+  // == PASSIVE ===============================================================
   if (item.passive) {
     html += '<div style="font-size:11px;color:var(--gold);margin:4px 0;">✦ ' + escapeItemHtml(item.passive) + '</div>';
   }
 
-  // ── EFFECTS (only known) ──────────────────────────────────────────────────
+  // == EFFECTS (only known) ==================================================
   var knownEffects = (item.effects || []).filter(function(e){ return isItemEffectKnown(itemId, e); });
   if (knownEffects.length) {
     html += '<div class="item-panel" style="margin-top:10px;">';
@@ -4012,14 +3986,14 @@ function showItemModal(itemId, container) {
         html += '<span style="color:var(--orange);font-weight:600;">' + escapeItemHtml(e.name || 'Efecto') + '</span>';
         html += ' <span style="color:var(--text-muted);">— ' + escapeItemHtml(e.description || '') + '</span></div>';
       } else {
-        html += '<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">🔒 ' + escapeItemHtml(e.name || 'Efecto');
+        html += '<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">\uD83D\uDD12 ' + escapeItemHtml(e.name || 'Efecto');
         html += ' <span style="font-size:10px;">(Aclimatación ' + (e.unlockStage || '?') + '/' + att.max + (e.activationRequired ? ' · Ritual' : '') + ')</span></div>';
       }
     });
     html += '</div>';
   }
 
-  // ── REQUIREMENTS — progressive discovery, no spoilers ───────────────────
+  // == REQUIREMENTS — progressive discovery, no spoilers ===================
   // Requirements are never shown as a stat list. The player discovers them
   // by attempting to equip. If they've tried before, show a single flavor hint.
   var equipAttempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
@@ -4029,7 +4003,7 @@ function showItemModal(itemId, container) {
     html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-style:italic;padding:8px;background:var(--bg-surface);border-radius:6px;border-left:2px solid var(--border);">⟳ ' + escapeItemHtml(hint) + '</div>';
   }
 
-  // ── ATTUNEMENT (only if stage > 0 or equipped) ───────────────────────────
+  // == ATTUNEMENT (only if stage > 0 or equipped) ===========================
   if (item.attunement && item.attunement.required && (att.stage > 0 || container === 'equipped')) {
     var attText = (item.attunement.stages && item.attunement.stages[att.stage])
       || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
@@ -4044,13 +4018,13 @@ function showItemModal(itemId, container) {
     html += '</div>';
   }
 
-  // ── ACTIVATION (gated by minimumStage) ───────────────────────────────────
+  // == ACTIVATION (gated by minimumStage) ===================================
   var minStage = Number((item.attunement && item.attunement.minimumStage) || 1);
   if (!item.attunement || !item.attunement.required || att.stage >= minStage) {
     html += renderActivationPanel(itemId);
   }
 
-  // ── CURSE ─────────────────────────────────────────────────────────────────
+  // == CURSE =================================================================
   if (item.curse) {
     html += '<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">';
     html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>';
@@ -4058,12 +4032,12 @@ function showItemModal(itemId, container) {
     html += '</div>';
   }
 
-  // ── VALUE ─────────────────────────────────────────────────────────────────
-  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">' + (item.value || 0) + ' 🪙</div>';
+  // == VALUE =================================================================
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">' + (item.value || 0) + ' \uD83E\uDE99</div>';
 
   document.getElementById('modal-item-content').innerHTML = html;
 
-  // ── ACTION BUTTON ─────────────────────────────────────────────────────────
+  // == ACTION BUTTON =========================================================
   var actionBtn = document.getElementById('btn-item-action');
   if (!actionBtn) return;
   actionBtn.style.display = 'flex';
