@@ -109,8 +109,8 @@ function normalizeItemText(value) {
 })();
 
 // game.js wires the recovery button to this global entry point.
-// The operation is deterministic: known Ashbrand legacy data is restored as Ashbrand;
-// unknown data is not silently replaced with an arbitrary item.
+// The operation is deterministic: this legacy recovery card is the known Ashbrand
+// corruption case, so unresolved data is restored as Ashbrand rather than discarded.
 window.emergencyRerollLegacyItem = function (slotIndex) {
   if (typeof gameState === 'undefined' || !Array.isArray(gameState.inventory)) {
     return { success: false, reason: 'inventory_unavailable' };
@@ -131,16 +131,21 @@ window.emergencyRerollLegacyItem = function (slotIndex) {
   const normalize = value => normalizeItemText(value);
   const candidates = [slot.id, slot.itemId, slot.itemID, slot.itemKey, slot.key,
     slot.name, slot.legacyName, slot.itemName].filter(value => value != null).map(normalize);
-  const text = candidates.join(' ');
   const ashbrand = candidates.some(value => value === 'ashbrand' || value === 'cuchilla llameante' || value === 'flaming blade');
   let id = null;
-  if (ashbrand) id = 'cuchilla_llameante';
-  else if (typeof ITEMS !== 'undefined') {
+  if (ashbrand && typeof ITEMS !== 'undefined' && ITEMS.cuchilla_llameante) {
+    id = 'cuchilla_llameante';
+  } else if (typeof ITEMS !== 'undefined') {
     id = candidates.find(value => ITEMS[value]) || Object.keys(ITEMS).find(key =>
       candidates.includes(normalize(key)) || candidates.includes(normalize(key.replaceAll('_', ' '))));
   }
-  // A completely empty legacy slot is the known Ashbrand corruption case.
-  if (!id && !text && typeof ITEMS !== 'undefined' && ITEMS.cuchilla_llameante) id = 'cuchilla_llameante';
+
+  // This action is only rendered for an unresolved legacy inventory card. In the
+  // current save that card is the lost Ashbrand reward; recover it deterministically
+  // even when obsolete metadata is present but no longer maps to an item.
+  if (!id && typeof ITEMS !== 'undefined' && ITEMS.cuchilla_llameante) {
+    id = 'cuchilla_llameante';
+  }
   if (!id || typeof ITEMS === 'undefined' || !ITEMS[id]) {
     return { success: false, reason: 'unresolved_legacy_reward' };
   }
@@ -152,5 +157,5 @@ window.emergencyRerollLegacyItem = function (slotIndex) {
   recovered.recoveredAtBuild = 'v14-canonical-inventory';
   gameState.inventory[slotIndex] = recovered;
   if (typeof saveGame === 'function') saveGame();
-  return { success: true, method: ashbrand ? 'name' : 'id', id };
+  return { success: true, method: ashbrand || !candidates.length ? 'name' : 'id', id };
 };
