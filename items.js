@@ -210,24 +210,8 @@ function removeFromInventory(itemId, quantity = 1) {
   return true;
 }
 
-function equipItem(itemId) {
-  const item = ITEMS[itemId];
-  const type = item && ITEM_TYPE[item.type];
-  if (!type || !type.slot) return false;
-  let slot = type.slot;
-  if (slot === 'accessory') slot = gameState.equipment.accessory1 ? (gameState.equipment.accessory2 ? 'accessory1' : 'accessory2') : 'accessory1';
-  if (gameState.equipment[slot]) addToInventory(gameState.equipment[slot]);
-  removeFromInventory(itemId);
-  gameState.equipment[slot] = itemId;
-  return true;
-}
-
-function unequipItem(slot) {
-  const itemId = gameState.equipment[slot];
-  if (!itemId || !addToInventory(itemId)) return false;
-  gameState.equipment[slot] = null;
-  return true;
-}
+// equipItem and unequipItem are defined in item_system.js (canonical, with attunement/curse checks).
+// DT-04 resolved: legacy stubs removed from items.js.
 
 function getEquipmentStats() {
   const stats = { fue: 0, vit: 0, des: 0, int: 0, vol: 0, pre: 0 };
@@ -238,7 +222,10 @@ function getEquipmentStats() {
   return stats;
 }
 
-function rollDrop(theme, bonusChance = 0) {
+// rollDropByTheme: canonical drop-by-theme function (renamed from rollDrop to avoid collision
+// with ui_tasks.js rollDrop(task, sideQuestCompleted) which loads after this file).
+// DT-10 resolved: name collision eliminated; window._itemsRollDrop alias removed.
+function rollDropByTheme(theme, bonusChance = 0) {
   const baseChance = 0.40 + bonusChance;
   if (Math.random() > baseChance) return null;
   const pool = DROP_TABLES[theme];
@@ -276,4 +263,6 @@ function sellItem(itemId, quantity = 1) {
   return gold;
 }
 
-if (typeof window !== 'undefined') window._itemsRollDrop = rollDrop;
+// rollDropByTheme is the canonical drop-by-theme function.
+// Exposed globally so ui_tasks.js can access it despite its own rollDrop(task) function.
+if (typeof window !== 'undefined') window.rollDropByTheme = rollDropByTheme;
