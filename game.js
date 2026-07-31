@@ -725,6 +725,40 @@ function saveGame() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// migrateQuestState -- convierte el formato legacy (activeQuests[]/completedQuests[])
+// al formato canonico de quests.js (gameState.quests.*).
+// Idempotente: si ya existe gameState.quests, no hace nada.
+// ---------------------------------------------------------------------------
+function migrateQuestState() {
+  // Already migrated or fresh save
+  if (gameState.quests && Array.isArray(gameState.quests.active)) return;
+
+  // Build canonical quests namespace
+  gameState.quests = {
+    active: [],
+    completed: Array.isArray(gameState.completedQuests) ? [...gameState.completedQuests] : [],
+    failed: [],
+    dailyReset: null
+  };
+
+  // Migrate active quests from legacy format
+  const legacy = Array.isArray(gameState.activeQuests) ? gameState.activeQuests : [];
+  for (const qs of legacy) {
+    const questId = qs.questId;
+    if (!questId || typeof QUESTS === 'undefined' || !QUESTS[questId]) continue;
+    const quest = QUESTS[questId];
+    gameState.quests.active.push(questId);
+    // Best-effort objective migration: reset progress (legacy format incompatible)
+    gameState.quests[questId] = {
+      startedAt: qs.startedAt || todayStr(),
+      objectives: quest.objectives ? quest.objectives.map(o => ({ ...o, progress: 0 })) : [],
+      currentChapter: 0
+    };
+  }
+  // Legacy fields kept for any remaining references (cleaned in Fase G)
+}
+
 function loadGame() {
   try {
     const saved = localStorage.getItem('lifexp_save');
@@ -759,6 +793,9 @@ function loadGame() {
       gameState.tasks.push(JSON.parse(JSON.stringify(officialTask)));
     }
   }
+
+  // Migrate legacy quest format (activeQuests[] -> gameState.quests)
+  if (typeof migrateQuestState === 'function') migrateQuestState();
 
   // Update streak
   updateStreak();
@@ -1928,11 +1965,11 @@ function finalizeCompletion(sideQuestCompleted) {
   // Check for random encounter after task completion
   triggerEncounterAfterTask(task);
   
-  // Update quest progress
+  // Update quest progress (delegates to quests.js canonical implementation)
   if (typeof updateQuestProgress === 'function') {
-    updateQuestProgress(task);
-  if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
+    updateQuestProgress('task_complete', { category: task.cat });
   }
+  if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
 }
 
 // Drop system - connects to items.js
@@ -3266,9 +3303,11 @@ function renderQuests() {
   
   // Update count in header
   const countEl = document.getElementById('quests-count');
+  if (typeof initQuestState === 'function') initQuestState();
+  if (typeof checkDailyQuestReset === 'function') checkDailyQuestReset();
+  const active = typeof getActiveQuests === 'function' ? getActiveQuests() : [];
   if (countEl) {
-    const activeCount = (gameState.activeQuests || []).length;
-    countEl.textContent = `${activeCount} activa${activeCount !== 1 ? 's' : ''}`;
+    countEl.textContent = `${active.length} activa${active.length !== 1 ? 's' : ''}`;
   }
   
   // Check if quests.js loaded
@@ -3276,13 +3315,6 @@ function renderQuests() {
     container.innerHTML = '<div class="text-muted text-center">Sistema de quests cargando...</div>';
     return;
   }
-  
-  // Generate daily quests if needed
-  if (typeof generateDailyQuests === 'function') {
-    generateDailyQuests();
-  }
-  
-  const active = gameState.activeQuests || [];
   
   if (active.length === 0) {
     container.innerHTML = `
@@ -3299,47 +3331,31 @@ function renderQuests() {
   
   container.innerHTML = '';
   
-  for (const questState of active) {
-    const quest = QUESTS[questState.questId];
-    if (!quest) continue;
-    
-    const currentStep = quest.steps ? quest.steps[questState.stepIndex || 0] : null;
-    const progress = questState.progress || {};
-    const legacyObjective = !currentStep && quest.objectives?.[0] ? quest.objectives[0] : null;
-    
-    // Calculate progress percentage
-    let progressPct = 0;
-    if (currentStep && currentStep.objective) {
-      const obj = currentStep.objective;
-      if (obj.type === 'completeTasks') {
-        const done = progress.tasksCompleted || 0;
-        progressPct = Math.min(100, Math.round((done / obj.count) * 100));
-      } else if (obj.type === 'defeatEnemy') {
-        progressPct = progress.enemyDefeated ? 100 : 0;
-      }
-    } else if (legacyObjective) {
-      progressPct = Math.min(100, Math.round(((progress.tasksCompleted || 0) / legacyObjective.count) * 100));
-    }
+  for (const quest of active) {
+    const questId = quest.id;
+    const prog = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
+    const progressPct = prog ? prog.percent : 0;
     
     const typeColors = {
       daily: 'var(--green)',
       simple: 'var(--blue)',
-      composed: 'var(--purple)',
+      compound: 'var(--purple)',
       story: 'var(--gold)',
       bounty: 'var(--red)',
-      class: 'var(--cyan)'
+      class_quest: 'var(--cyan)',
+      event: 'var(--orange)'
     };
     const color = typeColors[quest.type] || 'var(--text-muted)';
     
     container.innerHTML += `
-      <div class="card" onclick="showQuestDetail('${questState.questId}')" style="cursor: pointer; border-left: 3px solid ${color};">
+      <div class="card" onclick="showQuestDetail('${questId}')" style="cursor: pointer; border-left: 3px solid ${color};">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
           <div>
             <div style="font-size: 11px; color: ${color}; text-transform: uppercase; margin-bottom: 4px;">
               ${quest.type}
             </div>
             <div style="font-weight: 700;">${quest.name}</div>
-            ${currentStep ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${currentStep.desc}</div>` : `<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>`}
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 20px;">${quest.icon || '\uD83D\uDCDC'}</div>
@@ -3382,10 +3398,6 @@ function showAvailableQuests() {
     if (typeof window.LifeXPUpdate2.patchExpansionQuestLanguage === 'function') window.LifeXPUpdate2.patchExpansionQuestLanguage();
   }
 
-  const activeQuests    = Array.isArray(gameState.activeQuests)    ? gameState.activeQuests    : [];
-  const completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
-  const playerLevel     = gameState.level || 1;
-
   const typeConfig = {
     daily:       { color: 'var(--green)',  label: 'Diaria',    icon: '\uD83D\uDCC5' },
     simple:      { color: 'var(--blue)',   label: 'Misión',    icon: '\uD83D\uDCDC' },
@@ -3396,13 +3408,14 @@ function showAvailableQuests() {
     event:       { color: 'var(--orange)', label: 'Evento',    icon: '\uD83C\uDF89' },
   };
 
+  // getAvailableQuests() (quests.js) applies level/class/stat/active/completed filters
+  const available = typeof getAvailableQuests === 'function' ? getAvailableQuests() : [];
+
   list.innerHTML = '';
   let count = 0;
 
-  for (const [questId, quest] of Object.entries(QUESTS)) {
-    if (activeQuests.some(q => q.questId === questId)) continue;
-    if (completedQuests.includes(questId) && !quest.repeatable) continue;
-    if ((quest.levelReq || quest.minLevel) && playerLevel < (quest.levelReq || quest.minLevel)) continue;
+  for (const quest of available) {
+    const questId = quest.id;
 
     const cfg   = typeConfig[quest.type] || { color: 'var(--text-muted)', label: quest.type, icon: '\uD83D\uDCDC' };
     // Prefer EN fantasy name if patched by update2, fall back to ES name
@@ -3443,137 +3456,68 @@ function showAvailableQuests() {
   openModal('modal-tasks');
 }
 
+// ===========================================================================
+// QUEST FUNCTIONS -- delegaciones a quests.js (implementaciones canonicas)
+// Fase E saneamiento: duplicados eliminados. game.js delega a quests.js.
+// updateQuestProgress y completeQuest NO se redefinen aqui: las versiones
+// de quests.js (que carga antes) son las que el motor usa.
+// ===========================================================================
+
 function acceptQuest(questId) {
-  if (typeof QUESTS === 'undefined' || !QUESTS[questId]) return;
-  
-  // Check if already active
-  if (gameState.activeQuests.some(q => q.questId === questId)) return;
-  
-  gameState.activeQuests.push({
-    questId,
-    stepIndex: 0,
-    progress: {},
-    startedAt: todayStr()
-  });
-  
-  saveGame();
+  if (typeof window.acceptQuestCanonical !== 'function') return;
+  const result = window.acceptQuestCanonical(questId);
+  if (result && !result.success) {
+    if (typeof showToast === 'function') showToast(result.message, 'error');
+    return;
+  }
   closeModal('modal-tasks');
   renderQuests();
 }
 
 function showQuestDetail(questId) {
-  const questState = gameState.activeQuests.find(q => q.questId === questId);
-  if (!questState || typeof QUESTS === 'undefined') return;
-  
+  if (typeof QUESTS === 'undefined') return;
   const quest = QUESTS[questId];
   if (!quest) return;
-  
-  const content = document.getElementById('modal-item-content');
-  const currentStep = quest.steps ? quest.steps[questState.stepIndex || 0] : null;
-  
-  content.innerHTML = `
-    <div style="text-align: center; margin-bottom: 16px;">
-      <div style="font-size: 48px;">${quest.icon || '\uD83D\uDCDC'}</div>
-      <h3 style="margin-top: 8px;">${quest.name}</h3>
-      <div style="font-size: 12px; color: var(--text-muted);">${quest.desc}</div>
-    </div>
-    ${currentStep ? `
-      <div class="card" style="margin-bottom: 12px;">
-        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">OBJETIVO ACTUAL</div>
-        <div>${currentStep.desc}</div>
-      </div>
-    ` : ''}
-    <div style="font-size: 12px; color: var(--gold);">
-      Recompensa: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} \uD83E\uDE99
-    </div>
-  `;
-  
+
+  const prog = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
+  const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : {};
+  const color = typeInfo.color || 'var(--gold)';
+
+  let objectivesHtml = '';
+  if (prog && prog.objectives) {
+    objectivesHtml = prog.objectives.map(obj => {
+      const fmt = typeof formatObjective === 'function'
+        ? formatObjective(obj)
+        : { text: obj.type, progress: obj.progress + '/' + obj.count, done: false };
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">'
+        + '<span style="font-size:12px;color:' + (fmt.done ? 'var(--green)' : 'var(--text)') + ';">'
+        + (fmt.done ? '\u2713 ' : '') + escapeHtml(fmt.text) + '</span>'
+        + '<span style="font-size:11px;color:var(--text-muted);">' + fmt.progress + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  const contentEl = document.getElementById('modal-item-content');
+  contentEl.innerHTML = '<div style="text-align:center;margin-bottom:16px;">'
+    + '<div style="font-size:48px;">' + (quest.icon || '\uD83D\uDCDC') + '</div>'
+    + '<h3 style="margin-top:8px;color:' + color + ';">' + escapeHtml(quest.name) + '</h3>'
+    + '<div style="font-size:12px;color:var(--text-muted);">' + escapeHtml(quest.desc || '') + '</div>'
+    + '</div>'
+    + (objectivesHtml ? '<div style="margin-bottom:12px;">' + objectivesHtml + '</div>' : '')
+    + '<div style="font-size:12px;color:var(--gold);">Recompensa: +'
+    + (quest.rewards && quest.rewards.xp ? quest.rewards.xp : 0) + ' XP | +'
+    + (quest.rewards && quest.rewards.gold ? quest.rewards.gold : 0) + ' \uD83E\uDE99</div>';
+
   const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = '❌ Abandonar quest';
-  actionBtn.onclick = () => abandonQuest(questId);
-  
+  actionBtn.textContent = '\u274C Abandonar quest';
+  actionBtn.onclick = function() { abandonQuest(questId); };
   openModal('modal-item');
 }
 
 function abandonQuest(questId) {
-  gameState.activeQuests = gameState.activeQuests.filter(q => q.questId !== questId);
-  saveGame();
+  if (typeof window.abandonQuestCanonical === 'function') window.abandonQuestCanonical(questId);
   closeModal('modal-item');
   renderQuests();
-}
-
-function updateQuestProgress(taskCompleted) {
-  if (typeof QUESTS === 'undefined') return;
-  
-  for (const questState of gameState.activeQuests) {
-    const quest = QUESTS[questState.questId];
-    if (!quest || !quest.steps) continue;
-    
-    const currentStep = quest.steps[questState.stepIndex || 0];
-    if (!currentStep || !currentStep.objective) continue;
-    
-    const obj = currentStep.objective;
-    
-    // Check task completion objectives
-    if (obj.type === 'completeTasks') {
-      const catMatch = !obj.category || taskCompleted.cat === obj.category;
-      if (catMatch) {
-        questState.progress.tasksCompleted = (questState.progress.tasksCompleted || 0) + 1;
-        
-        // Check if step complete
-        if (questState.progress.tasksCompleted >= obj.count) {
-          advanceQuestStep(questState);
-        }
-      }
-    }
-  }
-  
-  saveGame();
-}
-
-function advanceQuestStep(questState) {
-  const quest = QUESTS[questState.questId];
-  if (!quest) return;
-  
-  questState.stepIndex = (questState.stepIndex || 0) + 1;
-  questState.progress = {}; // Reset progress for new step
-  
-  // Check if quest complete
-  if (!quest.steps || questState.stepIndex >= quest.steps.length) {
-    completeQuest(questState.questId);
-  }
-}
-
-function completeQuest(questId) {
-  const quest = QUESTS[questId];
-  if (!quest) return;
-  
-  // Remove from active
-  gameState.activeQuests = gameState.activeQuests.filter(q => q.questId !== questId);
-  
-  // Add to completed (unless repeatable)
-  if (!quest.repeatable && !gameState.completedQuests.includes(questId)) {
-    gameState.completedQuests.push(questId);
-  }
-  
-  // Grant rewards
-  if (quest.rewards) {
-    if (quest.rewards.xp) addXp(quest.rewards.xp);
-    if (quest.rewards.gold) gameState.gold += quest.rewards.gold;
-    if (quest.rewards.items && typeof addToInventory === 'function') {
-      for (const itemId of quest.rewards.items) {
-        addToInventory(itemId);
-      }
-    }
-  }
-  
-  saveGame();
-  
-  // Show completion notification (simple alert for now)
-  alert(`¡Quest completada: ${quest.name}!\n+${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} oro`);
-  
-  renderQuests();
-  renderHub();
 }
 
 // ===========================================================================

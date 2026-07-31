@@ -14,7 +14,7 @@
 | B | Unificar aliases (una sola fuente de verdad) | Completada 2026-07-30 | #10 |
 | C | Eliminar fallback hardcodeado | Completada 2026-07-31 | #11 |
 | D | Fusionar ashbrand_hotfix en inventory_system | Completada 2026-07-31 | #12 |
-| E | Unificar funciones duplicadas de quests | Pendiente | -- |
+| E | Unificar funciones duplicadas de quests | Completada 2026-07-31 | #13 |
 | F | Mover ITEM_FLAVOR_TEXT fuera de game.js | Pendiente | -- |
 | G | Split de game.js | Pendiente | -- |
 
@@ -131,13 +131,45 @@ ashbrand_hotfix.js como stub vacio de compatibilidad.
 
 ---
 
-## Fase E -- Unificar funciones duplicadas de quests (Pendiente)
+## Fase E -- Unificar funciones duplicadas de quests (Completada 2026-07-31 -- PR #13)
 
 Objetivo: eliminar las copias de acceptQuest, updateQuestProgress y completeQuest de game.js.
 Solo viven en quests.js.
-Ficheros que toca: game.js (~3 funciones), quests.js.
-Riesgo: medio-alto.
-Como verificarlo: acepta una quest, completa una tarea que la avance, completala. Las recompensas llegan correctamente.
+
+### Diagnostico previo
+
+Las dos implementaciones usaban modelos de datos incompatibles:
+- game.js: gameState.activeQuests[] (array de objetos {questId, stepIndex, progress})
+- quests.js: gameState.quests.active[] (array de IDs) + gameState.quests[questId] (estado)
+El catalogo QUESTS usa objectives[], pero updateQuestProgress de game.js buscaba steps[].
+Resultado: el progreso de quests nunca avanzaba en produccion.
+
+### Que se hizo
+
+- game.js: anadida funcion migrateQuestState() que convierte el formato legacy
+  (activeQuests[]/completedQuests[]) al canonico (gameState.quests.*) al cargar el save.
+  Idempotente: si ya existe gameState.quests, no hace nada. Los campos legacy se conservan.
+- game.js: llamada a migrateQuestState() dentro de loadGame() tras parsear el save.
+- game.js: corregida firma de updateQuestProgress en completeTask:
+  updateQuestProgress('task_complete', { category: task.cat }) en lugar de pasar el objeto task.
+- game.js: renderQuests() lee de getActiveQuests() y getQuestProgress() de quests.js.
+- game.js: showAvailableQuests() delega filtrado a getAvailableQuests() de quests.js.
+- game.js: acceptQuest() -> delegacion a window.acceptQuestCanonical (quests.js).
+- game.js: abandonQuest() -> delegacion a window.abandonQuestCanonical (quests.js).
+- game.js: showQuestDetail() reescrita con getQuestProgress/formatObjective/getQuestTypeInfo.
+  Sin alert() en la ruta de completado.
+- game.js: eliminadas updateQuestProgress, completeQuest y advanceQuestStep como funciones.
+  Las versiones de quests.js (que carga antes) son las canonicas.
+- quests.js: anadidos window.acceptQuestCanonical y window.abandonQuestCanonical al final.
+- DT-01, DT-02, DT-03 resueltas.
+
+### Como verificarlo
+
+1. Abre la app. El inventario y el hub cargan igual que antes.
+2. Ve a Quests. Acepta una quest disponible (ej: Rutina Diaria).
+3. Completa una tarea de cualquier categoria desde el hub.
+4. Vuelve a Quests: el progreso de la quest debe haber avanzado.
+5. Cierra y vuelve a abrir la app. El save carga correctamente con las quests activas.
 
 ---
 
@@ -196,3 +228,4 @@ Esta transformacion es transparente para el navegador (JS interpreta los surroga
 | 2026-07-30 | Fase B completada: PR #10 mergeado. Aliases unificados en inventory_system.js. DT-14 resuelta |
 | 2026-07-31 | Fase C completada: PR #11. Fallback ya eliminado en Fase B. Solo actualizacion documental |
 | 2026-07-31 | Fase D completada: PR #12. ashbrand_hotfix.js vaciado a stub. Logica absorbida por inventory_system.js. DT-07 y DT-08 resueltas |
+| 2026-07-31 | Fase E completada: PR #13. Funciones duplicadas de quests eliminadas de game.js. migrateQuestState() anade migracion de save. DT-01, DT-02, DT-03 resueltas |

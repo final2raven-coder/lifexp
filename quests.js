@@ -1,19 +1,19 @@
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // LifeXP RPG - Quest System (Block 5)
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // QUEST TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const QUEST_TYPE = {
-  daily: { name: 'Diaria', icon: '📅', color: '#4ade80' },
-  simple: { name: 'Misión', icon: '📜', color: '#60a5fa' },
-  compound: { name: 'Compuesta', icon: '📚', color: '#a78bfa' },
+  daily: { name: 'Diaria', icon: '\uD83D\uDCC5', color: '#4ade80' },
+  simple: { name: 'Misión', icon: '\uD83D\uDCDC', color: '#60a5fa' },
+  compound: { name: 'Compuesta', icon: '\uD83D\uDCDA', color: '#a78bfa' },
   story: { name: 'Historia', icon: '⭐', color: '#ffd700' },
-  bounty: { name: 'Bounty', icon: '🎯', color: '#f87171' },
+  bounty: { name: 'Bounty', icon: '\uD83C\uDFAF', color: '#f87171' },
   class_quest: { name: 'Clase', icon: '⚔️', color: '#ff4d6d' },
-  event: { name: 'Evento', icon: '🎉', color: '#22d3ee' }
+  event: { name: 'Evento', icon: '\uD83C\uDF89', color: '#22d3ee' }
 };
 
 const QUEST_STATUS = {
@@ -24,13 +24,13 @@ const QUEST_STATUS = {
   locked: 'locked'
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // QUEST DATABASE
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 const QUESTS = {
   
-  // ══════════ DAILY QUESTS ══════════
+  // ========== DAILY QUESTS ==========
   daily_any_3: {
     id: 'daily_any_3',
     type: 'daily',
@@ -73,7 +73,7 @@ const QUESTS = {
     resetDaily: true
   },
 
-  // ══════════ SIMPLE QUESTS ══════════
+  // ========== SIMPLE QUESTS ==========
   quest_first_steps: {
     id: 'quest_first_steps',
     type: 'simple',
@@ -113,7 +113,7 @@ const QUESTS = {
     repeatable: false
   },
 
-  // ══════════ BOUNTIES ══════════
+  // ========== BOUNTIES ==========
   bounty_slimes: {
     id: 'bounty_slimes',
     type: 'bounty',
@@ -142,7 +142,7 @@ const QUESTS = {
     repeatable: true
   },
 
-  // ══════════ STORY QUESTS ══════════
+  // ========== STORY QUESTS ==========
   story_wolf_hills: {
     id: 'story_wolf_hills',
     type: 'story',
@@ -202,7 +202,7 @@ const QUESTS = {
         boss: {
           id: 'lobo_alfa',
           name: 'Lobo Alfa',
-          icon: '🐺',
+          icon: '\uD83D\uDC3A',
           level: 15,
           hp: 400,
           fue: 20, vit: 18, des: 16, int: 8, vol: 14, pre: 12,
@@ -226,7 +226,7 @@ const QUESTS = {
     repeatable: false
   },
 
-  // ══════════ CLASS QUESTS ══════════
+  // ========== CLASS QUESTS ==========
   class_warrior_berserker: {
     id: 'class_warrior_berserker',
     type: 'class_quest',
@@ -250,9 +250,9 @@ const QUESTS = {
   }
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // QUEST STATE MANAGEMENT
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function initQuestState() {
   if (!gameState.quests) {
@@ -367,9 +367,9 @@ function failQuest(questId) {
   saveGame();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // QUEST PROGRESS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function updateQuestProgress(eventType, data) {
   initQuestState();
@@ -507,9 +507,9 @@ function applyQuestRewards(rewards) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // DAILY RESET
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function checkDailyQuestReset() {
   initQuestState();
@@ -535,9 +535,9 @@ function checkDailyQuestReset() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // QUEST UI HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 function getQuestProgress(questId) {
   const quest = QUESTS[questId];
@@ -595,3 +595,10 @@ function formatObjective(obj) {
     done
   };
 }
+
+// ===========================================================================
+// CANONICAL ALIASES -- expuestos como window.* para que game.js pueda delegar
+// sin redefinir las funciones. (Fase E saneamiento)
+// ===========================================================================
+window.acceptQuestCanonical  = acceptQuest;
+window.abandonQuestCanonical = abandonQuest;

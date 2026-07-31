@@ -11,7 +11,7 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-07-31 (Fase D saneamiento -- PR #12) |
+| Ultima actualizacion | 2026-07-31 (Fase E saneamiento -- PR #13) |
 | Branch de produccion | `main` |
 | Branches activas | `main`, `backup/pre-sanitation-2026-07-30` |
 | Commit base | `b703adf895dd5494fab34e12a43111d39fe3301f` |
@@ -43,12 +43,12 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | Ruta | Lineas | Responsabilidad | Exports principales | Dependencias |
 |---|---|---|---|---|
 | `index.html` | 1579 | Shell HTML + todo el CSS + orden de carga de scripts | (DOM) | Todos los `.js` |
-| `game.js` | 4124 | Motor principal: estado, tareas, UI, combate-UI, quests-UI, guild, settings, onboarding, item-system runtime | `gameState`, `DEFAULT_TASKS`, `CATEGORIES`, `STATS`, `FREQ`, `LIFE_XP_BUILD`, todas las funciones de UI | `classes.js`, `items.js`, `enemies.js`, `combat.js`, `quests.js` |
+| `game.js` | ~4068 | Motor principal: estado, tareas, UI, combate-UI, quests-UI, guild, settings, onboarding, item-system runtime | `gameState`, `DEFAULT_TASKS`, `CATEGORIES`, `STATS`, `FREQ`, `LIFE_XP_BUILD`, todas las funciones de UI | `classes.js`, `items.js`, `enemies.js`, `combat.js`, `quests.js` |
 | `items.js` | 279 | Catalogo de items, rareza, tipos, tablas de drop | `RARITY`, `ITEM_TYPE`, `ITEMS`, `DROP_TABLES`, `rollDrop`, `addToInventory`, `removeFromInventory` | (solo globals de `gameState`) |
 | `enemies.js` | 614 | Catalogo de enemigos + helpers de seleccion/escalado | `ENEMIES`, `getEnemyById`, `pickRandomEnemy`, `scaleEnemy` | `items.js` (drops) |
 | `combat.js` | 798 | Motor de combate por turnos: dano, skills, estados, auto-combat, recompensas | `combatState`, `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `resolveAutoCombat`, `calculateCombatRewards`, `rollEncounter` | `game.js` (`gameState`, `getDerivedStats`), `enemies.js`, `items.js` |
 | `classes.js` | 223 | Arbol de clases, formulas XP/nivel, stats derivados, recursos | `CLASS_TREE`, `BASE_CLASSES`, `xpForLevel`, `levelFromXp`, `calculateDerivedStats`, `calculateResources`, `getClassChain` | |
-| `quests.js` | 597 | Catalogo de quests + motor de estado de quests | `QUEST_TYPE`, `QUEST_STATUS`, `QUESTS`, `initQuestState`, `acceptQuest`, `completeQuest`, `updateQuestProgress`, `applyQuestRewards` | `game.js` (`gameState`, `saveGame`) |
+| `quests.js` | ~610 | Catalogo de quests + motor de estado de quests. FUENTE DE VERDAD UNICA para logica de quests. | `QUEST_TYPE`, `QUEST_STATUS`, `QUESTS`, `initQuestState`, `acceptQuest`, `completeQuest`, `updateQuestProgress`, `applyQuestRewards`, `window.acceptQuestCanonical`, `window.abandonQuestCanonical` | `game.js` (`gameState`, `saveGame`) |
 | `inventory_system.js` | ~160 | Subsistema canonico de inventario: resolucion de IDs, aliases, normalizacion, render, repair. FUENTE DE VERDAD UNICA. Expone tambien `normalizeItemText` y `emergencyRerollLegacyItem` (absorbidos de ashbrand_hotfix en Fase D). | `window.LifeXPInventory.resolve()`, `window.LifeXPInventory.repair()`, `window.normalizeItemText`, `window.emergencyRerollLegacyItem`, `window.renderInventory` | `items.js` (`ITEMS`, `RARITY`), `game.js` (`gameState`, `saveGame`) |
 | `ashbrand_hotfix.js` | 11 | STUB VACIO de compatibilidad (Fase D). Sin logica. Se eliminara en Fase G. | (ninguno) | (ninguno) |
 | `expansion_enemies.js` | 21 | Expansion 1: 7 enemigos nuevos (niveles 1-15) | `EXPANSION_ENEMIES_V1`, `EXPANSION_THEME_ENEMIES_V1`, `installExpansionEnemies()` | `enemies.js` (`ENEMIES`) |
@@ -93,7 +93,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | 2637-2960 | Guild: `createGuild`, `joinGuildFromReceipt`, `generateReceipt`, `processReceipt`, `renderGuild` |
 | 3095-3162 | Toast/Feedback: `showFlavorDialog`, `showToast`, `showLevelUpEffect`, `triggerHaptic` |
 | 3163-3262 | Onboarding: `onboardingSteps`, `showOnboarding`, `finishOnboarding` |
-| 3263-3595 | UI Quests: `renderQuests`, `showAvailableQuests`, `acceptQuest`, `showQuestDetail`, `abandonQuest`, `updateQuestProgress`, `completeQuest` |
+| 3263-3530 | UI Quests: `renderQuests`, `showAvailableQuests`, `acceptQuest` (delega a quests.js), `showQuestDetail`, `abandonQuest` (delega a quests.js), `migrateQuestState`. `updateQuestProgress` y `completeQuest` eliminadas: las versiones canonicas de quests.js se usan directamente. |
 | 3596-3760 | Item system runtime: `initializeItemSystem`, `normalizeItemDefinition`, `getItemDefinition`, `getItemAttunement`, `equipItem`, `getEquippedItemEffects`, `unequipItem` |
 | 3761-3800 | Block 2.1 -- inventory identity recovery: `resolveInventoryItemId` (delega a inventory_system.js), `repairInventoryIdentities` (delega a inventory_system.js) |
 | 3801-4124 | Item modal + efectos: `renderInventoryGrid`, `renderStashGrid`, `showItemModal`, `getItemKnowledgeState`, `isItemEffectKnown`, `discoverItemEffect`, `isItemEffectUnlocked`, `renderActivationPanel` |
@@ -379,7 +379,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 
 8. **Items en `equipment` son IDs canonicos** (claves de `ITEMS`). `inventory_system.js` es la fuente de verdad unica para aliases. Nunca guardar nombres de display en `equipment`.
 
-9. **Maximo 3 quests activas simultaneas** (`acceptQuest` en `quests.js` y `game.js` lo validan). No cambiar este limite sin actualizar ambos ficheros.
+9. **Maximo 3 quests activas simultaneas** (`acceptQuest` en `quests.js` lo valida; `game.js` delega a `quests.js`). No cambiar este limite sin actualizar `quests.js`.
 
 10. **`expansion_*.js` y `update2_content.js` son aditivos:** sus funciones `install*` hacen `Object.assign` sobre las constantes base. Si un ID ya existe, se sobreescribe (comportamiento intencional para patches). Documentar explicitamente cualquier sobreescritura.
 
@@ -421,7 +421,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | Migrar el save a una nueva version | `game.js` | `loadGame` (~L728), incrementar `saveVersion` |
 | Exportar snapshot para el Game Master | `game.js` | `exportSnapshot` (~L2468) |
 | Recuperar un save corrupto manualmente | `emergency-save.html` | Standalone, abrir directamente en el navegador |
-| Cambiar limite de quests activas | `quests.js` + `game.js` | `acceptQuest` en ambos ficheros |
+| Cambiar limite de quests activas | `quests.js` | `acceptQuest` (~L304) -- game.js delega |
 | Anadir un ritual de item | `game.js` | `advanceItemRitual` (~L3893), `attemptItemActivation` (~L3905) |
 | Cambiar drop rate global por rareza | `items.js` | `RARITY[x].dropRate` (~L1) |
 | Recuperar un slot de inventario corrupto | consola del navegador | `emergencyRerollLegacyItem(indice)` (definido en `inventory_system.js`) |
@@ -432,9 +432,9 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 
 | # | Descripcion | Fichero(s) | Coste estimado | Estado |
 |---|---|---|---|---|
-| DT-01 | **`acceptQuest` duplicado:** existe en `quests.js` (~L304) y en `game.js` (~L3446). Pueden divergir. | `quests.js`, `game.js` | Medio | Pendiente (Fase E) |
-| DT-02 | **`updateQuestProgress` duplicado:** idem, en `quests.js` (~L374) y `game.js` (~L3505). | `quests.js`, `game.js` | Medio | Pendiente (Fase E) |
-| DT-03 | **`completeQuest` duplicado:** idem, en `quests.js` (~L333) y `game.js` (~L3547). | `quests.js`, `game.js` | Medio | Pendiente (Fase E) |
+| DT-01 | ~~**`acceptQuest` duplicado**~~ **RESUELTA (Fase E -- PR #13).** game.js delega a quests.js. | `quests.js`, `game.js` | -- | Resuelta |
+| DT-02 | ~~**`updateQuestProgress` duplicado**~~ **RESUELTA (Fase E -- PR #13).** Eliminada de game.js; quests.js es la unica implementacion. | `quests.js`, `game.js` | -- | Resuelta |
+| DT-03 | ~~**`completeQuest` duplicado**~~ **RESUELTA (Fase E -- PR #13).** Eliminada de game.js; quests.js es la unica implementacion. | `quests.js`, `game.js` | -- | Resuelta |
 | DT-04 | **`equipItem` duplicado:** version legacy en `items.js` (~L219) y version canonica en `game.js` (~L3693). | `items.js`, `game.js` | Alto | Pendiente |
 | DT-05 | **`ITEM_FLAVOR_TEXT` hardcodeado en `game.js`** (~L1123-1512, ~390 lineas). Deberia estar en un fichero propio. | `game.js` | Bajo | Pendiente (Fase F) |
 | DT-06 | **Lista de assets en `sw.js` hardcodeada.** Cualquier fichero nuevo olvidado rompe la PWA offline. | `sw.js` | Bajo | Aceptado (documentado) |
@@ -460,4 +460,5 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | 2026-07-30 | Saneamiento Fase A completada: 11 ramas eliminadas. Repositorio reducido a 2 ramas (`main`, `backup/pre-sanitation-2026-07-30`). Anadido `PLAN_DE_ACCION.md` al inventario. Columna Estado anadida a deuda tecnica. Seccion 6 actualizada (aliases apuntan a fuente unica tras Fase B). | 0, 2, 6, 7, 8 |
 | 2026-07-30 | Saneamiento Fase B completada (PR #10): `game.js` 4150->4124 lineas. `LEGACY_ITEM_ALIASES` eliminado. `resolveInventoryItemId` y `repairInventoryIdentities` delegan a `inventory_system.js`. `ashbrand_hotfix.js` delega resolucion/reparacion. DT-14 resuelta. Invariante 13 anadida. Seccion 3 actualizada (rangos game.js). Commit base actualizado a `b703adf`. | 0, 1, 2, 3, 5, 6, 7, 8 |
 | 2026-07-31 | Saneamiento Fase C completada (PR #11): auditoria confirma que el fallback hardcodeado ya no existia en main (eliminado en Fase B). Solo actualizacion documental. `ashbrand_hotfix.js` actualizado en inventario (97->40 lineas reales). DT-16 anadida y resuelta. Invariante 14 anadida. | 0, 2, 5, 7, 8 |
+| 2026-07-31 | Saneamiento Fase E completada (PR #13): funciones duplicadas de quests eliminadas de game.js. migrateQuestState() anade migracion de save legacy. acceptQuest/abandonQuest en game.js son delegaciones. updateQuestProgress y completeQuest eliminadas de game.js. DT-01, DT-02, DT-03 resueltas. Invariante 9 actualizada. Seccion 2 actualizada (lineas y exports). Seccion 3 actualizada (zona quests game.js). Seccion 6 actualizada (limite quests). | 0, 2, 3, 5, 6, 7, 8 |
 | 2026-07-31 | Saneamiento Fase D completada (PR #12): `inventory_system.js` absorbe `normalizeItemText` y `emergencyRerollLegacyItem` de `ashbrand_hotfix.js`. BUILD actualizado a 'v15-merged-hotfix'. `ashbrand_hotfix.js` vaciado a stub de 11 lineas. DT-07 y DT-08 resueltas. DT-17 anadida. Seccion 1 actualizada. Seccion 2 actualizada (lineas y responsabilidades). Seccion 3 anadido indice de inventory_system.js. Seccion 4.7 actualizada (clave lifexp_recovery_backup_v15). Invariante 7 actualizada (ashbrand->inventory_system). Seccion 6 anadida fila emergencyRerollLegacyItem. | 0, 1, 2, 3, 4, 5, 6, 7, 8 |
