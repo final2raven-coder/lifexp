@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-07-31 (Fase E saneamiento -- PR #13) |
+| Ultima actualizacion | 2026-07-31 (Fase F saneamiento -- PR #14) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `refactor/flavor-text-extract` |
 | Commit base | `b703adf895dd5494fab34e12a43111d39fe3301f` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -43,7 +43,8 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | Ruta | Lineas | Responsabilidad | Exports principales | Dependencias |
 |---|---|---|---|---|
 | `index.html` | 1579 | Shell HTML + todo el CSS + orden de carga de scripts | (DOM) | Todos los `.js` |
-| `game.js` | ~4068 | Motor principal: estado, tareas, UI, combate-UI, quests-UI, guild, settings, onboarding, item-system runtime | `gameState`, `DEFAULT_TASKS`, `CATEGORIES`, `STATS`, `FREQ`, `LIFE_XP_BUILD`, todas las funciones de UI | `classes.js`, `items.js`, `enemies.js`, `combat.js`, `quests.js` |
+| `item_flavor.js` | 467 | Flavor text narrativo por item y por situacion. Accessor con fallbacks por tipo y universal. | `ITEM_FLAVOR_TEXT`, `getItemFlavorText(itemId, situation)` | `items.js` (para `getItemDefinition`) |
+| `game.js` | ~3615 | Motor principal: estado, tareas, UI, combate-UI, quests-UI, guild, settings, onboarding, item-system runtime | `gameState`, `DEFAULT_TASKS`, `CATEGORIES`, `STATS`, `FREQ`, `LIFE_XP_BUILD`, todas las funciones de UI | `classes.js`, `items.js`, `enemies.js`, `combat.js`, `quests.js`, `item_flavor.js` |
 | `items.js` | 279 | Catalogo de items, rareza, tipos, tablas de drop | `RARITY`, `ITEM_TYPE`, `ITEMS`, `DROP_TABLES`, `rollDrop`, `addToInventory`, `removeFromInventory` | (solo globals de `gameState`) |
 | `enemies.js` | 614 | Catalogo de enemigos + helpers de seleccion/escalado | `ENEMIES`, `getEnemyById`, `pickRandomEnemy`, `scaleEnemy` | `items.js` (drops) |
 | `combat.js` | 798 | Motor de combate por turnos: dano, skills, estados, auto-combat, recompensas | `combatState`, `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `resolveAutoCombat`, `calculateCombatRewards`, `rollEncounter` | `game.js` (`gameState`, `getDerivedStats`), `enemies.js`, `items.js` |
@@ -67,7 +68,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 
 ## 3. Indice de simbolos (ficheros grandes)
 
-### `game.js` (4124 lineas -- post Fase B)
+### `game.js` (3615 lineas -- post Fase F)
 
 | Rango aprox. | Simbolo / Seccion |
 |---|---|
@@ -79,9 +80,8 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | 720-801 | Persistencia: `saveGame`, `loadGame`, `updateStreak`, `showScreen` |
 | 802-946 | UI Hub: `renderHub` |
 | 857-946 | UI Personaje: `renderCharacter` |
-| 947-1122 | UI Inventario: `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `showLegacyItemModal` |
-| 1123-1512 | `ITEM_FLAVOR_TEXT` - textos de flavor por item |
-| 1513-1619 | Item runtime: `getItemFlavorText`, `showAttunementFlavor`, `unequipItemToInventory`, `sellItemFromInventory`, `useConsumable` |
+| 947-1149 | UI Inventario: `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `showLegacyItemModal` |
+| 1150-1159 | Item runtime: `showAttunementFlavor`, `unequipItemToInventory`, `sellItemFromInventory`, `useConsumable` (ITEM_FLAVOR_TEXT y getItemFlavorText extraidos a item_flavor.js) |
 | 1620-1664 | Settings: `forceAppUpdate`, `renderSettings` |
 | 1665-1771 | Navegacion de tareas: `openRandomTask`, `openCategory`, `shuffleTask` |
 | 1772-1985 | Completar tarea: `completeTask`, `finalizeCompletion`, `rollDropFromTheme`, `rollDrop`, `rollSideQuestDrop` |
@@ -362,7 +362,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 > Estas reglas **no se deben romper** en ninguna actualizacion.
 
 1. **Orden de carga de scripts** (definido en `index.html` lineas 1566-1577):
-   `classes.js` -> `items.js` -> `enemies.js` -> `combat.js` -> `quests.js` -> `game.js` -> `expansion_items.js` -> `expansion_enemies.js` -> `expansion_quests.js` -> `expansion_tasks.js` -> `update2_content.js` -> `inventory_system.js` -> `ashbrand_hotfix.js` (stub).
+   `classes.js` -> `items.js` -> `enemies.js` -> `combat.js` -> `quests.js` -> `item_flavor.js` -> `game.js` -> `expansion_items.js` -> `expansion_enemies.js` -> `expansion_quests.js` -> `expansion_tasks.js` -> `update2_content.js` -> `inventory_system.js` -> `ashbrand_hotfix.js` (stub).
    Cualquier nuevo fichero debe anadirse **despues** de `game.js` y **antes** de `ashbrand_hotfix.js`.
 
 2. **IDs unicos:** cada `task.id`, `item.id`, `enemy.id` y `quest.id` debe ser unico en todo el proyecto. Los expansions usan prefijos (`casa_exp_`, `expansion_`, etc.) para evitar colisiones.
@@ -385,7 +385,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 
 11. **El Service Worker (`sw.js`) tiene la lista de assets hardcodeada.** Cualquier fichero nuevo debe anadirse a esa lista o no se servira offline.
 
-12. **`ITEM_FLAVOR_TEXT` en `game.js` (~L1123-1512)** debe tener una entrada por cada item equipable que tenga attunement. Sin entrada -> el juego muestra texto vacio en el modal.
+12. **`ITEM_FLAVOR_TEXT` en `item_flavor.js`** debe tener una entrada por cada item equipable que tenga attunement. Sin entrada -> el juego muestra texto vacio en el modal.
 
 13. **Aliases de items:** anadir SOLO en `inventory_system.js` (campo `aliases`). No anadir en `game.js` ni en ningun otro fichero.
 
@@ -400,7 +400,7 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | Anadir una tarea nueva | `game.js` o `expansion_tasks.js` | Array `DEFAULT_TASKS` (~L43) o `EXPANSION_TASKS_V1` |
 | Cambiar XP/stats de una tarea existente | `game.js` | `DEFAULT_TASKS`, buscar por `id` |
 | Anadir un item nuevo | `items.js` o `expansion_items.js` | Objeto `ITEMS` + entrada en `DROP_TABLES` si tiene tema |
-| Anadir flavor text a un item | `game.js` | `ITEM_FLAVOR_TEXT` (~L1123) |
+| Anadir flavor text a un item | `item_flavor.js` | `ITEM_FLAVOR_TEXT` (inicio del fichero) |
 | Anadir un enemigo nuevo | `enemies.js` o `expansion_enemies.js` | Objeto `ENEMIES` + `EXPANSION_THEME_ENEMIES_V1` |
 | Cambiar stats/drops de un enemigo | `enemies.js` | Objeto `ENEMIES`, buscar por `id` |
 | Anadir una quest nueva | `quests.js` o `expansion_quests.js` | Objeto `QUESTS` o `EXPANSION_QUESTS_V1` |
@@ -436,11 +436,11 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | DT-02 | ~~**`updateQuestProgress` duplicado**~~ **RESUELTA (Fase E -- PR #13).** Eliminada de game.js; quests.js es la unica implementacion. | `quests.js`, `game.js` | -- | Resuelta |
 | DT-03 | ~~**`completeQuest` duplicado**~~ **RESUELTA (Fase E -- PR #13).** Eliminada de game.js; quests.js es la unica implementacion. | `quests.js`, `game.js` | -- | Resuelta |
 | DT-04 | **`equipItem` duplicado:** version legacy en `items.js` (~L219) y version canonica en `game.js` (~L3693). | `items.js`, `game.js` | Alto | Pendiente |
-| DT-05 | **`ITEM_FLAVOR_TEXT` hardcodeado en `game.js`** (~L1123-1512, ~390 lineas). Deberia estar en un fichero propio. | `game.js` | Bajo | Pendiente (Fase F) |
+| DT-05 | ~~**`ITEM_FLAVOR_TEXT` en `game.js`**~~ **RESUELTA (Fase F -- PR #14).** Extraido a `item_flavor.js`. | `item_flavor.js` | -- | Resuelta |
 | DT-06 | **Lista de assets en `sw.js` hardcodeada.** Cualquier fichero nuevo olvidado rompe la PWA offline. | `sw.js` | Bajo | Aceptado (documentado) |
 | DT-07 | ~~**`ashbrand_hotfix.js` era un parche de emergencia**~~ **RESUELTA (Fase D -- PR #12).** Logica absorbida por `inventory_system.js`. Stub vacio pendiente de eliminacion en Fase G. | `inventory_system.js` | -- | Resuelta |
 | DT-08 | ~~**`inventory_system.js` era un IIFE sin exports explicitos**~~ **RESUELTA (Fase D -- PR #12).** Todos los simbolos publicos estan en `window.LifeXPInventory` y como globals nombrados. | `inventory_system.js` | -- | Resuelta |
-| DT-09 | **`game.js` tiene 4124 lineas** - mezcla motor, UI, guild, item system, quests UI y onboarding. | `game.js` | Alto | Pendiente (Fase G) |
+| DT-09 | **`game.js` tiene 3615 lineas** (tras Fase F) - mezcla motor, UI, guild, item system, quests UI y onboarding. | `game.js` | Alto | Pendiente (Fase G) |
 | DT-10 | **`window._itemsRollDrop`** es un global fragil para comunicar `items.js` -> `game.js`. | `items.js`, `game.js` | Bajo | Pendiente |
 | DT-11 | **`window.LifeXPUpdate2`** en `update2_content.js` - mismo patron de global fragil. | `update2_content.js`, `game.js` | Bajo | Pendiente |
 | DT-12 | **`saveVersion` en `gameState` es 2** (declaracion) pero la migracion en `loadGame` lo sube a 3. Confuso. | `game.js` | Bajo | Pendiente |
@@ -460,5 +460,6 @@ GitHub Pages publica `main` directamente; no hay paso de build.
 | 2026-07-30 | Saneamiento Fase A completada: 11 ramas eliminadas. Repositorio reducido a 2 ramas (`main`, `backup/pre-sanitation-2026-07-30`). Anadido `PLAN_DE_ACCION.md` al inventario. Columna Estado anadida a deuda tecnica. Seccion 6 actualizada (aliases apuntan a fuente unica tras Fase B). | 0, 2, 6, 7, 8 |
 | 2026-07-30 | Saneamiento Fase B completada (PR #10): `game.js` 4150->4124 lineas. `LEGACY_ITEM_ALIASES` eliminado. `resolveInventoryItemId` y `repairInventoryIdentities` delegan a `inventory_system.js`. `ashbrand_hotfix.js` delega resolucion/reparacion. DT-14 resuelta. Invariante 13 anadida. Seccion 3 actualizada (rangos game.js). Commit base actualizado a `b703adf`. | 0, 1, 2, 3, 5, 6, 7, 8 |
 | 2026-07-31 | Saneamiento Fase C completada (PR #11): auditoria confirma que el fallback hardcodeado ya no existia en main (eliminado en Fase B). Solo actualizacion documental. `ashbrand_hotfix.js` actualizado en inventario (97->40 lineas reales). DT-16 anadida y resuelta. Invariante 14 anadida. | 0, 2, 5, 7, 8 |
+| 2026-07-31 | Saneamiento Fase F completada (PR #14): ITEM_FLAVOR_TEXT y getItemFlavorText extraidos de game.js a item_flavor.js. game.js reducido de 4071 a 3615 lineas. index.html: item_flavor.js anadido antes de game.js. sw.js: cache v19-flavor-extract, item_flavor.js en assets y regex. DT-05 resuelta. Invariante 12 actualizada. Seccion 2 actualizada (item_flavor.js anadido). Seccion 3 actualizada. Seccion 6 actualizada. | 0, 2, 3, 5, 6, 7, 8 |
 | 2026-07-31 | Saneamiento Fase E completada (PR #13): funciones duplicadas de quests eliminadas de game.js. migrateQuestState() anade migracion de save legacy. acceptQuest/abandonQuest en game.js son delegaciones. updateQuestProgress y completeQuest eliminadas de game.js. DT-01, DT-02, DT-03 resueltas. Invariante 9 actualizada. Seccion 2 actualizada (lineas y exports). Seccion 3 actualizada (zona quests game.js). Seccion 6 actualizada (limite quests). | 0, 2, 3, 5, 6, 7, 8 |
 | 2026-07-31 | Saneamiento Fase D completada (PR #12): `inventory_system.js` absorbe `normalizeItemText` y `emergencyRerollLegacyItem` de `ashbrand_hotfix.js`. BUILD actualizado a 'v15-merged-hotfix'. `ashbrand_hotfix.js` vaciado a stub de 11 lineas. DT-07 y DT-08 resueltas. DT-17 anadida. Seccion 1 actualizada. Seccion 2 actualizada (lineas y responsabilidades). Seccion 3 anadido indice de inventory_system.js. Seccion 4.7 actualizada (clave lifexp_recovery_backup_v15). Invariante 7 actualizada (ashbrand->inventory_system). Seccion 6 anadida fila emergencyRerollLegacyItem. | 0, 1, 2, 3, 4, 5, 6, 7, 8 |

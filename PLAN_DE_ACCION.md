@@ -15,7 +15,7 @@
 | C | Eliminar fallback hardcodeado | Completada 2026-07-31 | #11 |
 | D | Fusionar ashbrand_hotfix en inventory_system | Completada 2026-07-31 | #12 |
 | E | Unificar funciones duplicadas de quests | Completada 2026-07-31 | #13 |
-| F | Mover ITEM_FLAVOR_TEXT fuera de game.js | Pendiente | -- |
+| F | Mover ITEM_FLAVOR_TEXT fuera de game.js | Completada 2026-07-31 | #14 |
 | G | Split de game.js | Pendiente | -- |
 
 ---
@@ -173,18 +173,31 @@ Resultado: el progreso de quests nunca avanzaba en produccion.
 
 ---
 
-## Fase F -- Mover ITEM_FLAVOR_TEXT fuera de game.js (Pendiente)
+## Fase F -- Mover ITEM_FLAVOR_TEXT fuera de game.js (Completada 2026-07-31 -- PR #14)
 
-Objetivo: extraer el bloque de ~390 lineas de flavor text de game.js a item_flavor.js.
-Ficheros que toca: game.js (eliminar bloque), nuevo item_flavor.js, index.html, sw.js.
-Riesgo: bajo.
-Como verificarlo: abre el modal de cualquier item equipable con attunement. El texto de flavor aparece correctamente.
+Objetivo: extraer el bloque de flavor text de game.js a un fichero propio.
+Ficheros tocados: game.js (eliminar bloque), nuevo item_flavor.js, index.html, sw.js.
+
+### Que se hizo
+
+- Nuevo fichero `item_flavor.js` (467 lineas): contiene `ITEM_FLAVOR_TEXT` (const) y `getItemFlavorText()` (funcion accessora con fallbacks por tipo y universal).
+- `game.js` reducido de 4071 a 3615 lineas (456 lineas eliminadas). Las 4 call sites de `getItemFlavorText()` permanecen intactas.
+- `index.html`: `item_flavor.js` cargado justo antes de `game.js` (orden: quests.js -> item_flavor.js -> game.js).
+- `sw.js`: cache bumped a `lifexp-v19-flavor-extract`; `item_flavor.js` incluido en urlsToCache y en la regex de isAppAsset.
+- Comportamiento del juego: identico. Ningun save afectado.
+
+### Como verificarlo
+
+1. Abre la app. Todo carga igual que antes.
+2. Abre el modal de cualquier item equipable (ej: Cuchilla Llameante desde el inventario).
+3. El texto de flavor aparece correctamente al ver el item por primera vez, al fallar el equip, y al equiparlo con exito.
+4. Cierra y vuelve a abrir la app. El save carga correctamente.
 
 ---
 
 ## Fase G -- Split de game.js (Pendiente)
 
-Objetivo: dividir game.js (4.124 lineas) en modulos coherentes.
+Objetivo: dividir game.js (3.615 lineas tras Fase F) en modulos coherentes.
 Division propuesta: game-core.js, game-ui.js, game-items.js, game-quests-ui.js, game-guild.js, game-onboarding.js.
 Ficheros que toca: game.js, los ficheros nuevos, index.html, sw.js.
 Riesgo: alto. Se planifica en detalle solo despues de que A-F esten cerradas.
@@ -229,3 +242,4 @@ Esta transformacion es transparente para el navegador (JS interpreta los surroga
 | 2026-07-31 | Fase C completada: PR #11. Fallback ya eliminado en Fase B. Solo actualizacion documental |
 | 2026-07-31 | Fase D completada: PR #12. ashbrand_hotfix.js vaciado a stub. Logica absorbida por inventory_system.js. DT-07 y DT-08 resueltas |
 | 2026-07-31 | Fase E completada: PR #13. Funciones duplicadas de quests eliminadas de game.js. migrateQuestState() anade migracion de save. DT-01, DT-02, DT-03 resueltas |
+| 2026-07-31 | Fase F completada: PR #14. ITEM_FLAVOR_TEXT y getItemFlavorText extraidos a item_flavor.js. game.js reducido de 4071 a 3615 lineas. Cache bumped a v19 |

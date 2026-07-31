@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v18-startup-inventory-safe';
+const CACHE_NAME = 'lifexp-v19-flavor-extract';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const urlsToCache = [
   '/enemies.js',
   '/combat.js',
   '/quests.js',
+  '/item_flavor.js',
   '/game.js',
   '/expansion_items.js',
   '/expansion_enemies.js',
@@ -42,7 +43,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const isAppAsset = request.method === 'GET' &&
-    /\/(?:index\.html|game\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|ashbrand_hotfix\.js|sw\.js)$/.test(new URL(request.url).pathname);
+    /\/(?:index\.html|item_flavor\.js|game\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|ashbrand_hotfix\.js|sw\.js)$/.test(new URL(request.url).pathname);
 
   if (isAppAsset) {
     event.respondWith(
