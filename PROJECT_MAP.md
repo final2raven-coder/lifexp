@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-07-31 (chore/sync-project-map -- saneamiento completo del mapa) |
+| Ultima actualizacion | 2026-07-31 (feat/content-validator -- validador de integridad v1.0) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `chore/sync-project-map` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator` |
 | Commit base | `b1248e85ce0651a8be044495bd35d618dad694ed` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -94,6 +94,12 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `manifest.json` | Metadatos PWA (nombre, iconos, colores) |
 | `emergency-save.html` | Herramienta standalone de recuperacion de save |
 | `ashbrand_hotfix.js` | **HUERFANO** - stub vacio de compatibilidad. No esta incluido en `index.html`. Candidato a eliminar en proximo refactor de limpieza. |
+
+### 2f. Herramientas de desarrollo (no se cargan en produccion)
+
+| Fichero | Responsabilidad |
+|---|---|
+| `validate_content.js` | Validador de integridad referencial. Node.js, solo lectura. Ver seccion 10. |
 
 ---
 
@@ -287,6 +293,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
+9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 
 ---
 
@@ -295,7 +302,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
 | DT-01 | `sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua | Media | Abierto |
-| DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | Abierto |
+| DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
 | DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
@@ -306,6 +313,8 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 | DT-10 | Algunos items en `inventory` del save pueden tener formato legacy (sin `id` canonico); `inventory_system.js` los normaliza al arrancar pero el proceso no es 100% determinista para todos los casos edge | Alta | Abierto |
 | DT-11 | ~~Rama huerfana `refactor/flavor-text-extract`~~ | -- | **RESUELTO** (rama no existe en el repo actual) |
 | DT-12 | `item_system.js` y `ui_hub.js` tienen logica de renderizado de inventario duplicada; `renderInventoryGrid` existe en ambos | Media | Abierto |
+| DT-13 | `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings de display (con espacios/mayusculas/acentos) en `drops.items` en lugar de IDs canonicos | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
+| DT-14 | `THEME_ENEMIES["refugio"]` referencia `vigia_del_refugio` que no existe en ENEMIES | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
 | DT-18 | ~~PROJECT_MAP.md desactualizado~~ | -- | **RESUELTO** (este PR) |
 
 ---
@@ -316,6 +325,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 |---|---|---|
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
 | 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos añadida, branches activas actualizadas |
+| 2026-07-31 | `feat/content-validator` | Añadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 añadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
 
 ---
 
@@ -370,3 +380,65 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 | Fuente | Cantidad |
 |---|---|
 | `item_flavor.js` (items con flavor text) | 87 entradas |
+
+---
+
+## 10. Validador de integridad de contenido
+
+### Fichero
+
+`validate_content.js` -- Node.js, solo lectura, no toca produccion.
+
+### Como ejecutarlo
+
+```bash
+# Desde la raiz del repositorio:
+node validate_content.js
+
+# Si el repo esta en otra ruta:
+node validate_content.js --dir /ruta/al/repo
+```
+
+### Salida
+
+- **Exit 0**: limpio (puede haber avisos, pero no errores).
+- **Exit 1**: hay errores de integridad. El PR no debe mergearse hasta resolverlos.
+
+La salida muestra el recuento de catalogos cargados, la lista de errores (si los hay) y la lista de avisos.
+
+### Checks que realiza (v1.0)
+
+| # | Codigo de error | Que detecta | Nivel |
+|---|---|---|---|
+| 1 | `DUPLICATE_ID`, `ID_MISMATCH` | IDs duplicados o clave != campo `id` interno en ITEMS, ENEMIES, QUESTS, CLASS_TREE, DEFAULT_TASKS | ERROR |
+| 2 | `DROP_DISPLAY_NAME`, `BROKEN_ITEM_REF`, `DROP_NO_ITEMID` | Drops de enemigos con strings de display o IDs inexistentes | ERROR |
+| 3 | `DROP_TABLE_DISPLAY_NAME`, `BROKEN_ITEM_REF` | DROP_TABLES con strings de display o IDs inexistentes | ERROR |
+| 4 | `THEME_DISPLAY_NAME`, `BROKEN_ENEMY_REF` | THEME_ENEMIES con strings de display o IDs de enemigo inexistentes | ERROR |
+| 5 | `QUEST_REWARD_DISPLAY_NAME`, `BROKEN_ITEM_REF`, `BROKEN_ENEMY_REF`, `BROKEN_QUEST_REF`, `BROKEN_CLASS_REF` | Recompensas, objetivos, prerequisitos y classId de quests rotos | ERROR |
+| 6 | `TASK_DROP_DISPLAY_NAME`, `BROKEN_ITEM_REF`, `UNKNOWN_THEME` | Drops de tareas con strings de display, IDs inexistentes o temas desconocidos | ERROR / WARN |
+| 7 | `UNREACHABLE_QUEST`, `CIRCULAR_PREREQ` | Quests con minLevel > 40 o cadenas de prerequisitos circulares | WARN / ERROR |
+| 8 | `ORPHAN_ENEMY` | Enemigos sin ningun tema ni entrada en THEME_ENEMIES | WARN |
+| 9 | `UNOBTAINABLE_ITEM` | Items que no aparecen en ningun drop table, drop de enemigo ni recompensa de quest | WARN |
+
+### Regla de uso obligatorio
+
+**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`). Si hay errores, el PR no se mergea.
+
+### Primera ejecucion (2026-07-31, estado actual del repo)
+
+```
+Catalogue loaded:
+  ITEMS    : 98
+  ENEMIES  : 37
+  QUESTS   : 15
+  CLASSES  : 102
+  TASKS    : 55
+
+Result: 100 error(s), 12 warning(s)
+```
+
+Errores principales detectados (no corregidos en este PR -- solo deteccion):
+- ~90 `TASK_DROP_DISPLAY_NAME`: `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings con espacios/mayusculas/acentos en `drops.items` en lugar de IDs canonicos (DT-13).
+- 3 `DROP_DISPLAY_NAME` / `DROP_TABLE_DISPLAY_NAME`: items con caracteres especiales en drops de enemigos y DROP_TABLES (DT-02).
+- 1 `BROKEN_ENEMY_REF`: `THEME_ENEMIES["refugio"]` referencia un enemigo que no existe en ENEMIES (DT-14).
+- 12 avisos: temas desconocidos en drops de tareas e items no obtenibles.
