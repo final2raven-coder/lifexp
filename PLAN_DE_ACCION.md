@@ -13,7 +13,7 @@
 | A | Borrar ramas muertas | Completada 2026-07-30 | -- |
 | B | Unificar aliases (una sola fuente de verdad) | Completada 2026-07-30 | #10 |
 | C | Eliminar fallback hardcodeado | Completada 2026-07-31 | #11 |
-| D | Fusionar ashbrand_hotfix en inventory_system | Pendiente | -- |
+| D | Fusionar ashbrand_hotfix en inventory_system | Completada 2026-07-31 | #12 |
 | E | Unificar funciones duplicadas de quests | Pendiente | -- |
 | F | Mover ITEM_FLAVOR_TEXT fuera de game.js | Pendiente | -- |
 | G | Split de game.js | Pendiente | -- |
@@ -96,26 +96,38 @@ para delegar a inventory_system.js, la rama de fallback a 'cuchilla_llameante' d
 El comportamiento actual es correcto: si inv.resolve() devuelve falsy, emergencyRerollLegacyItem()
 retorna { success: false, reason: 'item_unresolvable' } sin transformar el slot.
 
-### Que hace este PR
+### Que hizo este PR
 
-Solo actualiza la documentacion (PLAN_DE_ACCION.md y PROJECT_MAP.md) para reflejar
+Solo actualizo la documentacion (PLAN_DE_ACCION.md y PROJECT_MAP.md) para reflejar
 que la Fase C estaba ya completada. Ningun fichero JS fue modificado.
+
+---
+
+## Fase D -- Fusionar ashbrand_hotfix en inventory_system (Completada 2026-07-31 -- PR #12)
+
+Objetivo: mover toda la logica de ashbrand_hotfix.js a inventory_system.js y dejar
+ashbrand_hotfix.js como stub vacio de compatibilidad.
+
+### Que se hizo
+
+- inventory_system.js: absorbidos los dos simbolos publicos que antes vivia en ashbrand_hotfix.js:
+    - window.normalizeItemText: ahora es un alias directo de la funcion interna text().
+    - window.emergencyRerollLegacyItem: movida integra al IIFE. Ahora llama a resolve()
+      directamente en lugar de pasar por window.LifeXPInventory.resolve() (misma logica,
+      sin indirecciones innecesarias). BUILD actualizado a 'v15-merged-hotfix'.
+- ashbrand_hotfix.js: vaciado a stub de 11 lineas de comentario. El fichero se mantiene
+  para no romper el orden de carga de index.html ni la lista de assets de sw.js.
+  Se eliminara fisicamente en la Fase G.
+- DT-07 y DT-08 resueltas.
 
 ### Como verificarlo
 
 1. Abre la app normalmente. El inventario carga igual que antes.
-2. Comprueba en la consola del navegador: no hay errores de JS al arrancar.
-3. Equipa y desequipa cualquier item. Funciona igual que antes.
-
----
-
-## Fase D -- Fusionar ashbrand_hotfix en inventory_system (Pendiente)
-
-Objetivo: mover toda la logica de repair(), renderInventoryGrid(), renderStashGrid() y
-emergencyRerollLegacyItem() a inventory_system.js. Vaciar ashbrand_hotfix.js a un stub comentado.
-Ficheros que toca: inventory_system.js, ashbrand_hotfix.js, index.html, sw.js.
-Riesgo: medio.
-Como verificarlo: abre inventario y baul. Equipa y desequipa un item. Cierra y vuelve a abrir la app. Todo igual.
+2. Abre el inventario y el baul. Equipa y desequipa un item. Todo funciona igual.
+3. Cierra la app y vuelve a abrirla. El save carga correctamente.
+4. En la consola del navegador: escribe normalizeItemText('Hoja Gelida') y comprueba
+   que devuelve 'hoja gelida'. Escribe window.LifeXPInventory.BUILD y comprueba
+   que devuelve 'v15-merged-hotfix'.
 
 ---
 
@@ -145,6 +157,7 @@ Division propuesta: game-core.js, game-ui.js, game-items.js, game-quests-ui.js, 
 Ficheros que toca: game.js, los ficheros nuevos, index.html, sw.js.
 Riesgo: alto. Se planifica en detalle solo despues de que A-F esten cerradas.
 Como verificarlo: toda la app funciona igual. Save antiguo carga correctamente.
+Nota: en esta fase se eliminara fisicamente ashbrand_hotfix.js del orden de carga y de sw.js.
 
 ---
 
@@ -182,3 +195,4 @@ Esta transformacion es transparente para el navegador (JS interpreta los surroga
 | 2026-07-30 | Fase A completada: 11 ramas eliminadas, repositorio reducido a 2 ramas |
 | 2026-07-30 | Fase B completada: PR #10 mergeado. Aliases unificados en inventory_system.js. DT-14 resuelta |
 | 2026-07-31 | Fase C completada: PR #11. Fallback ya eliminado en Fase B. Solo actualizacion documental |
+| 2026-07-31 | Fase D completada: PR #12. ashbrand_hotfix.js vaciado a stub. Logica absorbida por inventory_system.js. DT-07 y DT-08 resueltas |

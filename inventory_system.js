@@ -1,9 +1,15 @@
 // LifeXP canonical inventory subsystem.
 // Compatibility is part of the data contract, not a migration-only hotfix.
+//
+// Fase D (saneamiento): este fichero absorbe los dos simbolos publicos que
+// antes vivia en ashbrand_hotfix.js:
+//   - window.normalizeItemText  (alias de la funcion interna text())
+//   - window.emergencyRerollLegacyItem  (herramienta de recuperacion de slots)
+// ashbrand_hotfix.js queda como stub vacio de compatibilidad.
 (function () {
   'use strict';
 
-  const BUILD = 'v14-canonical-inventory';
+  const BUILD = 'v15-merged-hotfix';
   const aliases = {
     'cuchilla llameante': 'cuchilla_llameante',
     'flaming blade': 'cuchilla_llameante',
@@ -11,7 +17,7 @@
     'daga corrosiva': 'daga_corrosiva',
     'espada radiante': 'espada_radiante',
     'hoja gelida': 'hoja_gelida',
-    'hoja gélida': 'hoja_gelida',
+    'hoja gelida': 'hoja_gelida',
     'arco de espino': 'arco_espino',
     'tridente marino': 'tridente_marino',
     'katana oriental': 'katana_oriental'
@@ -109,11 +115,46 @@
     }).join('');
   }
 
+  // == Simbolos publicos del subsistema ==
   window.LifeXPInventory = { BUILD, resolve, normalize, repair };
   window.renderCanonicalInventory = function () { render('inventory-grid', 'inventory-empty', 'inventory', 'showItemModal'); };
   window.renderCanonicalStash = function () { render('stash-grid', 'stash-empty', 'stash', 'showStashItemModal'); };
 
-  const previousRenderInventory = window.renderInventory;
+  // normalizeItemText: alias global de text() para compatibilidad con game.js y consola.
+  // Antes vivia en ashbrand_hotfix.js. Movido aqui en Fase D.
+  window.normalizeItemText = text;
+
+  // emergencyRerollLegacyItem: herramienta de recuperacion manual de slots corruptos.
+  // Disponible desde emergency-save.html y la consola del navegador.
+  // Antes vivia en ashbrand_hotfix.js. Movido aqui en Fase D.
+  window.emergencyRerollLegacyItem = function (slotIndex) {
+    if (typeof gameState === 'undefined' || !Array.isArray(gameState.inventory)) {
+      return { success: false, reason: 'inventory_unavailable' };
+    }
+    const original = gameState.inventory[slotIndex];
+    if (original == null) return { success: false, reason: 'slot_unavailable' };
+    if (original.recoveryUsed) return { success: false, reason: 'recovery_already_used' };
+    try {
+      const raw = localStorage.getItem('lifexp_save');
+      if (raw && !localStorage.getItem('lifexp_recovery_backup_v15')) {
+        localStorage.setItem('lifexp_recovery_backup_v15', raw);
+      }
+    } catch (e) { console.warn('Recovery backup unavailable:', e); }
+    const resolved = resolve(original);
+    if (!resolved) return { success: false, reason: 'item_unresolvable' };
+    const slot = typeof original === 'string'
+      ? { id: resolved, qty: 1 }
+      : { ...original, id: resolved, qty: Math.max(1, Number(original.qty ?? original.quantity ?? 1) || 1) };
+    delete slot.itemId; delete slot.itemID; delete slot.itemKey; delete slot.key;
+    delete slot.name; delete slot.legacyName; delete slot.itemName;
+    slot.recoveryUsed = true;
+    slot.recoveredAtBuild = BUILD;
+    gameState.inventory[slotIndex] = slot;
+    if (typeof saveGame === 'function') saveGame();
+    return { success: true, method: 'canonical_id', id: resolved };
+  };
+
+  // == Override de renderInventory para integrar repair() en el ciclo de render ==
   window.renderInventory = function () {
     repair();
     const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;
