@@ -46,7 +46,7 @@ let gameState = {
   stashCapacity: 30,
   inventoryCapacityBonus: 0,
   pendingLoot: null,
-  saveVersion: 2,
+  saveVersion: 3, // v3 is the current canonical version (migration in loadGame handles v<3 saves)
   
   // Class (placeholder for next block)
   classId: 'novato',
