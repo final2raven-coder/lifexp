@@ -11,10 +11,10 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-07-31 (Fase F saneamiento -- PR #14) |
+| Ultima actualizacion | 2026-07-31 (chore/sync-project-map -- saneamiento completo del mapa) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `refactor/flavor-text-extract` |
-| Commit base | `b703adf895dd5494fab34e12a43111d39fe3301f` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `chore/sync-project-map` |
+| Commit base | `b1248e85ce0651a8be044495bd35d618dad694ed` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
@@ -27,439 +27,346 @@
 
 LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
 `index.html` contiene todo el CSS y el HTML; los scripts se cargan en orden al final del `<body>`.
-El estado global vive en el objeto `gameState` (definido en `game.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`.
-Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `game.js` y `combat.js` como globals.
+El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`.
+Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
 Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes mediante `Object.assign` al arrancar.
-`inventory_system.js` es el ultimo script relevante en cargarse: define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, y hace repair() al arrancar.
-`ashbrand_hotfix.js` es un stub vacio de compatibilidad (Fase D). Se eliminara en Fase G.
-`combat.js` implementa el motor de combate por turnos; `classes.js` define el arbol de clases y las formulas de XP/stats.
-No hay servidor: todo corre en el navegador. El Service Worker (`sw.js`) sirve la app offline con estrategia cache-first.
-GitHub Pages publica `main` directamente; no hay paso de build.
+`inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, y hace repair() al arrancar.
+`item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel.
+`item_flavor.js` contiene el lore narrativo de items (flavor text por item y por stage de attunement).
+`guild.js` implementa el sistema cooperativo (receipts, sync, guild state).
+`main.js` es el punto de entrada: registra el Service Worker y conecta los event listeners del DOM.
+
+> **NOTA:** `game.js` ya NO existe. El estado global (`gameState`) y las funciones de motor viven en `engine.js` desde el refactor de split (DT-09 resuelto).
 
 ---
 
 ## 2. Inventario de ficheros
 
-| Ruta | Lineas | Responsabilidad | Exports principales | Dependencias |
-|---|---|---|---|---|
-| `index.html` | 1579 | Shell HTML + todo el CSS + orden de carga de scripts | (DOM) | Todos los `.js` |
-| `item_flavor.js` | 467 | Flavor text narrativo por item y por situacion. Accessor con fallbacks por tipo y universal. | `ITEM_FLAVOR_TEXT`, `getItemFlavorText(itemId, situation)` | `items.js` (para `getItemDefinition`) |
-| `game.js` | ~3615 | Motor principal: estado, tareas, UI, combate-UI, quests-UI, guild, settings, onboarding, item-system runtime | `gameState`, `DEFAULT_TASKS`, `CATEGORIES`, `STATS`, `FREQ`, `LIFE_XP_BUILD`, todas las funciones de UI | `classes.js`, `items.js`, `enemies.js`, `combat.js`, `quests.js`, `item_flavor.js` |
-| `items.js` | 279 | Catalogo de items, rareza, tipos, tablas de drop | `RARITY`, `ITEM_TYPE`, `ITEMS`, `DROP_TABLES`, `rollDrop`, `addToInventory`, `removeFromInventory` | (solo globals de `gameState`) |
-| `enemies.js` | 614 | Catalogo de enemigos + helpers de seleccion/escalado | `ENEMIES`, `getEnemyById`, `pickRandomEnemy`, `scaleEnemy` | `items.js` (drops) |
-| `combat.js` | 798 | Motor de combate por turnos: dano, skills, estados, auto-combat, recompensas | `combatState`, `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `resolveAutoCombat`, `calculateCombatRewards`, `rollEncounter` | `game.js` (`gameState`, `getDerivedStats`), `enemies.js`, `items.js` |
-| `classes.js` | 223 | Arbol de clases, formulas XP/nivel, stats derivados, recursos | `CLASS_TREE`, `BASE_CLASSES`, `xpForLevel`, `levelFromXp`, `calculateDerivedStats`, `calculateResources`, `getClassChain` | |
-| `quests.js` | ~610 | Catalogo de quests + motor de estado de quests. FUENTE DE VERDAD UNICA para logica de quests. | `QUEST_TYPE`, `QUEST_STATUS`, `QUESTS`, `initQuestState`, `acceptQuest`, `completeQuest`, `updateQuestProgress`, `applyQuestRewards`, `window.acceptQuestCanonical`, `window.abandonQuestCanonical` | `game.js` (`gameState`, `saveGame`) |
-| `inventory_system.js` | ~160 | Subsistema canonico de inventario: resolucion de IDs, aliases, normalizacion, render, repair. FUENTE DE VERDAD UNICA. Expone tambien `normalizeItemText` y `emergencyRerollLegacyItem` (absorbidos de ashbrand_hotfix en Fase D). | `window.LifeXPInventory.resolve()`, `window.LifeXPInventory.repair()`, `window.normalizeItemText`, `window.emergencyRerollLegacyItem`, `window.renderInventory` | `items.js` (`ITEMS`, `RARITY`), `game.js` (`gameState`, `saveGame`) |
-| `ashbrand_hotfix.js` | 11 | STUB VACIO de compatibilidad (Fase D). Sin logica. Se eliminara en Fase G. | (ninguno) | (ninguno) |
-| `expansion_enemies.js` | 21 | Expansion 1: 7 enemigos nuevos (niveles 1-15) | `EXPANSION_ENEMIES_V1`, `EXPANSION_THEME_ENEMIES_V1`, `installExpansionEnemies()` | `enemies.js` (`ENEMIES`) |
-| `expansion_items.js` | 32 | Expansion 1: 11 items nuevos | `EXPANSION_ITEMS_V1`, `EXPANSION_DROP_TABLES_V1`, `installExpansionItems()` | `items.js` (`ITEMS`, `DROP_TABLES`) |
-| `expansion_quests.js` | 24 | Expansion 1: 5 quests nuevas (daily, compound, bounty, story) | `EXPANSION_QUESTS_V1`, `installExpansionQuests()`, `updateExpansionQuestProgress()` | `quests.js` (`QUESTS`, `updateQuestProgress`) |
-| `expansion_tasks.js` | 28 | Expansion 1: tareas adicionales para `DEFAULT_TASKS` | `EXPANSION_TASKS_V1`, `installExpansionTasks()` | `game.js` (`DEFAULT_TASKS`) |
-| `update2_content.js` | 115 | Update 2: redefine Ashbrand con efectos/attunement + quests de Ashbrand; expone `window.LifeXPUpdate2` | `window.LifeXPUpdate2` | `items.js`, `quests.js`, `game.js` |
-| `sw.js` | 61 | Service Worker PWA: cache-first, lista de assets hardcodeada | | |
-| `manifest.json` | 24 | Manifiesto PWA: nombre, iconos, colores, display | | |
-| `emergency-save.html` | 133 | Herramienta standalone de rescate de save: lee/escribe `localStorage` directamente | | (standalone) |
-| `PLAN_DE_ACCION.md` | | Hoja de ruta del saneamiento en curso | | |
-| `LifeXP_RPG_GDD_v2.md` | | Game Design Document: reglas, mecanicas, narrativa | | |
-| `LifeXP_Agent_Content_Guide_v2.md` | | Guia operativa para el Game Master agent | | |
+### 2a. Ficheros de motor y UI
+
+| Fichero | Lineas | Responsabilidad principal | Exports / globals clave |
+|---|---|---|---|
+| `index.html` | ~1400 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
+| `engine.js` | 315 | `gameState`, utilidades, persistencia, migracion de save, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen` |
+| `combat.js` | ~750 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
+| `guild.js` | 331 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
+| `inventory_system.js` | 174 | Subsistema canonico de inventario; repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
+| `item_system.js` | 540 | Attunement, rituales, curses, modales de item, knowledge system, activation panel | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel` |
+| `main.js` | 84 | Punto de entrada: event listeners + registro del Service Worker | -- |
+
+### 2b. Ficheros de UI (pantallas)
+
+| Fichero | Lineas | Pantalla / zona | Funciones clave |
+|---|---|---|---|
+| `ui_hub.js` | 410 | Hub principal, inventario, equipamiento, settings | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
+| `ui_tasks.js` | 340 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategory`, `shuffleTask`, `renderTaskScreen`, `completeTask`, `rollDrop`, `dismissComplete` |
+| `ui_combat.js` | 316 | Pantalla de combate, encuentros post-tarea, tareas guardadas, overflow | `checkForEncounter`, `triggerEncounterAfterTask`, `startCombatFromEncounter`, `renderCombatScreen`, `executeCombatAction`, `showCombatVictory`, `saveForLater`, `showSavedTasks`, `showOverflowTasks` |
+| `ui_misc.js` | 397 | Pantallas miscelaneas: mapa, gremio, lore, clase, quests rapidas | `renderMap`, `renderClassScreen`, `renderLore`, `openQuestPanel` |
+| `ui_feedback.js` | 177 | Toasts, notificaciones, animaciones de feedback | `showToast`, `showXpGain`, `showLevelUp`, `showDropNotification` |
+| `ui_quests.js` | 234 | Pantalla de quests: lista, detalle, progreso | `renderQuestsScreen`, `renderQuestDetail`, `claimQuestReward` |
+
+### 2c. Ficheros de datos (contenido)
+
+| Fichero | Lineas | Contenido | Constante exportada |
+|---|---|---|---|
+| `classes.js` | 223 | Arbol de clases: 6 clases base, 102 nodos de progresion | `CLASS_TREE` |
+| `items.js` | 268 | 85 items base + `RARITY`, `ITEM_TYPE`, `DROP_TABLES` | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
+| `enemies.js` | 614 | 85 enemigos base (niveles 1-40+) | `ENEMIES` |
+| `quests.js` | 604 | 33 quests base (dailies, simples, bounties, story, class quests) | `QUESTS` |
+| `data_tasks.js` | 533 | 41 tareas base (`DEFAULT_TASKS`) | `DEFAULT_TASKS` |
+| `item_flavor.js` | 467 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
+
+### 2d. Ficheros de expansion y actualizaciones
+
+| Fichero | Lineas | Contenido | Constante exportada |
+|---|---|---|---|
+| `expansion_items.js` | 34 | 11 items de expansion | `EXPANSION_ITEMS_V1` |
+| `expansion_enemies.js` | 21 | 18 enemigos de expansion | `EXPANSION_ENEMIES_V1` |
+| `expansion_quests.js` | 26 | 20 quests de expansion | `EXPANSION_QUESTS_V1` |
+| `expansion_tasks.js` | 30 | 14 tareas de expansion | `EXPANSION_TASKS_V1` |
+| `update2_content.js` | 115 | Patches narrativos de quests (Ashbrand arc); instala Ashbrand en ITEMS si no existe | -- (IIFE auto-ejecutable) |
+
+### 2e. Ficheros de soporte / PWA
+
+| Fichero | Responsabilidad |
+|---|---|
+| `sw.js` | Service Worker cache-first (lista de assets hardcodeada) |
+| `manifest.json` | Metadatos PWA (nombre, iconos, colores) |
+| `emergency-save.html` | Herramienta standalone de recuperacion de save |
+| `ashbrand_hotfix.js` | **HUERFANO** - stub vacio de compatibilidad. No esta incluido en `index.html`. Candidato a eliminar en proximo refactor de limpieza. |
 
 ---
 
-## 3. Indice de simbolos (ficheros grandes)
+## 3. Modelo de datos: `gameState`
 
-### `game.js` (3615 lineas -- post Fase F)
+Definido en `engine.js`. Persistido en `localStorage` clave `lifexp_save`. Version actual: `saveVersion: 3`.
 
-| Rango aprox. | Simbolo / Seccion |
-|---|---|
-| 1-42 | Constantes: `LIFE_XP_BUILD`, `CATEGORIES`, `STATS`, `FREQ` |
-| 43-536 | `DEFAULT_TASKS` - array de tareas por defecto |
-| 537-593 | `gameState` - objeto de estado global |
-| 594-606 | Variables de UI: `currentTask`, `timerInterval`, etc. |
-| 607-719 | Utilidades: `todayStr`, `daysBetween`, `xpForLevel`, `addXp`, `addStats`, `getTaskById`, `isTaskDue`, `getAvailableTasks`, `pickRandomTask` |
-| 720-801 | Persistencia: `saveGame`, `loadGame`, `updateStreak`, `showScreen` |
-| 802-946 | UI Hub: `renderHub` |
-| 857-946 | UI Personaje: `renderCharacter` |
-| 947-1149 | UI Inventario: `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `showLegacyItemModal` |
-| 1150-1159 | Item runtime: `showAttunementFlavor`, `unequipItemToInventory`, `sellItemFromInventory`, `useConsumable` (ITEM_FLAVOR_TEXT y getItemFlavorText extraidos a item_flavor.js) |
-| 1620-1664 | Settings: `forceAppUpdate`, `renderSettings` |
-| 1665-1771 | Navegacion de tareas: `openRandomTask`, `openCategory`, `shuffleTask` |
-| 1772-1985 | Completar tarea: `completeTask`, `finalizeCompletion`, `rollDropFromTheme`, `rollDrop`, `rollSideQuestDrop` |
-| 1986-2079 | Encuentros: `pendingEncounter`, `dismissComplete`, `checkForEncounter`, `triggerEncounterAfterTask`, `startCombatFromEncounter` |
-| 2080-2230 | UI Combate: `renderCombatScreen`, `renderCombatActions`, `renderCombatLog`, `executeCombatAction`, `showCombatVictory`, `showCombatDefeat`, `endCombatAndReturn` |
-| 2231-2309 | Tareas guardadas/overflow: `saveForLater`, `showSavedTasks`, `showOverflowTasks` |
-| 2310-2467 | Modales y UI generica: `openModal` y helpers |
-| 2468-2636 | Export/Import/Snapshot: `exportSnapshot`, `generateTaskMetrics`, `generateContentSuggestions`, `importDataText` |
-| 2637-2960 | Guild: `createGuild`, `joinGuildFromReceipt`, `generateReceipt`, `processReceipt`, `renderGuild` |
-| 3095-3162 | Toast/Feedback: `showFlavorDialog`, `showToast`, `showLevelUpEffect`, `triggerHaptic` |
-| 3163-3262 | Onboarding: `onboardingSteps`, `showOnboarding`, `finishOnboarding` |
-| 3263-3530 | UI Quests: `renderQuests`, `showAvailableQuests`, `acceptQuest` (delega a quests.js), `showQuestDetail`, `abandonQuest` (delega a quests.js), `migrateQuestState`. `updateQuestProgress` y `completeQuest` eliminadas: las versiones canonicas de quests.js se usan directamente. |
-| 3596-3760 | Item system runtime: `initializeItemSystem`, `normalizeItemDefinition`, `getItemDefinition`, `getItemAttunement`, `equipItem`, `getEquippedItemEffects`, `unequipItem` |
-| 3761-3800 | Block 2.1 -- inventory identity recovery: `resolveInventoryItemId` (delega a inventory_system.js), `repairInventoryIdentities` (delega a inventory_system.js) |
-| 3801-4124 | Item modal + efectos: `renderInventoryGrid`, `renderStashGrid`, `showItemModal`, `getItemKnowledgeState`, `isItemEffectKnown`, `discoverItemEffect`, `isItemEffectUnlocked`, `renderActivationPanel` |
-
-### `inventory_system.js` (~160 lineas -- post Fase D)
-
-| Rango aprox. | Simbolo |
-|---|---|
-| 1-10 | Cabecera, BUILD = 'v15-merged-hotfix', tabla aliases |
-| 11-20 | `text()` - normalizacion interna de strings |
-| 21-45 | `resolve()` - resolucion de IDs canonicos |
-| 46-55 | `normalize()` - normalizacion de entradas de inventario |
-| 56-75 | `repairList()`, `repair()` - reparacion de inventario/stash |
-| 76-100 | `icon()` - generacion de SVG por tipo de item |
-| 101-120 | `render()` - renderizado de grids de inventario/stash |
-| 121-130 | Exports: `window.LifeXPInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
-| 131-135 | `window.normalizeItemText = text` (alias global, antes en ashbrand_hotfix.js) |
-| 136-155 | `window.emergencyRerollLegacyItem` (movido de ashbrand_hotfix.js en Fase D) |
-| 156-165 | `window.renderInventory` override + listener DOMContentLoaded |
-
-### `combat.js` (798 lineas)
-
-| Rango aprox. | Simbolo |
-|---|---|
-| 1-13 | `combatState = null` |
-| 14-171 | Status effects: `applyStatusEffect`, `tickCombatStatuses` (burn, poison, freeze, stun, bleed, slow, fear, shield) |
-| 172-191 | `applyEquipmentOnHitEffects` |
-| 192-242 | `initCombat` |
-| 243-335 | `calculateDamage`, `calculateHeal` |
-| 336-389 | `PLAYER_SKILLS` |
-| 390-438 | `getAvailableActions` |
-| 439-540 | `executePlayerAction` |
-| 541-623 | `executeEnemyTurn` |
-| 624-663 | `resolveAutoCombat` |
-| 664-728 | `calculateCombatRewards`, `applyCombatRewards` |
-| 729-770 | `addCombatLog`, `getCombatLog`, `getCombatState`, `isCombatActive`, `endCombat` |
-| 772-798 | `rollEncounter`, `getEncounterType` |
-
-### `items.js` (279 lineas)
-
-| Rango aprox. | Simbolo |
-|---|---|
-| 1-10 | `RARITY`, `ITEM_TYPE` |
-| 11-147 | `ITEMS` - catalogo completo de items base |
-| 148-171 | `DROP_TABLES` - tablas de drop por tema |
-| 172-279 | Helpers: `getInventoryCapacity`, `addToContainer`, `addToInventory`, `removeFromInventory`, `equipItem` (legacy), `rollDrop`, `sellItem`; `window._itemsRollDrop = rollDrop` |
-
-### `quests.js` (597 lineas)
-
-| Rango aprox. | Simbolo |
-|---|---|
-| 1-30 | `QUEST_TYPE`, `QUEST_STATUS` |
-| 31-256 | `QUESTS` - catalogo: dailies, simples, compuestas, bounties, story arcs |
-| 257-373 | Estado: `initQuestState`, `getActiveQuests`, `getAvailableQuests`, `acceptQuest`, `abandonQuest`, `completeQuest`, `failQuest` |
-| 374-563 | Progreso: `updateQuestProgress`, `checkQuestCompletion`, `applyQuestRewards`, `checkDailyQuestReset`, `getQuestProgress` |
-| 564-597 | Helpers UI: `getQuestTypeInfo`, `formatObjective` |
-
-### `classes.js` (223 lineas)
-
-| Rango aprox. | Simbolo |
-|---|---|
-| 5-146 | `CLASS_TREE` - arbol completo (tiers 1-4, 6 ramas base) |
-| 147-152 | `BASE_CLASSES` |
-| 153-176 | Formulas: `xpForLevel`, `levelFromXp`, `xpToNextLevel`, `xpProgressInLevel` |
-| 177-230 | `calculateDerivedStats`, `calculateResources`, `getAvailableClassChanges`, `getClassChain`, `getTierName` |
-
----
-
-## 4. Modelos de datos
-
-### 4.1 Task (en `DEFAULT_TASKS` / `EXPANSION_TASKS_V1`)
-
-```js
-{
-  id: string,          // unico, ej: 'casa_1'
-  cat: string,         // 'casa' | 'cuerpo' | 'gestiones' | 'social' | 'personal'
-  name: string,
-  freq: string,        // 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'biannual' | 'annual'
-  desc: string,        // descripcion practica para el jugador
-  stats: { fue?, vit?, des?, int?, vol?, pre? },  // valores 0-100 (se dividen /10 para puntos)
-  xp: number,
-  drops: null | { theme: string, items: string[] },
-  sideQuest: null | {
-    desc: string,
-    stats: { ... },
-    xp: number,
-    drops: string[] | null,
-    dropBonus: number   // % bonus de drop chance
-  }
-}
 ```
-
-### 4.2 Item (en `ITEMS`)
-
-```js
-{
-  id: string,
-  name: string,
-  type: 'weapon' | 'armor' | 'accessory' | 'artifact' | 'consumable' | 'material' | 'skill' | 'key',
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary',
-  icon: string,        // clave ASCII (ej: 'SWORD', 'FIRE') o emoji
-  lore: string,
-  desc: string,
-  stats: { fue?, vit?, des?, int?, vol?, pre? },
-  value: number,       // precio en gold
-  themes: string[],    // temas de drop (ej: ['fuego', 'fuego_comida'])
-  effects?: Effect[],  // efectos con unlockStage y trigger
-  attunement?: {
-    required: boolean,
-    current: number,
-    max: number,       // default 3
-    stages: string[]
-  },
-  passive?: string,    // texto de efecto pasivo (legacy)
-  effect?: object,     // efecto legacy (consumibles)
-  activation?: object | null,
-  curse?: object | null,
-  cantSell?: boolean,
-  teachesSkill?: string  // para type:'skill'
-}
-```
-
-### 4.3 Enemy (en `ENEMIES`)
-
-```js
-{
-  id: string,
-  name: string,
-  icon: string,        // emoji
-  type: 'common' | 'elite' | 'boss',
-  level: number,
-  hp: number,
-  fue: number, vit: number, des: number, int: number, vol: number, pre: number,
-  xp: number,
-  gold: number,
-  skills: [{ id, name, type, power, cost?, damageType?, scaling?, effect? }],
-  drops: [{ itemId: string, chance: number }],
-  themes: string[]
-}
-```
-
-### 4.4 Quest (en `QUESTS`)
-
-```js
-{
-  id: string,
-  type: 'daily' | 'simple' | 'compound' | 'bounty' | 'story' | 'class',
-  name: string,
-  desc: string,
-  minLevel: number,
-  objectives: [{
-    id: string,
-    type: 'complete_tasks' | 'defeat_enemy' | 'defeat_boss' | 'reach_level' | 'equip_item',
-    count: number,
-    category?: string | null,
-    enemyId?: string,
-    progress: number
-  }],
-  rewards: { xp: number, gold?: number, items?: string[] },
-  repeatable: boolean,
-  resetDaily?: boolean,
-  timeLimit?: number,     // dias (bounties)
-  requirements?: { classId?, minStats? },
-  // Solo type:'story':
-  chapters?: [{ id, name, desc, objectives, rewards }],
-  currentChapter?: number
-}
-```
-
-### 4.5 Clase (en `CLASS_TREE`)
-
-```js
-{
-  name: string,
-  icon: string,
-  tier: 1 | 2 | 3 | 4,
-  reqLevel: number,
-  parent?: string,       // id de la clase padre (ausente en tier 1)
-  stats: { fue?, vit?, des?, int?, vol?, pre? },  // bonus al elegir
-  desc: string,
-  branches: string[]     // ids de clases hijas disponibles
-}
-```
-
-### 4.6 `gameState` (save en `localStorage['lifexp_save']`)
-
-```js
-{
+gameState {
   // Jugador
-  name: string,
-  level: number,
-  xp: number,
-  gold: number,
-  streak: number,
-  lastActiveDate: string | null,   // 'YYYY-MM-DD'
+  name: string
+  level: number
+  xp: number
+  gold: number
+  streak: number
+  lastActiveDate: string | null
 
-  // Stats base
-  stats: { fue, vit, des, int, vol, pre },  // numeros enteros
+  // Stats (6 atributos)
+  stats: { fue, vit, des, int, vol, pre }  // base 10 cada uno
 
   // Tareas
-  tasks: [],           // tareas activas (IDs o objetos - ver loadGame)
-  savedTasks: [],      // IDs guardados para despues
-  taskHistory: [{ taskId, date, xp, sideQuest }],
+  tasks: Task[]           // pool activo
+  savedTasks: string[]    // IDs guardados para despues
+  taskHistory: { taskId, date, xp, sideQuest }[]
 
   // Inventario
-  inventory: string[],             // IDs de items
-  equipment: {
-    weapon: string | null,
-    armor: string | null,
-    accessory1: string | null,
-    accessory2: string | null,
-    artifact: string | null
-  },
-  stash: string[],
-  stashCapacity: 30,
-  inventoryCapacityBonus: number,
-  pendingLoot: null | object,
-  saveVersion: number,             // actualmente 3 tras migracion
+  inventory: ItemInstance[]
+  equipment: { weapon, armor, accessory1, accessory2, artifact }  // null o ItemInstance
+  stash: ItemInstance[]
+  stashCapacity: number   // default 30
+  inventoryCapacityBonus: number
+  pendingLoot: ItemInstance | null
 
   // Clase
-  classId: string | null,
-  classChanges: number,
+  classId: string         // default 'novato'
+  classLevel: number
 
   // Quests
-  quests: {
-    active: string[],
-    completed: string[],
-    failed: string[],
-    dailyReset: string | null,
-    [questId]: { startedAt, objectives, currentChapter }
-  },
-  completedQuests: string[],       // alias legacy
+  activeQuests: QuestState[]
+  completedQuests: string[]  // IDs
+
+  // Guild / Coop
+  guildId: string | null
+  guildName: string | null
+  guildMembers: { name, id, lastSync }[]
+  pendingReceipts: Receipt[]
+  receivedReceipts: Receipt[]
 
   // Item system
   itemSystem: {
-    version: 1,
-    attunement: { [itemId]: number },
-    rituals: { [itemId]: object },
-    curses: { [itemId]: object },
-    equipAttempts?: { [itemId]: number }
-  },
+    version: number
+    attunement: { [itemId]: { count, stage } }
+    rituals: { [itemId]: RitualState }
+    curses: { [itemId]: CurseState }
+  }
 
-  // Guild
-  guild: null | { name, id, members, receipts },
-  playerId: string,
-
-  // Misc
-  onboardingDone: boolean
+  // Lore / aclimatacion / rituales (campos adicionales del save)
+  loreUnlocked: string[]
+  acclimation: { [key]: number }
+  saveVersion: number     // 3 = version canonica actual
 }
 ```
 
-### 4.7 `localStorage` - claves conocidas
+### Migraciones de save
 
-| Clave | Contenido |
-|---|---|
-| `lifexp_save` | JSON de `gameState` (save principal) |
-| `lifexp_save_backup_<timestamp>` | Backup automatico antes de import/reset |
-| `lifexp_save_last_backup` | Clave del ultimo backup |
-| `lifexp_onboarding_done` | `'true'` si el onboarding se completo |
-| `lifexp_recovery_backup_v15` | Backup creado por `emergencyRerollLegacyItem` antes de modificar un slot |
-
----
-
-## 5. Contratos e invariantes
-
-> Estas reglas **no se deben romper** en ninguna actualizacion.
-
-1. **Orden de carga de scripts** (definido en `index.html` lineas 1566-1577):
-   `classes.js` -> `items.js` -> `enemies.js` -> `combat.js` -> `quests.js` -> `item_flavor.js` -> `game.js` -> `expansion_items.js` -> `expansion_enemies.js` -> `expansion_quests.js` -> `expansion_tasks.js` -> `update2_content.js` -> `inventory_system.js` -> `ashbrand_hotfix.js` (stub).
-   Cualquier nuevo fichero debe anadirse **despues** de `game.js` y **antes** de `ashbrand_hotfix.js`.
-
-2. **IDs unicos:** cada `task.id`, `item.id`, `enemy.id` y `quest.id` debe ser unico en todo el proyecto. Los expansions usan prefijos (`casa_exp_`, `expansion_`, etc.) para evitar colisiones.
-
-3. **`saveVersion`:** actualmente `3`. Cualquier migracion de save debe incrementar este numero y ser reversible. Nunca eliminar campos del save sin migracion explicita.
-
-4. **`localStorage['lifexp_save']`** nunca se sobreescribe sin hacer backup previo (`backupCurrentSave()`). Las actualizaciones de contenido son aditivas (`Object.assign`), nunca destructivas.
-
-5. **`rollDrop` es el unico punto de entrada para drops:** `game.js` llama a `window._itemsRollDrop` (alias de `rollDrop` en `items.js`). No duplicar logica de drop en otros ficheros.
-
-6. **`gameState` es el unico estado mutable global:** no crear variables de estado paralelas. Todo cambio de estado pasa por `gameState` y termina en `saveGame()`.
-
-7. **`inventory_system.js` es idempotente:** puede ejecutarse multiples veces sin efectos secundarios. Mantener esta propiedad en cualquier modificacion.
-
-8. **Items en `equipment` son IDs canonicos** (claves de `ITEMS`). `inventory_system.js` es la fuente de verdad unica para aliases. Nunca guardar nombres de display en `equipment`.
-
-9. **Maximo 3 quests activas simultaneas** (`acceptQuest` en `quests.js` lo valida; `game.js` delega a `quests.js`). No cambiar este limite sin actualizar `quests.js`.
-
-10. **`expansion_*.js` y `update2_content.js` son aditivos:** sus funciones `install*` hacen `Object.assign` sobre las constantes base. Si un ID ya existe, se sobreescribe (comportamiento intencional para patches). Documentar explicitamente cualquier sobreescritura.
-
-11. **El Service Worker (`sw.js`) tiene la lista de assets hardcodeada.** Cualquier fichero nuevo debe anadirse a esa lista o no se servira offline.
-
-12. **`ITEM_FLAVOR_TEXT` en `item_flavor.js`** debe tener una entrada por cada item equipable que tenga attunement. Sin entrada -> el juego muestra texto vacio en el modal.
-
-13. **Aliases de items:** anadir SOLO en `inventory_system.js` (campo `aliases`). No anadir en `game.js` ni en ningun otro fichero.
-
-14. **`inventory_system.js` no contiene fallbacks hardcodeados:** si un item no se resuelve, `emergencyRerollLegacyItem` retorna `{ success: false, reason: 'item_unresolvable' }`. Nunca sustituir un item no resolvible por otro item concreto.
-
----
-
-## 6. Indice practico - donde se cambia que
-
-| Quiero... | Fichero | Zona / Funcion |
+| De version | A version | Que hace |
 |---|---|---|
-| Anadir una tarea nueva | `game.js` o `expansion_tasks.js` | Array `DEFAULT_TASKS` (~L43) o `EXPANSION_TASKS_V1` |
-| Cambiar XP/stats de una tarea existente | `game.js` | `DEFAULT_TASKS`, buscar por `id` |
-| Anadir un item nuevo | `items.js` o `expansion_items.js` | Objeto `ITEMS` + entrada en `DROP_TABLES` si tiene tema |
-| Anadir flavor text a un item | `item_flavor.js` | `ITEM_FLAVOR_TEXT` (inicio del fichero) |
-| Anadir un enemigo nuevo | `enemies.js` o `expansion_enemies.js` | Objeto `ENEMIES` + `EXPANSION_THEME_ENEMIES_V1` |
-| Cambiar stats/drops de un enemigo | `enemies.js` | Objeto `ENEMIES`, buscar por `id` |
-| Anadir una quest nueva | `quests.js` o `expansion_quests.js` | Objeto `QUESTS` o `EXPANSION_QUESTS_V1` |
-| Cambiar recompensas de una quest | `quests.js` | `QUESTS[id].rewards` |
-| Anadir una clase nueva | `classes.js` | `CLASS_TREE` + anadir a `branches` del padre |
-| Cambiar formula de XP por nivel | `classes.js` | `xpForLevel` (~L153) |
-| Cambiar formula de HP/MP/SP | `classes.js` | `calculateResources` (~L190) |
-| Cambiar stats derivados | `classes.js` | `calculateDerivedStats` (~L177) |
-| Anadir un skill de combate al jugador | `combat.js` | `PLAYER_SKILLS` (~L336) + `getAvailableActions` (~L390) |
-| Anadir un status effect nuevo | `combat.js` | `tickCombatStatuses` (~L29), anadir `case` |
-| Cambiar logica de encuentros | `combat.js` | `rollEncounter` (~L772), `getEncounterType` (~L791) |
-| Cambiar capacidad de inventario | `game.js` + `items.js` | `getInventoryCapacity` en `items.js` (~L172); `stashCapacity` en `gameState` |
-| Anadir un alias de item (nombre legacy) | `inventory_system.js` | campo `aliases` (fuente de verdad unica) |
-| Cambiar colores de categoria/stat | `index.html` | Variables CSS `:root` (~L10-50) |
-| Anadir una pantalla nueva | `index.html` + `game.js` | HTML de la pantalla + `showScreen()` (~L786) |
-| Cambiar el nombre de la app / iconos PWA | `manifest.json` | Campos `name`, `short_name`, `icons` |
-| Anadir un asset nuevo (para offline) | `sw.js` | Array de assets en la constante de cache (~L5-20) |
-| Migrar el save a una nueva version | `game.js` | `loadGame` (~L728), incrementar `saveVersion` |
-| Exportar snapshot para el Game Master | `game.js` | `exportSnapshot` (~L2468) |
-| Recuperar un save corrupto manualmente | `emergency-save.html` | Standalone, abrir directamente en el navegador |
-| Cambiar limite de quests activas | `quests.js` | `acceptQuest` (~L304) -- game.js delega |
-| Anadir un ritual de item | `game.js` | `advanceItemRitual` (~L3893), `attemptItemActivation` (~L3905) |
-| Cambiar drop rate global por rareza | `items.js` | `RARITY[x].dropRate` (~L1) |
-| Recuperar un slot de inventario corrupto | consola del navegador | `emergencyRerollLegacyItem(indice)` (definido en `inventory_system.js`) |
+| < 1 | 1 | Inicializa campos de inventario |
+| 1 | 2 | Inicializa `itemSystem` |
+| 2 | 3 | Inicializa `guildId`, `guildName`, `guildMembers`, `pendingReceipts`, `receivedReceipts` |
+
+Logica de migracion en `engine.js` -> funcion `migrateQuestState()` y bloque de migracion en `loadGame()`.
 
 ---
 
-## 7. Deuda tecnica detectada
+## 4. Modelos de datos: contenido
 
-| # | Descripcion | Fichero(s) | Coste estimado | Estado |
-|---|---|---|---|---|
-| DT-01 | ~~**`acceptQuest` duplicado**~~ **RESUELTA (Fase E -- PR #13).** game.js delega a quests.js. | `quests.js`, `game.js` | -- | Resuelta |
-| DT-02 | ~~**`updateQuestProgress` duplicado**~~ **RESUELTA (Fase E -- PR #13).** Eliminada de game.js; quests.js es la unica implementacion. | `quests.js`, `game.js` | -- | Resuelta |
-| DT-03 | ~~**`completeQuest` duplicado**~~ **RESUELTA (Fase E -- PR #13).** Eliminada de game.js; quests.js es la unica implementacion. | `quests.js`, `game.js` | -- | Resuelta |
-| DT-04 | **`equipItem` duplicado:** version legacy en `items.js` (~L219) y version canonica en `game.js` (~L3693). | `items.js`, `game.js` | Alto | Pendiente |
-| DT-05 | ~~**`ITEM_FLAVOR_TEXT` en `game.js`**~~ **RESUELTA (Fase F -- PR #14).** Extraido a `item_flavor.js`. | `item_flavor.js` | -- | Resuelta |
-| DT-06 | **Lista de assets en `sw.js` hardcodeada.** Cualquier fichero nuevo olvidado rompe la PWA offline. | `sw.js` | Bajo | Aceptado (documentado) |
-| DT-07 | ~~**`ashbrand_hotfix.js` era un parche de emergencia**~~ **RESUELTA (Fase D -- PR #12).** Logica absorbida por `inventory_system.js`. Stub vacio pendiente de eliminacion en Fase G. | `inventory_system.js` | -- | Resuelta |
-| DT-08 | ~~**`inventory_system.js` era un IIFE sin exports explicitos**~~ **RESUELTA (Fase D -- PR #12).** Todos los simbolos publicos estan en `window.LifeXPInventory` y como globals nombrados. | `inventory_system.js` | -- | Resuelta |
-| DT-09 | **`game.js` tiene 3615 lineas** (tras Fase F) - mezcla motor, UI, guild, item system, quests UI y onboarding. | `game.js` | Alto | Pendiente (Fase G) |
-| DT-10 | **`window._itemsRollDrop`** es un global fragil para comunicar `items.js` -> `game.js`. | `items.js`, `game.js` | Bajo | Pendiente |
-| DT-11 | **`window.LifeXPUpdate2`** en `update2_content.js` - mismo patron de global fragil. | `update2_content.js`, `game.js` | Bajo | Pendiente |
-| DT-12 | **`saveVersion` en `gameState` es 2** (declaracion) pero la migracion en `loadGame` lo sube a 3. Confuso. | `game.js` | Bajo | Pendiente |
-| DT-13 | **`expansion_*.js` no tienen guards de doble instalacion.** Si se llaman dos veces, `Object.assign` sobreescribe silenciosamente. | `expansion_*.js` | Bajo | Pendiente |
-| DT-14 | ~~**`LEGACY_ITEM_ALIASES` en `game.js`**~~ **RESUELTA (Fase B -- PR #10).** | `inventory_system.js` | -- | Resuelta |
-| DT-15 | **`emergency-save.html` no esta en la lista de assets del SW** - no funciona offline. Intencional. | `sw.js`, `emergency-save.html` | Bajo | Documentado, aceptado |
-| DT-16 | ~~**Fallback hardcodeado a 'cuchilla_llameante'**~~ **RESUELTA (Fase B/C -- PR #11).** | `inventory_system.js` | -- | Resuelta |
-| DT-17 | **`ashbrand_hotfix.js` stub** sigue en `index.html` y `sw.js`. Se eliminara en Fase G. | `index.html`, `sw.js`, `ashbrand_hotfix.js` | Bajo | Pendiente (Fase G) |
+### Task
+
+```
+{
+  id: string          // unico, snake_case
+  cat: string         // 'casa' | 'cuerpo' | 'personal' | 'gestiones' | 'social'
+  name: string
+  freq: string        // 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'once'
+  desc: string
+  stats: { [stat]: number }   // puntos de stat al completar
+  xp: number
+  drops?: { theme: string, items: string[] }
+  sideQuest?: { desc, stats, xp, drops, dropBonus }
+}
+```
+
+### Item (definicion en ITEMS)
+
+```
+{
+  id: string
+  name: string
+  type: 'weapon' | 'armor' | 'accessory' | 'artifact' | 'consumable' | 'material' | 'skill' | 'key'
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+  icon: string        // clave de icono SVG
+  desc: string
+  lore?: string
+  stats?: { [stat]: number }
+  value: number       // precio de venta base
+  themes?: string[]   // temas de drop
+  effects?: Effect[]
+  attunement?: AttunementDef
+  consumable?: ConsumableDef
+}
+```
+
+### Enemy (definicion en ENEMIES)
+
+```
+{
+  id: string
+  name: string
+  level: number
+  hp: number
+  attack: number
+  defense: number
+  xp: number
+  gold: number
+  drops?: string[]    // item IDs
+  rank?: string       // 'normal' | 'elite' | 'boss'
+  themes?: string[]
+}
+```
+
+### Quest (definicion en QUESTS)
+
+```
+{
+  id: string
+  type: string        // ver tipos en seccion 9
+  name: string
+  desc: string
+  minLevel?: number
+  objective: { ... } // estructura variable segun type
+  reward: { xp, gold, items? }
+  setting?: string    // flavor narrativo
+  lore?: string
+}
+```
+
+---
+
+## 5. Orden de carga de scripts (index.html, lineas 1373-1395)
+
+El orden es estricto: cada fichero depende de los anteriores como globals.
+
+```
+1.  classes.js          -- CLASS_TREE (sin dependencias)
+2.  items.js            -- ITEMS, RARITY, ITEM_TYPE, DROP_TABLES
+3.  enemies.js          -- ENEMIES
+4.  combat.js           -- logica de combate (depende de ENEMIES, ITEMS)
+5.  quests.js           -- QUESTS (depende de ITEMS, ENEMIES)
+6.  item_flavor.js      -- ITEM_FLAVOR (depende de ITEMS)
+7.  data_tasks.js       -- DEFAULT_TASKS (sin dependencias de datos)
+8.  engine.js           -- gameState, motor (depende de todos los datos)
+9.  expansion_items.js  -- EXPANSION_ITEMS_V1 -> Object.assign(ITEMS, ...)
+10. expansion_enemies.js-- EXPANSION_ENEMIES_V1 -> Object.assign(ENEMIES, ...)
+11. expansion_quests.js -- EXPANSION_QUESTS_V1 -> Object.assign(QUESTS, ...)
+12. expansion_tasks.js  -- EXPANSION_TASKS_V1 -> DEFAULT_TASKS.push(...)
+13. update2_content.js  -- IIFE: patches narrativos + instala Ashbrand si falta
+14. inventory_system.js -- LifeXPInventory, repair() al arrancar
+15. ui_hub.js           -- UI del hub, inventario, equipamiento
+16. ui_tasks.js         -- UI de tareas
+17. ui_combat.js        -- UI de combate y encuentros
+18. ui_misc.js          -- UI miscelanea (mapa, clase, lore)
+19. guild.js            -- Sistema de gremio
+20. ui_feedback.js      -- Toasts y feedback visual
+21. ui_quests.js        -- UI de quests
+22. item_system.js      -- Sistema de items (attunement, rituales, modales)
+23. main.js             -- Punto de entrada (event listeners, SW)
+```
+
+> **IMPORTANTE:** `ashbrand_hotfix.js` existe en el repositorio pero **NO esta incluido** en `index.html`. Es un fichero huerfano (ver seccion 2e).
+
+---
+
+## 6. Invariantes criticos
+
+1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
+2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y añade un bloque en `loadGame`.
+3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
+4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
+5. **`update2_content.js` es una IIFE.** Se auto-ejecuta al cargarse. No expone globals. Es idempotente: comprueba si ya se aplico antes de actuar.
+6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice.
+7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
+8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
+
+---
+
+## 7. Deuda tecnica activa
+
+| ID | Descripcion | Prioridad | Estado |
+|---|---|---|---|
+| DT-01 | `sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua | Media | Abierto |
+| DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | Abierto |
+| DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
+| DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
+| DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
+| DT-06 | `ashbrand_hotfix.js` existe en el repo pero no se carga en `index.html`; es un fichero huerfano que debe eliminarse o integrarse | Media | Abierto |
+| DT-07 | `expansion_*.js` usan `Object.assign` sin guard de duplicados; si un ID de expansion colisiona con uno base, el base se sobreescribe silenciosamente | Media | Abierto |
+| DT-08 | `update2_content.js` parchea quests por ID hardcodeado (`daily_any_3`, `daily_casa_2`); si esos IDs cambian, el patch falla silenciosamente | Baja | Abierto |
+| DT-09 | ~~Split de `game.js` en `engine.js` + ficheros UI~~ | -- | **RESUELTO** (`game.js` eliminado, `engine.js` es el motor canonico) |
+| DT-10 | Algunos items en `inventory` del save pueden tener formato legacy (sin `id` canonico); `inventory_system.js` los normaliza al arrancar pero el proceso no es 100% determinista para todos los casos edge | Alta | Abierto |
+| DT-11 | ~~Rama huerfana `refactor/flavor-text-extract`~~ | -- | **RESUELTO** (rama no existe en el repo actual) |
+| DT-12 | `item_system.js` y `ui_hub.js` tienen logica de renderizado de inventario duplicada; `renderInventoryGrid` existe en ambos | Media | Abierto |
+| DT-18 | ~~PROJECT_MAP.md desactualizado~~ | -- | **RESUELTO** (este PR) |
 
 ---
 
 ## 8. Changelog del mapa
 
-| Fecha | Cambios | Secciones actualizadas |
+| Fecha | PR / Rama | Cambios |
 |---|---|---|
-| 2026-07-30 | Creacion inicial. Exploracion completa del repositorio en commit `26ed59a`. Lectura de todos los ficheros JS, HTML, JSON y expansiones. | Todas (0-7) |
-| 2026-07-30 | Saneamiento Fase A completada: 11 ramas eliminadas. Repositorio reducido a 2 ramas (`main`, `backup/pre-sanitation-2026-07-30`). Anadido `PLAN_DE_ACCION.md` al inventario. Columna Estado anadida a deuda tecnica. Seccion 6 actualizada (aliases apuntan a fuente unica tras Fase B). | 0, 2, 6, 7, 8 |
-| 2026-07-30 | Saneamiento Fase B completada (PR #10): `game.js` 4150->4124 lineas. `LEGACY_ITEM_ALIASES` eliminado. `resolveInventoryItemId` y `repairInventoryIdentities` delegan a `inventory_system.js`. `ashbrand_hotfix.js` delega resolucion/reparacion. DT-14 resuelta. Invariante 13 anadida. Seccion 3 actualizada (rangos game.js). Commit base actualizado a `b703adf`. | 0, 1, 2, 3, 5, 6, 7, 8 |
-| 2026-07-31 | Saneamiento Fase C completada (PR #11): auditoria confirma que el fallback hardcodeado ya no existia en main (eliminado en Fase B). Solo actualizacion documental. `ashbrand_hotfix.js` actualizado en inventario (97->40 lineas reales). DT-16 anadida y resuelta. Invariante 14 anadida. | 0, 2, 5, 7, 8 |
-| 2026-07-31 | Saneamiento Fase F completada (PR #14): ITEM_FLAVOR_TEXT y getItemFlavorText extraidos de game.js a item_flavor.js. game.js reducido de 4071 a 3615 lineas. index.html: item_flavor.js anadido antes de game.js. sw.js: cache v19-flavor-extract, item_flavor.js en assets y regex. DT-05 resuelta. Invariante 12 actualizada. Seccion 2 actualizada (item_flavor.js anadido). Seccion 3 actualizada. Seccion 6 actualizada. | 0, 2, 3, 5, 6, 7, 8 |
-| 2026-07-31 | Saneamiento Fase E completada (PR #13): funciones duplicadas de quests eliminadas de game.js. migrateQuestState() anade migracion de save legacy. acceptQuest/abandonQuest en game.js son delegaciones. updateQuestProgress y completeQuest eliminadas de game.js. DT-01, DT-02, DT-03 resueltas. Invariante 9 actualizada. Seccion 2 actualizada (lineas y exports). Seccion 3 actualizada (zona quests game.js). Seccion 6 actualizada (limite quests). | 0, 2, 3, 5, 6, 7, 8 |
-| 2026-07-31 | Saneamiento Fase D completada (PR #12): `inventory_system.js` absorbe `normalizeItemText` y `emergencyRerollLegacyItem` de `ashbrand_hotfix.js`. BUILD actualizado a 'v15-merged-hotfix'. `ashbrand_hotfix.js` vaciado a stub de 11 lineas. DT-07 y DT-08 resueltas. DT-17 anadida. Seccion 1 actualizada. Seccion 2 actualizada (lineas y responsabilidades). Seccion 3 anadido indice de inventory_system.js. Seccion 4.7 actualizada (clave lifexp_recovery_backup_v15). Invariante 7 actualizada (ashbrand->inventory_system). Seccion 6 anadida fila emergencyRerollLegacyItem. | 0, 1, 2, 3, 4, 5, 6, 7, 8 |
+| 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
+| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos añadida, branches activas actualizadas |
+
+---
+
+## 9. Recuentos de contenido (verificados 2026-07-31)
+
+### Tareas
+
+| Fuente | Cantidad | Categorias |
+|---|---|---|
+| `data_tasks.js` (base) | 41 | casa: 15, personal: 9, cuerpo: 7, gestiones: 5, social: 5 |
+| `expansion_tasks.js` | 14 | casa: 3, cuerpo: 3, gestiones: 3, personal: 3, social: 2 |
+| **Total** | **55** | |
+
+### Items
+
+| Fuente | Cantidad | Notas |
+|---|---|---|
+| `items.js` (base) | 85 | weapon: 10, armor: 7, accessory: 8, artifact: 5, consumable: 14, material: 36, skill: 3, key: 4 |
+| `expansion_items.js` | 11 | |
+| `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en ITEMS |
+| **Total** | **~97** | Sin contar duplicados (Ashbrand puede ya estar en base) |
+
+Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios base).
+
+### Enemigos
+
+| Fuente | Cantidad | Niveles |
+|---|---|---|
+| `enemies.js` (base) | 85 | 1-40+ (niveles: 1,2,3,4,5,6,7,8,12,14,15,16,18,20,22,25,30,35,40) |
+| `expansion_enemies.js` | 18 | |
+| **Total** | **103** | |
+
+### Quests
+
+| Fuente | Cantidad | Tipos principales |
+|---|---|---|
+| `quests.js` (base) | 33 | complete_tasks: 11, daily: 3, simple: 3, bounty: 2, defeat_enemy: 2, defeat_boss: 2, story: 1, class_quest: 1 |
+| `expansion_quests.js` | 20 | |
+| `update2_content.js` | 2 patches narrativos | Parchea `daily_any_3` y `daily_casa_2` con nombre/desc/lore |
+| **Total** | **53** | |
+
+### Clases
+
+| Dato | Valor |
+|---|---|
+| Clases base | 6 (guerrero, arquero, mago, clerigo, picaro, monje) |
+| Nodos de progresion totales | 102 (tiers 1-4) |
+| Distribucion por tier | tier 1: 6, tier 2: 18, tier 3: 37, tier 4: 41 |
+
+### Lore / Flavor
+
+| Fuente | Cantidad |
+|---|---|
+| `item_flavor.js` (items con flavor text) | 87 entradas |
