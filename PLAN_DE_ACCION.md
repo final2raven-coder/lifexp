@@ -12,7 +12,7 @@
 | 0 | Red de seguridad | Completada 2026-07-30 | -- |
 | A | Borrar ramas muertas | Completada 2026-07-30 | -- |
 | B | Unificar aliases (una sola fuente de verdad) | Completada 2026-07-30 | #10 |
-| C | Eliminar fallback hardcodeado | Pendiente | -- |
+| C | Eliminar fallback hardcodeado | Completada 2026-07-31 | #11 |
 | D | Fusionar ashbrand_hotfix en inventory_system | Pendiente | -- |
 | E | Unificar funciones duplicadas de quests | Pendiente | -- |
 | F | Mover ITEM_FLAVOR_TEXT fuera de game.js | Pendiente | -- |
@@ -81,13 +81,31 @@ El fichero resultante es JS valido y funciona correctamente en el navegador.
 
 ---
 
-## Fase C -- Eliminar fallback hardcodeado (Pendiente)
+## Fase C -- Eliminar fallback hardcodeado (Completada 2026-07-31 -- PR #11)
 
 Objetivo: eliminar la linea con fallback a 'cuchilla_llameante' en ashbrand_hotfix.js.
-Si un item no se resuelve, queda como "?" recuperable; nunca se convierte silenciosamente en otro item.
-Ficheros que toca: ashbrand_hotfix.js (1 linea).
-Riesgo: muy bajo.
-Como verificarlo: ningun item inesperado en el inventario. Items no resueltos aparecen como "?" recuperables.
+Si un item no se resuelve, queda como slot invalido recuperable; nunca se convierte
+silenciosamente en otro item.
+
+### Que se encontro
+
+Al auditar ashbrand_hotfix.js en main (post Fase B), el fallback hardcodeado ya no existia.
+Fue eliminado como efecto secundario de la Fase B: al reescribir la logica de resolucion
+para delegar a inventory_system.js, la rama de fallback a 'cuchilla_llameante' desaparecio.
+
+El comportamiento actual es correcto: si inv.resolve() devuelve falsy, emergencyRerollLegacyItem()
+retorna { success: false, reason: 'item_unresolvable' } sin transformar el slot.
+
+### Que hace este PR
+
+Solo actualiza la documentacion (PLAN_DE_ACCION.md y PROJECT_MAP.md) para reflejar
+que la Fase C estaba ya completada. Ningun fichero JS fue modificado.
+
+### Como verificarlo
+
+1. Abre la app normalmente. El inventario carga igual que antes.
+2. Comprueba en la consola del navegador: no hay errores de JS al arrancar.
+3. Equipa y desequipa cualquier item. Funciona igual que antes.
 
 ---
 
@@ -163,3 +181,4 @@ Esta transformacion es transparente para el navegador (JS interpreta los surroga
 | 2026-07-30 | Fase 0 completada: rama backup/pre-sanitation-2026-07-30 creada |
 | 2026-07-30 | Fase A completada: 11 ramas eliminadas, repositorio reducido a 2 ramas |
 | 2026-07-30 | Fase B completada: PR #10 mergeado. Aliases unificados en inventory_system.js. DT-14 resuelta |
+| 2026-07-31 | Fase C completada: PR #11. Fallback ya eliminado en Fase B. Solo actualizacion documental |
