@@ -451,11 +451,7 @@ body {
   margin-bottom: 8px;
 }
 .side-quest-icon { font-size: 14px; }
-.side-quest-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-}
+.side-quest-title { font-size: 12px; font-weight: 700; color: var(--gold); }
 .side-quest-desc {
   font-size: 12px;
   color: var(--text);
@@ -538,10 +534,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.stat-value {
-  font-size: 18px;
-  font-weight: 800;
-}
+.stat-value { font-size: 18px; font-weight: 800; }
 .stat-bar {
   height: 4px;
   background: var(--border);
@@ -556,23 +549,18 @@ body {
 .stat-item[data-stat="fue"] .stat-name,
 .stat-item[data-stat="fue"] .stat-value { color: var(--stat-fue); }
 .stat-item[data-stat="fue"] .stat-fill { background: var(--stat-fue); }
-
 .stat-item[data-stat="vit"] .stat-name,
 .stat-item[data-stat="vit"] .stat-value { color: var(--stat-vit); }
 .stat-item[data-stat="vit"] .stat-fill { background: var(--stat-vit); }
-
 .stat-item[data-stat="des"] .stat-name,
 .stat-item[data-stat="des"] .stat-value { color: var(--stat-des); }
 .stat-item[data-stat="des"] .stat-fill { background: var(--stat-des); }
-
 .stat-item[data-stat="int"] .stat-name,
 .stat-item[data-stat="int"] .stat-value { color: var(--stat-int); }
 .stat-item[data-stat="int"] .stat-fill { background: var(--stat-int); }
-
 .stat-item[data-stat="vol"] .stat-name,
 .stat-item[data-stat="vol"] .stat-value { color: var(--stat-vol); }
 .stat-item[data-stat="vol"] .stat-fill { background: var(--stat-vol); }
-
 .stat-item[data-stat="pre"] .stat-name,
 .stat-item[data-stat="pre"] .stat-value { color: var(--stat-pre); }
 .stat-item[data-stat="pre"] .stat-fill { background: var(--stat-pre); }
@@ -651,8 +639,8 @@ body {
   animation: flavorRise .22s ease-out;
 }
 .flavor-dialog.success { border-color: var(--green); border-left-color: var(--green); }
-.flavor-dialog.error { border-color: var(--red); border-left-color: var(--red); }
-.flavor-dialog.gold { border-color: var(--gold); border-left-color: var(--gold); }
+.flavor-dialog.error   { border-color: var(--red);   border-left-color: var(--red);   }
+.flavor-dialog.gold    { border-color: var(--gold);  border-left-color: var(--gold);  }
 .flavor-dialog-text {
   color: var(--text);
   font-size: 14px;
@@ -669,18 +657,14 @@ body {
 }
 @keyframes flavorRise {
   from { opacity: 0; transform: translateX(-50%) translateY(12px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 @media (max-width: 420px) {
   .item-modal-actions #btn-item-action { padding-left: 12px; padding-right: 12px; }
   .flavor-dialog { bottom: 78px; }
 }
 
-.modal-title {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 16px;
-}
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
 
 /* Complete overlay */
 .complete-overlay {
@@ -705,16 +689,8 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.2); }
 }
-.complete-title {
-  font-size: 24px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-.complete-subtitle {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-bottom: 24px;
-}
+.complete-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+.complete-subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
 .complete-rewards {
   display: flex;
   flex-wrap: wrap;
@@ -742,16 +718,8 @@ body {
   width: 100%;
   max-width: 300px;
 }
-.complete-drop-title {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-.complete-drop-item {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--purple);
-}
+.complete-drop-title { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.complete-drop-item { font-size: 16px; font-weight: 700; color: var(--purple); }
 
 .side-quest-prompt {
   background: var(--bg-card);
@@ -762,25 +730,10 @@ body {
   width: 100%;
   max-width: 320px;
 }
-.side-quest-prompt-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gold);
-  margin-bottom: 8px;
-}
-.side-quest-prompt-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-}
-.side-quest-prompt-btns {
-  display: flex;
-  gap: 10px;
-}
-.side-quest-prompt-btns .btn {
-  flex: 1;
-  padding: 10px;
-}
+.side-quest-prompt-title { font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 8px; }
+.side-quest-prompt-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.side-quest-prompt-btns { display: flex; gap: 10px; }
+.side-quest-prompt-btns .btn { flex: 1; padding: 10px; }
 
 /* Utils */
 .hidden { display: none !important; }
@@ -789,36 +742,28 @@ body {
 .mb-8 { margin-bottom: 8px; }
 .mb-16 { margin-bottom: 16px; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ==========================================================================
    BLOCK 7: POLISH & ANIMATIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
+   ========================================================================== */
 
 /* Screen transitions */
-.screen {
-  animation: fadeIn 0.2s ease;
-}
+.screen { animation: fadeIn 0.2s ease; }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 /* Card hover/tap feedback */
-.card {
-  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.card:active {
-  transform: scale(0.98);
-}
-.card[onclick]:hover, .card[style*="cursor: pointer"]:hover {
+.card { transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+.card:active { transform: scale(0.98); }
+.card[onclick]:hover,
+.card[style*="cursor: pointer"]:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-glow);
 }
 
 /* Button ripple effect */
-.btn {
-  position: relative;
-  overflow: hidden;
-}
+.btn { position: relative; overflow: hidden; }
 .btn::after {
   content: '';
   position: absolute;
@@ -835,15 +780,9 @@ body {
 }
 
 /* Nav item transitions */
-.nav-item {
-  transition: color 0.2s ease, transform 0.1s ease;
-}
-.nav-item:active {
-  transform: scale(0.95);
-}
-.nav-item.active .nav-item-icon {
-  animation: popIn 0.3s ease;
-}
+.nav-item { transition: color 0.2s ease, transform 0.1s ease; }
+.nav-item:active { transform: scale(0.95); }
+.nav-item.active .nav-item-icon { animation: popIn 0.3s ease; }
 @keyframes popIn {
   0% { transform: scale(1); }
   50% { transform: scale(1.2); }
@@ -851,10 +790,7 @@ body {
 }
 
 /* XP bar shine animation */
-.xp-fill {
-  position: relative;
-  overflow: hidden;
-}
+.xp-fill { position: relative; overflow: hidden; }
 .xp-fill::after {
   content: '';
   position: absolute;
@@ -871,76 +807,47 @@ body {
 }
 
 /* Stat bar fill animation */
-.stat-fill {
-  animation: fillIn 0.6s ease-out;
-}
-@keyframes fillIn {
-  from { width: 0 !important; }
-}
+.stat-fill { animation: fillIn 0.6s ease-out; }
+@keyframes fillIn { from { width: 0 !important; } }
 
 /* Category grid hover */
-.cat-card {
-  transition: transform 0.15s ease, border-color 0.2s ease;
-}
-.cat-card:hover {
-  border-color: var(--accent);
-}
-.cat-card:active {
-  transform: scale(0.97);
-}
+.cat-card { transition: transform 0.15s ease, border-color 0.2s ease; }
+.cat-card:hover { border-color: var(--accent); }
+.cat-card:active { transform: scale(0.97); }
 
 /* Complete overlay animations */
-.complete-overlay {
-  transition: opacity 0.3s ease;
-}
-.complete-overlay.show .complete-icon {
-  animation: bounceIn 0.5s ease;
-}
+.complete-overlay { transition: opacity 0.3s ease; }
+.complete-overlay.show .complete-icon { animation: bounceIn 0.5s ease; }
 @keyframes bounceIn {
   0% { transform: scale(0); opacity: 0; }
   50% { transform: scale(1.2); }
   100% { transform: scale(1); opacity: 1; }
 }
-.complete-overlay.show .complete-title {
-  animation: slideUp 0.4s ease 0.1s both;
-}
-.complete-overlay.show .complete-rewards {
-  animation: slideUp 0.4s ease 0.2s both;
-}
-.complete-overlay.show .complete-drop {
-  animation: slideUp 0.4s ease 0.3s both;
-}
+.complete-overlay.show .complete-title { animation: slideUp 0.4s ease 0.1s both; }
+.complete-overlay.show .complete-rewards { animation: slideUp 0.4s ease 0.2s both; }
+.complete-overlay.show .complete-drop { animation: slideUp 0.4s ease 0.3s both; }
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 /* Modal animations */
-.modal-backdrop {
-  transition: opacity 0.2s ease;
-}
-.modal-backdrop.show .modal {
-  animation: slideInUp 0.3s ease;
-}
+.modal-backdrop { transition: opacity 0.2s ease; }
+.modal-backdrop.show .modal { animation: slideInUp 0.3s ease; }
 @keyframes slideInUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
 
 /* Alert pulse for overflow */
-.alert-overflow {
-  animation: alertPulse 2s infinite;
-}
+.alert-overflow { animation: alertPulse 2s infinite; }
 @keyframes alertPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.4); }
   50% { box-shadow: 0 0 0 8px rgba(251, 146, 60, 0); }
 }
 
 /* Gold shimmer for rewards */
-.complete-reward.gold {
-  position: relative;
-  overflow: hidden;
-}
+.complete-reward.gold { position: relative; overflow: hidden; }
 .complete-reward.gold::after {
   content: '';
   position: absolute;
@@ -966,9 +873,7 @@ body {
   animation: spin 0.8s linear infinite;
   margin: 20px auto;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Toast notification */
 .toast {
@@ -988,10 +893,7 @@ body {
   transition: transform 0.3s ease, opacity 0.3s ease;
   pointer-events: none;
 }
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 .toast.success { border-color: var(--green); color: var(--green); }
 .toast.error { border-color: var(--red); color: var(--red); }
 .toast.gold { border-color: var(--gold); color: var(--gold); }
@@ -1030,9 +932,7 @@ body {
 }
 
 /* Haptic feedback simulation (visual) */
-.haptic {
-  animation: haptic 0.1s ease;
-}
+.haptic { animation: haptic 0.1s ease; }
 @keyframes haptic {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-2px); }
@@ -1040,25 +940,10 @@ body {
 }
 
 /* Empty state styling */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-}
-.empty-state-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  opacity: 0.6;
-}
-.empty-state-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.empty-state-desc {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-bottom: 20px;
-}
+.empty-state { text-align: center; padding: 40px 20px; }
+.empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.6; }
+.empty-state-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.empty-state-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
 
 /* Onboarding overlay */
 .onboarding-overlay {
@@ -1073,40 +958,13 @@ body {
   padding: 24px;
   animation: fadeIn 0.5s ease;
 }
-.onboarding-step {
-  max-width: 320px;
-  text-align: center;
-}
-.onboarding-icon {
-  font-size: 80px;
-  margin-bottom: 24px;
-}
-.onboarding-title {
-  font-size: 24px;
-  font-weight: 800;
-  margin-bottom: 12px;
-  color: var(--gold);
-}
-.onboarding-text {
-  font-size: 16px;
-  color: var(--text-muted);
-  margin-bottom: 32px;
-  line-height: 1.5;
-}
-.onboarding-dots {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-.onboarding-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--border);
-}
-.onboarding-dot.active {
-  background: var(--accent);
-}
+.onboarding-step { max-width: 320px; text-align: center; }
+.onboarding-icon { font-size: 80px; margin-bottom: 24px; }
+.onboarding-title { font-size: 24px; font-weight: 800; margin-bottom: 12px; color: var(--gold); }
+.onboarding-text { font-size: 16px; color: var(--text-muted); margin-bottom: 32px; line-height: 1.5; }
+.onboarding-dots { display: flex; gap: 8px; margin-bottom: 24px; }
+.onboarding-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.onboarding-dot.active { background: var(--accent); }
 
 /* Combat */
 .combat-action-btn {
@@ -1122,16 +980,10 @@ body {
 }
 .combat-action-btn:active { transform: scale(0.98); }
 .combat-action-btn:not(.disabled):hover { border-color: var(--accent); }
-.combat-action-btn.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.combat-action-btn.disabled { opacity: 0.4; cursor: not-allowed; }
 .combat-action-icon { font-size: 20px; }
 .combat-action-name { font-size: 12px; font-weight: 600; color: var(--text); }
-.combat-log-entry {
-  padding: 3px 0;
-  border-bottom: 1px solid var(--border);
-}
+.combat-log-entry { padding: 3px 0; border-bottom: 1px solid var(--border); }
 .combat-log-entry:last-child { border-bottom: none; }
 
 /* Combat damage numbers */
@@ -1150,12 +1002,16 @@ body {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
 }
+
+.item-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}
+.item-effect-locked{opacity:.7}
+.attunement-track{height:5px;background:var(--border);border-radius:3px;margin:6px 0;overflow:hidden}
+.attunement-track span{display:block;height:100%;background:var(--gold);border-radius:3px}
 </style>
-<style>.item-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.45}.item-effect-locked{opacity:.7}.attunement-track{height:5px;background:var(--border);border-radius:3px;margin:6px 0;overflow:hidden}.attunement-track span{display:block;height:100%;background:var(--gold);border-radius:3px}</style>
 </head>
 <body>
 
-<!-- ============== HUB SCREEN ============== -->
+<!-- HUB SCREEN -->
 <div class="screen active" id="screen-hub">
   <div class="header">
     <div class="header-top">
@@ -1169,60 +1025,56 @@ body {
           <span class="header-stat-icon">&#129689;</span>
           <span class="header-stat-value" id="hub-gold">0</span>
         </div>
+        <div class="header-stat">
+          <span style="font-size: 11px; color: var(--text-muted);">LV</span>
+          <span class="header-stat-value" id="hub-level">1</span>
+        </div>
       </div>
     </div>
     <div class="xp-bar">
-      <div class="xp-level">LV <span id="hub-level">1</span></div>
+      <div class="xp-level" id="hub-xp-level-badge">LV <span id="hub-xp-level-num">1</span></div>
       <div class="xp-track">
         <div class="xp-fill" id="hub-xp-fill" style="width: 0%"></div>
       </div>
       <div class="xp-text"><span id="hub-xp">0</span>/<span id="hub-xp-next">100</span></div>
     </div>
   </div>
-  
   <div class="content">
     <button class="big-cta" id="btn-random-task">
       <div class="big-cta-icon">&#127922;</div>
       <div class="big-cta-text">
         <div class="big-cta-title">Dame una tarea</div>
-        <div class="big-cta-sub">Propuesta aleatoria de cualquier categoría</div>
+        <div class="big-cta-sub">Propuesta aleatoria de cualquier categor&#237;a</div>
       </div>
     </button>
-    
     <div id="hub-alerts"></div>
-    
-    <div class="section-title">Categorías</div>
+    <div class="section-title">Categor&#237;as</div>
     <div class="cat-grid" id="hub-categories"></div>
   </div>
 </div>
 
-<!-- ============== TASK SCREEN ============== -->
+<!-- TASK SCREEN -->
 <div class="screen" id="screen-task">
   <div class="header">
-    <div class="header-top">
-      <button class="btn btn-ghost btn-small" id="btn-back-hub">← Volver</button>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button class="btn btn-ghost btn-small" id="btn-back-hub" style="width: auto;">&#8592; Volver</button>
       <div id="task-cat-badge"></div>
     </div>
   </div>
-  
   <div class="content">
     <div class="task-card" id="task-card">
-      <div class="task-card-header"></div>
+      <div class="task-card-header" id="task-cat-label"></div>
       <div class="task-card-body">
-        <div class="task-cat-label" id="task-cat-label"></div>
         <div class="task-name" id="task-name"></div>
         <div class="task-desc" id="task-desc"></div>
-        
         <div class="task-rewards" id="task-rewards"></div>
-        
         <div class="task-drops" id="task-drops-box">
           <div class="task-drops-title">&#128167; Drops posibles</div>
           <div class="task-drops-list" id="task-drops"></div>
         </div>
-        
         <div class="side-quest" id="side-quest-box">
           <div class="side-quest-header">
-            <span class="side-quest-icon">⭐</span>
+            <span class="side-quest-icon">&#11088;</span>
             <span class="side-quest-title">SIDE QUEST</span>
           </div>
           <div class="side-quest-desc" id="side-quest-desc"></div>
@@ -1230,334 +1082,289 @@ body {
         </div>
       </div>
     </div>
-    
     <div class="timer-box">
       <div class="timer-display" id="timer-display">00:00</div>
       <div class="timer-controls">
-        <button class="timer-btn" id="timer-toggle">▶</button>
-        <button class="timer-btn" id="timer-reset">↺</button>
+        <button class="timer-btn" id="timer-toggle">&#9654;</button>
+        <button class="timer-btn" id="timer-reset">&#8635;</button>
       </div>
     </div>
-    
     <div class="task-actions">
-      <button class="btn btn-primary" id="btn-complete">✓ Completada</button>
-      <button class="btn btn-gold" id="btn-save-later">&#128204; Guardar para luego</button>
-      <button class="btn btn-secondary" id="btn-shuffle">&#127922; Otra tarea</button>
+      <button class="btn btn-primary" id="btn-complete">&#10003; Completada</button>
+      <button class="btn btn-secondary" id="btn-save-later">&#128204; Guardar para luego</button>
+      <button class="btn btn-ghost" id="btn-shuffle">&#127922; Otra tarea</button>
     </div>
   </div>
 </div>
 
-<!-- ============== CHARACTER SCREEN ============== -->
+<!-- CHARACTER SCREEN -->
 <div class="screen" id="screen-character">
   <div class="header">
-    <div class="header-top">
-      <div class="header-title">Personaje</div>
-    </div>
+    <div class="header-title">Personaje</div>
   </div>
-  
   <div class="content">
-    <!-- Character Card -->
-    <div class="card" style="text-align: center; padding: 20px;">
-      <div id="char-class-icon" style="font-size: 64px; margin-bottom: 8px;">&#129489;‍&#127806;</div>
-      <div id="char-name" style="font-size: 20px; font-weight: 800;">Aventurero</div>
-      <div id="char-class-name" style="font-size: 14px; color: var(--gold); margin-bottom: 4px;">Novato</div>
-      <div style="display: flex; justify-content: center; gap: 16px; font-size: 13px; color: var(--text-muted);">
-        <span>Nivel <span id="char-level">1</span></span>
-        <span>•</span>
-        <span id="char-tier-name">Sin clase</span>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 64px; margin-bottom: 8px;" id="char-class-icon">&#129489;&#8205;&#127806;</div>
+      <div style="font-size: 22px; font-weight: 800;" id="char-name">Aventurero</div>
+      <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;" id="char-class-name">Novato</div>
+      <div style="font-size: 12px; color: var(--text-muted);">Nivel <span id="char-level">1</span> &bull; <span id="char-tier-name">Sin clase</span></div>
+      <div style="margin-top: 12px;">
+        <div class="xp-bar">
+          <div class="xp-track" style="flex: 1;">
+            <div class="xp-fill" id="char-xp-bar" style="width: 0%"></div>
+          </div>
+          <div class="xp-text" id="char-xp-text">0 / 100</div>
+        </div>
       </div>
     </div>
-    
-    <!-- XP Bar -->
-    <div class="card" style="padding: 12px 16px;">
-      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-        <span style="color: var(--gold);">XP</span>
-        <span id="char-xp-text" style="color: var(--text-muted);">0 / 100</span>
-      </div>
-      <div style="background: var(--border); border-radius: 4px; height: 8px; overflow: hidden;">
-        <div id="char-xp-bar" style="background: var(--gold); height: 100%; width: 0%; transition: width 0.3s;"></div>
-      </div>
-    </div>
-    
-    <!-- Class Change Button -->
     <div id="class-change-section" class="hidden">
-      <button class="btn btn-gold" onclick="showClassChangeModal()" style="width: 100%;">
-        ⬆️ Cambiar de clase
-      </button>
+      <button class="btn btn-gold mb-8" onclick="showClassChangeModal()">&#11014;&#65039; Cambiar de clase</button>
     </div>
-    
-    <!-- Stats -->
-    <div class="section-title" style="margin-top: 16px;">Stats (Base + Clase)</div>
+    <div class="section-title">Stats (Base + Clase)</div>
     <div class="stats-grid" id="char-stats-grid"></div>
-    
-    <!-- Combat Resources -->
     <div class="section-title">Recursos de Combate</div>
-    <div class="card" id="char-resources"></div>
-    
-    <!-- Class Path -->
+    <div id="char-resources"></div>
     <div class="section-title">Camino de Clase</div>
-    <div class="card" id="char-class-path" style="padding: 12px 16px;"></div>
+    <div class="card" id="char-class-path"></div>
   </div>
 </div>
 
-<!-- ============== INVENTORY SCREEN ============== -->
+<!-- INVENTORY SCREEN -->
 <div class="screen" id="screen-inventory">
   <div class="header">
-    <div class="header-top">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
       <div class="header-title">Inventario</div>
-      <div id="inv-count" style="font-size: 13px; color: var(--text-muted);">0/20</div>
+      <div style="font-size: 12px; color: var(--text-muted);" id="inv-count">0/20</div>
     </div>
     <div style="display: flex; gap: 8px; margin-top: 8px;">
-      <button class="btn btn-small btn-ghost inv-tab active" data-tab="inventory" onclick="switchInventoryTab('inventory')">&#127890; Items</button>
-      <button class="btn btn-small btn-ghost inv-tab" data-tab="stash" onclick="switchInventoryTab('stash')">&#127968; Baúl <span id="stash-count">0/30</span></button>
-      <button class="btn btn-small btn-ghost inv-tab" data-tab="equipment" onclick="switchInventoryTab('equipment')">⚔️ Equipo</button>
+      <button class="inv-tab btn btn-secondary btn-small active" data-tab="inventory" onclick="switchInventoryTab('inventory')" style="flex: 1;">&#127921; Items</button>
+      <button class="inv-tab btn btn-secondary btn-small" data-tab="stash" onclick="switchInventoryTab('stash')" style="flex: 1;">&#127968; Ba&#250;l <span id="stash-count" style="font-size: 10px;">0/30</span></button>
+      <button class="inv-tab btn btn-secondary btn-small" data-tab="equipment" onclick="switchInventoryTab('equipment')" style="flex: 1;">&#9876;&#65039; Equipo</button>
     </div>
   </div>
-  
   <div class="content">
-    <!-- Inventory Tab -->
     <div id="inv-tab-inventory">
-      <div id="inventory-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
-      <div id="inventory-empty" class="text-center text-muted" style="padding: 40px 0;">
-        Tu inventario está vacío
-      </div>
+      <div id="inventory-grid"></div>
     </div>
-    
-    <!-- Stash Tab -->
     <div id="inv-tab-stash" class="hidden">
-      <div class="card" style="padding: 12px; margin-bottom: 12px;">
-        <div style="font-size: 12px; color: var(--text-muted);">El baúl guarda lo que no llevas contigo.</div>
-      </div>
-      <div id="stash-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
-      <div id="stash-empty" class="text-center text-muted" style="padding: 40px 0;">El baúl está vacío</div>
+      <div id="stash-grid"></div>
     </div>
-    
-    <!-- Equipment Tab -->
     <div id="inv-tab-equipment" class="hidden">
-      <div class="card" style="padding: 16px;">
-        <div class="section-title" style="margin-top: 0;">Equipamiento</div>
-        <div id="equipment-slots" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
-      </div>
+      <div class="section-title">Equipamiento</div>
+      <div id="equipment-slots" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;"></div>
       <div class="section-title">Stats de Equipo</div>
-      <div id="equipment-stats" class="card" style="padding: 12px;"></div>
+      <div id="equipment-stats" style="font-size: 13px; padding: 8px 0;"></div>
     </div>
   </div>
 </div>
 
-<!-- ============== QUESTS SCREEN ============== -->
+<!-- QUESTS SCREEN -->
 <div class="screen" id="screen-quests">
   <div class="header">
-    <div class="header-top">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
       <div class="header-title">Misiones</div>
       <div id="quests-count" style="font-size: 13px; color: var(--text-muted);">0 activas</div>
     </div>
-    <div style="display: flex; gap: 8px; margin-top: 8px;">
-      <button class="btn btn-small btn-gold" onclick="showAvailableQuests()">+ Nueva quest</button>
-    </div>
+    <button class="btn btn-gold btn-small" id="btn-show-available-quests" style="margin-top: 8px;">+ Nueva quest</button>
   </div>
-  
   <div class="content">
     <div id="quests-container"></div>
+    <div id="quests-empty" class="hidden" style="text-align: center; padding: 40px 20px;">
+      <div style="font-size: 48px; margin-bottom: 12px;">&#128196;</div>
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Sin misiones activas</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Acepta una misi�n para empezar tu aventura</div>
+      <button class="btn btn-gold" id="btn-show-available-quests-empty">&#10133; Ver misiones disponibles</button>
+    </div>
   </div>
 </div>
 
-<!-- ============== SETTINGS SCREEN ============== -->
-<div class="screen" id="screen-settings">
+<!-- GUILD SCREEN -->
+<div class="screen" id="screen-guild">
   <div class="header">
-    <div class="header-top">
-      <div class="header-title">Ajustes</div>
+    <div class="header-title">Guild</div>
+  </div>
+  <div class="content">
+    <div id="guild-content">
+      <div class="card" style="text-align: center; padding: 32px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">&#127984;</div>
+        <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Hub</div>
+      </div>
     </div>
   </div>
-  
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div class="screen" id="screen-settings">
+  <div class="header">
+    <div class="header-title">Ajustes</div>
+  </div>
   <div class="content" id="settings-content"></div>
 </div>
 
-<!-- ============== GUILD SCREEN ============== -->
-<div class="screen" id="screen-guild">
-  <div class="header">
-    <div class="header-top">
-      <div class="header-title">Guild</div>
-    </div>
-  </div>
-  
-  <div class="content">
-    <div id="guild-container"></div>
-  </div>
-</div>
-
-<!-- ============== NAVIGATION ============== -->
+<!-- NAVIGATION -->
 <nav class="nav">
   <button class="nav-item active" data-screen="hub">
-    <div class="nav-item-icon">&#127984;</div>
-    <div>Hub</div>
+    <span class="nav-item-icon">&#127984;</span>
+    <span>Hub</span>
   </button>
   <button class="nav-item" data-screen="character">
-    <div class="nav-item-icon">&#128100;</div>
-    <div>Personaje</div>
+    <span class="nav-item-icon">&#128100;</span>
+    <span>Personaje</span>
   </button>
   <button class="nav-item" data-screen="guild">
-    <div class="nav-item-icon">⚔️</div>
-    <div>Guild</div>
+    <span class="nav-item-icon">&#9876;&#65039;</span>
+    <span>Guild</span>
   </button>
   <button class="nav-item" data-screen="inventory">
-    <div class="nav-item-icon">&#127890;</div>
-    <div>Inventario</div>
+    <span class="nav-item-icon">&#127921;</span>
+    <span>Inventario</span>
   </button>
   <button class="nav-item" data-screen="quests">
-    <div class="nav-item-icon">&#128220;</div>
-    <div>Misiones</div>
+    <span class="nav-item-icon">&#128220;</span>
+    <span>Misiones</span>
   </button>
   <button class="nav-item" data-screen="settings">
-    <div class="nav-item-icon">⚙️</div>
-    <div>Ajustes</div>
+    <span class="nav-item-icon">&#9881;&#65039;</span>
+    <span>Ajustes</span>
   </button>
 </nav>
 
-<!-- ============== COMPLETE OVERLAY ============== -->
+<!-- COMPLETE OVERLAY -->
 <div class="complete-overlay" id="complete-overlay">
   <div class="complete-icon" id="complete-icon">&#127942;</div>
-  <div class="complete-title" id="complete-title">¡Tarea completada!</div>
+  <div class="complete-title" id="complete-title">&#161;Tarea completada!</div>
   <div class="complete-subtitle" id="complete-subtitle"></div>
   <div class="complete-rewards" id="complete-rewards"></div>
   <div class="complete-drop hidden" id="complete-drop">
-    <div class="complete-drop-title">&#127873; ¡DROP!</div>
+    <div class="complete-drop-title">&#127873; &#161;DROP!</div>
     <div class="complete-drop-item" id="complete-drop-item"></div>
   </div>
   <div class="side-quest-prompt hidden" id="side-quest-prompt">
-    <div class="side-quest-prompt-title">⭐ ¿Completaste la Side Quest?</div>
+    <div class="side-quest-prompt-title">&#11088; &#191;Completaste la Side Quest?</div>
     <div class="side-quest-prompt-desc" id="side-quest-prompt-desc"></div>
     <div class="side-quest-prompt-btns">
-      <button class="btn btn-gold btn-small" id="btn-side-quest-yes">Sí (+50%)</button>
-      <button class="btn btn-ghost btn-small" id="btn-side-quest-no">No</button>
+      <button class="btn btn-gold" id="btn-side-quest-yes">S&#237; (+50%)</button>
+      <button class="btn btn-ghost" id="btn-side-quest-no">No</button>
     </div>
   </div>
-  <button class="btn btn-primary" id="btn-complete-continue" style="max-width: 280px;">Continuar</button>
+  <button class="btn btn-primary hidden" id="btn-complete-continue" style="max-width: 280px;">Continuar</button>
 </div>
 
-<!-- ============== MODALS ============== -->
-<div class="modal-backdrop" id="modal-tasks">
+<!-- MODAL: SAVED TASKS -->
+<div class="modal-backdrop" id="modal-saved">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="modal-tasks-title">Tareas</div>
-    <div id="modal-tasks-list"></div>
-    <button class="btn btn-ghost" onclick="closeModal('modal-tasks')">Cerrar</button>
+    <div class="modal-title">Tareas</div>
+    <div id="modal-saved-content"></div>
+    <button class="btn btn-ghost" onclick="closeModal('modal-saved')" style="margin-top: 12px;">Cerrar</button>
   </div>
 </div>
 
-<!-- Class Change Modal -->
+<!-- MODAL: CLASS CHANGE -->
 <div class="modal-backdrop" id="modal-class">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">⬆️ Cambiar de Clase</div>
-    <div id="modal-class-info" style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;"></div>
-    <div id="modal-class-options"></div>
-    <button class="btn btn-ghost" onclick="closeModal('modal-class')">Cancelar</button>
+    <div class="modal-title">&#11014;&#65039; Cambiar de Clase</div>
+    <div id="modal-class-content"></div>
+    <button class="btn btn-ghost" onclick="closeModal('modal-class')" style="margin-top: 12px;">Cancelar</button>
   </div>
 </div>
 
-<!-- Item Detail Modal -->
+<!-- MODAL: ITEM -->
 <div class="modal-backdrop" id="modal-item">
   <div class="modal">
     <div class="modal-handle"></div>
     <div id="modal-item-content"></div>
     <div class="item-modal-actions">
-      <button class="btn btn-primary" id="btn-item-action"></button>
-      <button class="btn btn-ghost item-modal-close" onclick="closeModal('modal-item')" aria-label="Close item details">✕</button>
+      <button class="btn btn-primary" id="btn-item-action">&#10003;</button>
+      <button class="btn btn-ghost item-modal-close" onclick="closeModal('modal-item')">&#10005;</button>
     </div>
   </div>
 </div>
 
-<!-- ============== COMBAT SCREEN ============== -->
+<!-- MODAL: IMPORT -->
+<div class="modal-backdrop" id="modal-import">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#128229; Importar save</div>
+    <textarea id="import-textarea" style="width:100%;height:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:12px;resize:vertical;" placeholder="Pega el JSON aqui..."></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-gold" onclick="importDataText(document.getElementById('import-textarea').value)">Importar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-import')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMBAT SCREEN -->
 <div class="screen" id="screen-combat">
   <div class="header">
-    <div class="header-top">
-      <div class="header-title">⚔️ Combate</div>
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div class="header-title">&#9876;&#65039; Combate</div>
       <div id="combat-phase" style="font-size: 13px; font-weight: 700;">Tu turno</div>
     </div>
   </div>
-  
   <div class="content">
-    <!-- Enemy Card -->
-    <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(255,77,109,0.1), transparent); border-color: var(--accent);">
+    <!-- Enemy -->
+    <div class="card" style="text-align: center; margin-bottom: 12px;">
       <div id="combat-enemy-icon" style="font-size: 64px; margin-bottom: 8px;">&#128058;</div>
       <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 4px;">
         <span id="combat-enemy-name" style="font-size: 18px; font-weight: 800;">Enemigo</span>
         <span id="combat-enemy-level" style="font-size: 12px; color: var(--text-muted);">Lv 1</span>
       </div>
-      <div style="margin-top: 8px;">
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-          <span style="color: var(--red);">❤️ HP</span>
-          <span id="combat-enemy-hp" style="color: var(--text-muted);">100/100</span>
-        </div>
-        <div style="background: var(--border); border-radius: 4px; height: 10px; overflow: hidden;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <span style="font-size: 12px; color: var(--red);">&#10084;&#65039; HP</span>
+        <div style="flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
           <div id="combat-enemy-hp-fill" style="background: var(--red); height: 100%; width: 100%; transition: width 0.3s;"></div>
         </div>
+        <span id="combat-enemy-hp" style="color: var(--text-muted);">100/100</span>
       </div>
     </div>
-    
-    <!-- Player Resources -->
-    <div class="card">
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <!-- HP -->
-        <div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-            <span style="color: var(--red);">❤️ HP</span>
-            <span id="combat-player-hp" style="color: var(--text-muted);">100/100</span>
-          </div>
-          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
-            <div id="combat-player-hp-fill" style="background: var(--red); height: 100%; width: 100%; transition: width 0.3s;"></div>
-          </div>
+    <!-- Player stats -->
+    <div class="card" style="margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span style="font-size: 12px; color: var(--red);">&#10084;&#65039; HP</span>
+        <div style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+          <div id="combat-player-hp-fill" style="background: var(--red); height: 100%; width: 100%; transition: width 0.3s;"></div>
         </div>
-        <!-- MP -->
-        <div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-            <span style="color: var(--blue);">&#128167; MP</span>
-            <span id="combat-player-mp" style="color: var(--text-muted);">50/50</span>
-          </div>
-          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
-            <div id="combat-player-mp-fill" style="background: var(--blue); height: 100%; width: 100%; transition: width 0.3s;"></div>
-          </div>
+        <span id="combat-player-hp" style="color: var(--text-muted);">100/100</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span style="font-size: 12px; color: var(--blue);">&#128167; MP</span>
+        <div style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+          <div id="combat-player-mp-fill" style="background: var(--blue); height: 100%; width: 100%; transition: width 0.3s;"></div>
         </div>
-        <!-- SP -->
-        <div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-            <span style="color: var(--green);">⚡ SP</span>
-            <span id="combat-player-sp" style="color: var(--text-muted);">60/60</span>
-          </div>
-          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
-            <div id="combat-player-sp-fill" style="background: var(--green); height: 100%; width: 100%; transition: width 0.3s;"></div>
-          </div>
+        <span id="combat-player-mp" style="color: var(--text-muted);">50/50</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span style="font-size: 12px; color: var(--green);">&#9889; SP</span>
+        <div style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+          <div id="combat-player-sp-fill" style="background: var(--green); height: 100%; width: 100%; transition: width 0.3s;"></div>
         </div>
-        <!-- Focus -->
-        <div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;">
-            <span style="color: var(--purple);">&#127919; Focus</span>
-            <span id="combat-player-focus" style="color: var(--text-muted);">0/100</span>
-          </div>
-          <div style="background: var(--border); border-radius: 3px; height: 8px; overflow: hidden;">
-            <div id="combat-player-focus-fill" style="background: var(--purple); height: 100%; width: 0%; transition: width 0.3s;"></div>
-          </div>
+        <span id="combat-player-sp" style="color: var(--text-muted);">60/60</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 12px; color: var(--purple);">&#127919; Focus</span>
+        <div style="flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+          <div id="combat-player-focus-fill" style="background: var(--purple); height: 100%; width: 0%; transition: width 0.3s;"></div>
         </div>
+        <span id="combat-player-focus" style="color: var(--text-muted);">0/100</span>
       </div>
     </div>
-    
-    <!-- Combat Log -->
-    <div class="card" style="padding: 10px 12px; max-height: 100px; overflow-y: auto;">
+    <!-- Combat log -->
+    <div class="card" style="margin-bottom: 12px; max-height: 120px; overflow-y: auto;">
       <div id="combat-log" style="font-size: 12px; color: var(--text-muted);">
         <div class="combat-log-entry">El combate comienza...</div>
       </div>
     </div>
-    
     <!-- Actions -->
-    <div class="section-title">Acciones</div>
     <div id="combat-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
   </div>
 </div>
 
-<!-- Combat Result Overlay -->
+<!-- COMBAT RESULT OVERLAY -->
 <div class="complete-overlay" id="combat-result-overlay">
   <div id="combat-result-icon" class="complete-icon">&#127942;</div>
-  <div id="combat-result-title" class="complete-title">¡Victoria!</div>
+  <div id="combat-result-title" class="complete-title">&#161;Victoria!</div>
   <div id="combat-result-subtitle" class="complete-subtitle"></div>
   <div id="combat-result-rewards" class="complete-rewards"></div>
   <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continuar</button>
@@ -1569,12 +1376,22 @@ body {
 <script src="combat.js"></script>
 <script src="quests.js"></script>
 <script src="item_flavor.js"></script>
-    <script src="game.js"></script>
+<script src="data_tasks.js"></script>
+<script src="engine.js"></script>
 <script src="expansion_items.js"></script>
 <script src="expansion_enemies.js"></script>
 <script src="expansion_quests.js"></script>
 <script src="expansion_tasks.js"></script>
 <script src="update2_content.js"></script>
-<script src="ashbrand_hotfix.js"></script>
+<script src="inventory_system.js"></script>
+<script src="ui_hub.js"></script>
+<script src="ui_tasks.js"></script>
+<script src="ui_combat.js"></script>
+<script src="ui_misc.js"></script>
+<script src="guild.js"></script>
+<script src="ui_feedback.js"></script>
+<script src="ui_quests.js"></script>
+<script src="item_system.js"></script>
+<script src="main.js"></script>
 </body>
 </html>

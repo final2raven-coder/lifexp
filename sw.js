@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v19-flavor-extract';
+const CACHE_NAME = 'lifexp-v20-split-gamejs';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -8,13 +8,23 @@ const urlsToCache = [
   '/combat.js',
   '/quests.js',
   '/item_flavor.js',
-  '/game.js',
+  '/data_tasks.js',
+  '/engine.js',
   '/expansion_items.js',
   '/expansion_enemies.js',
   '/expansion_quests.js',
   '/expansion_tasks.js',
   '/update2_content.js',
-  '/ashbrand_hotfix.js',
+  '/inventory_system.js',
+  '/ui_hub.js',
+  '/ui_tasks.js',
+  '/ui_combat.js',
+  '/ui_misc.js',
+  '/guild.js',
+  '/ui_feedback.js',
+  '/ui_quests.js',
+  '/item_system.js',
+  '/main.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
@@ -43,7 +53,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const isAppAsset = request.method === 'GET' &&
-    /\/(?:index\.html|item_flavor\.js|game\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|ashbrand_hotfix\.js|sw\.js)$/.test(new URL(request.url).pathname);
+    /\/(?:index\.html|item_flavor\.js|data_tasks\.js|engine\.js|ui_hub\.js|ui_tasks\.js|ui_combat\.js|ui_misc\.js|guild\.js|ui_feedback\.js|ui_quests\.js|item_system\.js|main\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|inventory_system\.js|sw\.js)$/.test(new URL(request.url).pathname);
 
   if (isAppAsset) {
     event.respondWith(
