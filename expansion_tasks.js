@@ -14,11 +14,13 @@ const EXPANSION_TASKS_V1 = [
   { id:'social_exp_01', cat:'social', name:'Proponer un plan concreto', freq:'monthly', desc:'Escribe a alguien y propone dia, hora y actividad concretos.', stats:{pre:55,vol:30,int:15}, xp:30, drops:{theme:'alianzas',items:['Sello de Alianza','Pergamino de Persuasion']}, sideQuest:{desc:'Hazte cargo de coordinar los detalles.',stats:{pre:8,int:6},xp:15,drops:['Corona del Organizador'],dropBonus:12} },
   { id:'social_exp_02', cat:'social', name:'Preguntar y escuchar sin multitarea', freq:'weekly', desc:'Ten una conversacion de calidad prestando atencion completa.', stats:{pre:45,vol:35,int:20}, xp:25, drops:{theme:'alianzas',items:['Token de Amistad','Hidromiel']}, sideQuest:{desc:'Recuerda despues un detalle importante y retomalo mas adelante.',stats:{pre:7,int:6},xp:12,drops:['Sello de Hermandad'],dropBonus:10} },
   { id:'personal_exp_01', cat:'personal', name:'Bloque de proyecto de 45 minutos', freq:'weekly', desc:'Trabaja sin interrupciones en una tarea concreta de un proyecto personal.', stats:{int:50,vol:40,des:10}, xp:35, drops:{theme:'creacion',items:['Dado del Destino','Fragmento de Historia']}, sideQuest:{desc:'Termina una pieza que pueda marcarse como cerrada.',stats:{int:10,vol:8},xp:18,drops:['Capitulo Terminado'],dropBonus:15} },
-  { id:'personal_exp_02', cat:'personal', name:'Practica de conversacion en chino', freq:'weekly', desc:'Habla en chino durante al menos 15 minutos, con una persona o herramienta.', stats:{int:45,vol:45,pre:10}, xp:35, drops:{theme:'oriente',items:['Talismán Oriental','Jade Menor']}, sideQuest:{desc:'Prepara y usa cinco frases nuevas.',stats:{int:10,vol:8},xp:18,drops:['Pergamino de Sabiduria'],dropBonus:15} },
+  { id:'personal_exp_02', cat:'personal', name:'Practica de conversacion en chino', freq:'weekly', desc:'Habla en chino durante al menos 15 minutos, con una persona o herramienta.', stats:{int:45,vol:45,pre:10}, xp:35, drops:{theme:'oriente',items:['Talisman Oriental','Jade Menor']}, sideQuest:{desc:'Prepara y usa cinco frases nuevas.',stats:{int:10,vol:8},xp:18,drops:['Pergamino de Sabiduria'],dropBonus:15} },
   { id:'personal_exp_03', cat:'personal', name:'Revision mensual de objetivos', freq:'monthly', desc:'Revisa que quieres mantener, empezar y dejar durante el proximo mes.', stats:{int:55,vol:35,pre:10}, xp:35, drops:{theme:'destino',items:['Vision del Futuro','Bendicion del Oraculo']}, sideQuest:{desc:'Convierte un objetivo en una accion con fecha concreta.',stats:{int:10,vol:8},xp:18,drops:['Fragmento de Destino'],dropBonus:15} }
 ];
 
 function installExpansionTasks() {
+  if (installExpansionTasks._installed) return;
+  installExpansionTasks._installed = true;
   const existing = new Set(DEFAULT_TASKS.map(t => t.id));
   for (const task of EXPANSION_TASKS_V1) if (!existing.has(task.id)) DEFAULT_TASKS.push(task);
   if (typeof gameState !== 'undefined' && gameState.tasks && gameState.tasks.length > 0) {

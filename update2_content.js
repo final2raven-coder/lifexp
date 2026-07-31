@@ -109,7 +109,7 @@
     if (typeof saveGame === 'function') saveGame();
   }
 
-  window.LifeXPUpdate2 = { install, restoreAshbrand, patchQuests };
+  // DT-11 resolved: window.LifeXPUpdate2 global removed. install() auto-runs via DOMContentLoaded.
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();
 })();
