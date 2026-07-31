@@ -280,16 +280,12 @@ function finalizeCompletion(sideQuestCompleted) {
   if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
 }
 
-// Drop system - connects to items.js
 // === Drop system ============================================================
-// rollDropFromTheme: bridge to items.js rollDrop(theme, bonusChance).
-// items.js must be loaded first. Returns {itemId, rarity} or null.
+// rollDropFromTheme: calls rollDropByTheme() from items.js.
+// Note: items.js uses rollDropByTheme (not rollDrop) to avoid collision with
+// this file's rollDrop(task, sideQuestCompleted). No alias needed.
 function rollDropFromTheme(theme, bonusChance) {
-  if (typeof ITEMS === 'undefined') return null;
-  // items.js exposes rollDrop(theme, bonusChance) — different signature from this file's rollDrop
-  // We access it via the global scope after items.js loads
-  const itemsRollDrop = window._itemsRollDrop;
-  if (typeof itemsRollDrop === 'function') return itemsRollDrop(theme, bonusChance || 0);
+  if (typeof rollDropByTheme === 'function') return rollDropByTheme(theme, bonusChance || 0);
   return null;
 }
 
