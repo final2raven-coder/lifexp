@@ -1,7 +1,11 @@
-const CACHE_NAME = 'lifexp-v20-split-gamejs';
+const CACHE_NAME = 'lifexp-v21';
+
 const urlsToCache = [
   '/',
   '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
   '/classes.js',
   '/items.js',
   '/enemies.js',
@@ -24,10 +28,7 @@ const urlsToCache = [
   '/ui_feedback.js',
   '/ui_quests.js',
   '/item_system.js',
-  '/main.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/main.js'
 ];
 
 self.addEventListener('install', event => {
@@ -53,7 +54,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   const isAppAsset = request.method === 'GET' &&
-    /\/(?:index\.html|item_flavor\.js|data_tasks\.js|engine\.js|ui_hub\.js|ui_tasks\.js|ui_combat\.js|ui_misc\.js|guild\.js|ui_feedback\.js|ui_quests\.js|item_system\.js|main\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^/]+\.js|update2_content\.js|inventory_system\.js|sw\.js)$/.test(new URL(request.url).pathname);
+    /\/(?:index\.html|item_flavor\.js|data_tasks\.js|engine\.js|ui_hub\.js|ui_tasks\.js|ui_combat\.js|ui_misc\.js|guild\.js|ui_feedback\.js|ui_quests\.js|item_system\.js|main\.js|items\.js|classes\.js|enemies\.js|combat\.js|quests\.js|expansion_[^\/]+\.js|update2_content\.js|inventory_system\.js)$/.test(new URL(request.url).pathname);
 
   if (isAppAsset) {
     event.respondWith(
