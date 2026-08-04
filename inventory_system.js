@@ -17,7 +17,6 @@
     'daga corrosiva': 'daga_corrosiva',
     'espada radiante': 'espada_radiante',
     'hoja gelida': 'hoja_gelida',
-    'hoja gelida': 'hoja_gelida',
     'arco de espino': 'arco_espino',
     'tridente marino': 'tridente_marino',
     'katana oriental': 'katana_oriental'
@@ -81,6 +80,13 @@
     return changed;
   }
 
+  function migrateLegacyAshbrand(container) {
+    if (!Array.isArray(container)) return;
+    container.forEach(slot => {
+      if (slot && ['ashbrand', 'Ashbrand', 'cuchilla_llameante'].includes(slot.id)) slot.id = 'cuchilla_llameante';
+    });
+  }
+
   function icon(item, size) {
     const type = item?.type || 'material';
     const color = RARITY[item?.rarity]?.color || '#c9c5bb';
@@ -115,18 +121,12 @@
     }).join('');
   }
 
-  // == Simbolos publicos del subsistema ==
   window.LifeXPInventory = { BUILD, resolve, normalize, repair };
   window.renderCanonicalInventory = function () { render('inventory-grid', 'inventory-empty', 'inventory', 'showItemModal'); };
   window.renderCanonicalStash = function () { render('stash-grid', 'stash-empty', 'stash', 'showStashItemModal'); };
-
-  // normalizeItemText: alias global de text() para compatibilidad con game.js y consola.
-  // Antes vivia en ashbrand_hotfix.js. Movido aqui en Fase D.
   window.normalizeItemText = text;
+  window.migrateLegacyAshbrand = migrateLegacyAshbrand;
 
-  // emergencyRerollLegacyItem: herramienta de recuperacion manual de slots corruptos.
-  // Disponible desde emergency-save.html y la consola del navegador.
-  // Antes vivia en ashbrand_hotfix.js. Movido aqui en Fase D.
   window.emergencyRerollLegacyItem = function (slotIndex) {
     if (typeof gameState === 'undefined' || !Array.isArray(gameState.inventory)) {
       return { success: false, reason: 'inventory_unavailable' };
@@ -154,7 +154,6 @@
     return { success: true, method: 'canonical_id', id: resolved };
   };
 
-  // == Override de renderInventory para integrar repair() en el ciclo de render ==
   window.renderInventory = function () {
     repair();
     const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;

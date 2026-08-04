@@ -62,20 +62,15 @@
     return true;
   }
 
-  function migrateLegacyAshbrand(container) {
-    if (!Array.isArray(container)) return;
-    container.forEach(slot => {
-      if (slot && ['ashbrand', 'Ashbrand', 'cuchilla_llameante'].includes(slot.id)) slot.id = ASHBRAND_ID;
-    });
-  }
-
   function restoreAshbrand() {
     if (typeof ITEMS === 'undefined' || typeof gameState === 'undefined') return false;
     Object.assign(ITEMS, { [ASHBRAND_ID]: { ...(ITEMS[ASHBRAND_ID] || {}), ...ASHBRAND, stats: {}, rarity: 'common' } });
     gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
     gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
-    migrateLegacyAshbrand(gameState.inventory);
-    migrateLegacyAshbrand(gameState.stash);
+    if (typeof window.migrateLegacyAshbrand === 'function') {
+      window.migrateLegacyAshbrand(gameState.inventory);
+      window.migrateLegacyAshbrand(gameState.stash);
+    }
     if (gameState.equipment) Object.keys(gameState.equipment).forEach(slot => { if (['ashbrand', 'Ashbrand'].includes(gameState.equipment[slot])) gameState.equipment[slot] = ASHBRAND_ID; });
     const owned = gameState.inventory.some(x => x && x.id === ASHBRAND_ID) || gameState.stash.some(x => x && x.id === ASHBRAND_ID) || Object.values(gameState.equipment || {}).includes(ASHBRAND_ID);
     if (!owned) ensureContainer(gameState.inventory, ASHBRAND_ID, 1);
