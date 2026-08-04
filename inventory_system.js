@@ -87,6 +87,34 @@
     });
   }
 
+  function recoverItemIfLost(canonicalId, options = {}) {
+    if (typeof ITEMS === 'undefined' || typeof gameState === 'undefined') return false;
+    if (!ITEMS[canonicalId]) return false;
+    const legacyIds = new Set(options.legacyIds || []);
+    const containers = [gameState.inventory, gameState.stash];
+    let recoveredLegacy = false;
+    for (const container of containers) {
+      if (!Array.isArray(container)) continue;
+      for (const slot of container) {
+        if (!slot || !legacyIds.has(slot.id)) continue;
+        slot.id = canonicalId;
+        recoveredLegacy = true;
+      }
+    }
+    if (gameState.equipment) {
+      for (const slot of Object.keys(gameState.equipment)) {
+        if (legacyIds.has(gameState.equipment[slot])) gameState.equipment[slot] = canonicalId;
+      }
+    }
+    const owned = containers.some(container => Array.isArray(container) && container.some(slot => slot && slot.id === canonicalId)) || Object.values(gameState.equipment || {}).includes(canonicalId);
+    if (!owned && (recoveredLegacy || options.alwaysRestore === true)) {
+      if (!Array.isArray(gameState.inventory)) gameState.inventory = [];
+      gameState.inventory.push({ id: canonicalId, qty: 1 });
+      return true;
+    }
+    return recoveredLegacy;
+  }
+
   function icon(item, size) {
     const type = item?.type || 'material';
     const color = RARITY[item?.rarity]?.color || '#c9c5bb';
@@ -121,7 +149,7 @@
     }).join('');
   }
 
-  window.LifeXPInventory = { BUILD, resolve, normalize, repair };
+  window.LifeXPInventory = { BUILD, resolve, normalize, repair, recoverItemIfLost };
   window.renderCanonicalInventory = function () { render('inventory-grid', 'inventory-empty', 'inventory', 'showItemModal'); };
   window.renderCanonicalStash = function () { render('stash-grid', 'stash-empty', 'stash', 'showStashItemModal'); };
   window.normalizeItemText = text;
