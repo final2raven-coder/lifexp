@@ -19,7 +19,9 @@
     'hoja gelida': 'hoja_gelida',
     'arco de espino': 'arco_espino',
     'tridente marino': 'tridente_marino',
-    'katana oriental': 'katana_oriental'
+    'katana oriental': 'katana_oriental',
+    'seda araña': 'seda_arana',
+    'fragmento sueño': 'fragmento_sueno'
   };
 
   function text(value) {
