@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // =============================================================================
-// LifeXP Content Integrity Validator  v1.0
+// LifeXP Content Integrity Validator  v1.1
 // =============================================================================
 // Usage:  node validate_content.js [--dir <path>]
 // Exit:   0 = clean (only warnings), 1 = errors found
@@ -352,12 +352,59 @@ for (const itemId of itemIds) {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// CHECK 10 - SW assets vs index.html scripts (cross-sync)
+// ---------------------------------------------------------------------------
+// ERROR SW_MISSING_ASSET: script in index.html but absent from sw.js urlsToCache
+// WARN  SW_ORPHAN_ASSET:  JS path in sw.js urlsToCache but absent from index.html
+// ---------------------------------------------------------------------------
+(function checkSwSync() {
+  const swPath   = path.join(DIR, 'sw.js');
+  const htmlPath = path.join(DIR, 'index.html');
+
+  if (!fs.existsSync(swPath))   { warn('MISSING_FILE', 'sw.js not found - skipping SW sync check'); return; }
+  if (!fs.existsSync(htmlPath)) { warn('MISSING_FILE', 'index.html not found - skipping SW sync check'); return; }
+
+  const swCode   = fs.readFileSync(swPath,   'utf8');
+  const htmlCode = fs.readFileSync(htmlPath, 'utf8');
+
+  // Extract scripts from index.html: <script src="foo.js">
+  const htmlScripts = new Set();
+  const htmlRe = /<script[^>]+src=["']([^"']+\.js)["']/g;
+  let m;
+  while ((m = htmlRe.exec(htmlCode)) !== null) {
+    htmlScripts.add(m[1].replace(/^\//, ''));
+  }
+
+  // Extract JS paths from sw.js urlsToCache array
+  const swScripts = new Set();
+  const swRe = /['"]\/([a-z0-9_]+\.js)['"]/g;
+  while ((m = swRe.exec(swCode)) !== null) {
+    swScripts.add(m[1]);
+  }
+
+  // Scripts in index.html but not in sw.js urlsToCache -> hard error
+  for (const s of htmlScripts) {
+    if (!swScripts.has(s)) {
+      err('SW_MISSING_ASSET', `"${s}" is in index.html but NOT in sw.js urlsToCache`);
+    }
+  }
+
+  // Scripts in sw.js urlsToCache but not in index.html -> warning
+  for (const s of swScripts) {
+    if (!htmlScripts.has(s)) {
+      warn('SW_ORPHAN_ASSET', `"${s}" is in sw.js urlsToCache but NOT in index.html`);
+    }
+  }
+})();
+
 // ---------------------------------------------------------------------------
 // SUMMARY
 // ---------------------------------------------------------------------------
 console.log('');
 console.log('=================================================================');
-console.log('  LifeXP Content Integrity Validator  v1.0');
+console.log('  LifeXP Content Integrity Validator  v1.1');
 console.log('=================================================================');
 console.log('  Catalogue loaded:');
 console.log(`    ITEMS    : ${itemIds.size}`);

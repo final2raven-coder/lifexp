@@ -11,15 +11,15 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-07-31 (feat/content-validator -- validador de integridad v1.0) |
+| Ultima actualizacion | 2026-08-04 (fix/sw-assets -- SW cache v21 + validador v1.1 con check 10) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator`, `fix/sw-assets` |
 | Commit base | `b1248e85ce0651a8be044495bd35d618dad694ed` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
 | Entrada | `index.html` (SPA de una sola pagina) |
-| PWA | `manifest.json` + `sw.js` (cache-first, lista de assets hardcodeada) |
+| PWA | `manifest.json` + `sw.js` (cache-first, CACHE_NAME = lifexp-v21, sincronizado con index.html via validador check 10) |
 
 ---
 
@@ -90,7 +90,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 
 | Fichero | Responsabilidad |
 |---|---|
-| `sw.js` | Service Worker cache-first (lista de assets hardcodeada) |
+| `sw.js` | Service Worker cache-first. `CACHE_NAME = lifexp-v21`. Lista de assets sincronizada con `index.html` (verificada por check 10 del validador). |
 | `manifest.json` | Metadatos PWA (nombre, iconos, colores) |
 | `emergency-save.html` | Herramienta standalone de recuperacion de save |
 | `ashbrand_hotfix.js` | **HUERFANO** - stub vacio de compatibilidad. No esta incluido en `index.html`. Candidato a eliminar en proximo refactor de limpieza. |
@@ -99,7 +99,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 
 | Fichero | Responsabilidad |
 |---|---|
-| `validate_content.js` | Validador de integridad referencial. Node.js, solo lectura. Ver seccion 10. |
+| `validate_content.js` | Validador de integridad referencial v1.1. Node.js, solo lectura. Ver seccion 10. |
 
 ---
 
@@ -283,6 +283,21 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 
 ---
 
+## 5b. Procedimiento para añadir un fichero nuevo
+
+Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
+
+1. Crear el fichero `.js` en la raiz del repositorio.
+2. Añadir `<script src="nuevo.js"></script>` en `index.html` en la posicion correcta segun dependencias (ver seccion 5).
+3. Añadir `'/nuevo.js'` en `urlsToCache` de `sw.js` en la misma posicion relativa que en `index.html`.
+4. Incrementar `CACHE_NAME` en `sw.js` (`lifexp-vN` -> `lifexp-v(N+1)`).
+5. Ejecutar `node validate_content.js` -- debe salir sin errores `SW_MISSING_ASSET`.
+6. Abrir PR con los 3 ficheros modificados: el nuevo `.js`, `index.html`, `sw.js`.
+
+> **Regla:** el validador (check 10) detecta cualquier desincronía entre `index.html` y `sw.js` como error bloqueante. Un PR con `SW_MISSING_ASSET` no se mergea.
+
+---
+
 ## 6. Invariantes criticos
 
 1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
@@ -294,6 +309,8 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
+10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
+11. **Version de cache incremental.** Al añadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
 
 ---
 
@@ -301,7 +318,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
-| DT-01 | `sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua | Media | Abierto |
+| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
@@ -326,6 +343,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
 | 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos añadida, branches activas actualizadas |
 | 2026-07-31 | `feat/content-validator` | Añadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 añadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
+| 2026-08-04 | `fix/sw-assets` | `sw.js` CACHE_NAME subida a v21 (fuerza refresh en clientes); eliminado `sw.js` del fetch regex (innecesario); `validate_content.js` v1.1 con check 10 (SW_MISSING_ASSET/SW_ORPHAN_ASSET); seccion 5b añadida (procedimiento para añadir fichero); invariantes 10 y 11 añadidas; DT-01 resuelto |
 
 ---
 
@@ -387,7 +405,7 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 
 ### Fichero
 
-`validate_content.js` -- Node.js, solo lectura, no toca produccion.
+`validate_content.js` -- Node.js, solo lectura, no toca produccion. Version actual: v1.1.
 
 ### Como ejecutarlo
 
@@ -406,7 +424,7 @@ node validate_content.js --dir /ruta/al/repo
 
 La salida muestra el recuento de catalogos cargados, la lista de errores (si los hay) y la lista de avisos.
 
-### Checks que realiza (v1.0)
+### Checks que realiza (v1.1)
 
 | # | Codigo de error | Que detecta | Nivel |
 |---|---|---|---|
@@ -419,10 +437,11 @@ La salida muestra el recuento de catalogos cargados, la lista de errores (si los
 | 7 | `UNREACHABLE_QUEST`, `CIRCULAR_PREREQ` | Quests con minLevel > 40 o cadenas de prerequisitos circulares | WARN / ERROR |
 | 8 | `ORPHAN_ENEMY` | Enemigos sin ningun tema ni entrada en THEME_ENEMIES | WARN |
 | 9 | `UNOBTAINABLE_ITEM` | Items que no aparecen en ningun drop table, drop de enemigo ni recompensa de quest | WARN |
+| 10 | `SW_MISSING_ASSET`, `SW_ORPHAN_ASSET` | Scripts en `index.html` ausentes de `sw.js` urlsToCache (ERROR), o en `sw.js` pero no en `index.html` (WARN) | ERROR / WARN |
 
 ### Regla de uso obligatorio
 
-**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`). Si hay errores, el PR no se mergea.
+**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que añada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no se mergea.
 
 ### Primera ejecucion (2026-07-31, estado actual del repo)
 
