@@ -281,12 +281,21 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 
 > **IMPORTANTE:** `ashbrand_hotfix.js` existe en el repositorio pero **NO esta incluido** en `index.html`. Es un fichero huerfano (ver seccion 2e).
 
+## 5b. Procedimiento para añadir un fichero nuevo
+
+1. Crear el fichero `.js` en la raíz del repo.
+2. Añadir `<script src="nuevo.js"></script>` en `index.html` en la posición correcta según dependencias (ver sección 5).
+3. Añadir `'/nuevo.js'` en `urlsToCache` de `sw.js` (misma posición que en index.html).
+4. Incrementar `CACHE_NAME` en `sw.js` (`lifexp-vN` → `lifexp-v(N+1)`).
+5. Ejecutar `node validate_content.js` — debe salir sin errores `SW_MISSING_ASSET`.
+6. Abrir PR con los 3 ficheros modificados: el nuevo `.js`, `index.html`, `sw.js`.
+
 ---
 
 ## 6. Invariantes criticos
 
 1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
-2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y a�ade un bloque en `loadGame`.
+2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y añade un bloque en `loadGame`.
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
 5. **`update2_content.js` es una IIFE.** Se auto-ejecuta al cargarse. No expone globals. Es idempotente: comprueba si ya se aplico antes de actuar.
@@ -294,6 +303,8 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
+10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
+11. **Versión de caché incremental.** Al añadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` → `lifexp-v22`, etc.) para forzar actualización en clientes existentes.
 
 ---
 
@@ -301,7 +312,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
-| DT-01 | `sw.js` tiene lista de assets hardcodeada; si se a�ade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua | Media | Abierto |
+| DT-01 | `sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua | Media | Abierto |
 | DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
@@ -324,8 +335,8 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 | Fecha | PR / Rama | Cambios |
 |---|---|---|
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
-| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos a�adida, branches activas actualizadas |
-| 2026-07-31 | `feat/content-validator` | A�adido `validate_content.js` (seccion 2f y seccion 10); invariante 9 a�adida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
+| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos añadida, branches activas actualizadas |
+| 2026-07-31 | `feat/content-validator` | Añadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 añadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
 
 ---
 
