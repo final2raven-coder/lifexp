@@ -187,7 +187,6 @@ function getOverflowCount(cat) {
 // ===========================================================================
 
 
-
 // ===========================================================================
 // SAVE/LOAD
 // ===========================================================================
@@ -236,18 +235,47 @@ function migrateQuestState() {
   // gameState.activeQuests and gameState.completedQuests remain as-is.
 }
 
+// ---------------------------------------------------------------------------
+// migrateSaveToV3 — normaliza saves antiguos sin perder progreso.
+// Idempotente: un save v3 ya normalizado no se modifica salvo por la marca
+// canónica de versión.
+// ---------------------------------------------------------------------------
+function migrateSaveToV3(previousVersion) {
+  const version = Number.isFinite(previousVersion) ? previousVersion : 0;
+
+  if (version >= 3) {
+    gameState.saveVersion = 3;
+    return false;
+  }
+
+  if (gameState.guildId === undefined) gameState.guildId = null;
+  if (gameState.guildName === undefined) gameState.guildName = null;
+  if (!Array.isArray(gameState.guildMembers)) gameState.guildMembers = [];
+  if (!Array.isArray(gameState.pendingReceipts)) gameState.pendingReceipts = [];
+  if (!Array.isArray(gameState.receivedReceipts)) gameState.receivedReceipts = [];
+  if (!Number.isFinite(gameState.lastReceiptId)) gameState.lastReceiptId = 0;
+
+  gameState.saveVersion = 3;
+  return true;
+}
+
 function loadGame() {
+  let migratedSave = false;
+
   try {
     const saved = localStorage.getItem('lifexp_save');
     if (saved) {
       const parsed = JSON.parse(saved);
+      const previousVersion = Number(parsed.saveVersion);
+
       gameState = { ...gameState, ...parsed };
       gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
       gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
       gameState.stashCapacity = Number.isFinite(gameState.stashCapacity) ? gameState.stashCapacity : 30;
       gameState.inventoryCapacityBonus = Number.isFinite(gameState.inventoryCapacityBonus) ? gameState.inventoryCapacityBonus : 0;
       gameState.pendingLoot = gameState.pendingLoot || null;
-      gameState.saveVersion = 3;
+
+      migratedSave = migrateSaveToV3(previousVersion);
     }
   } catch (e) {
     console.warn('Could not load game:', e);
@@ -276,6 +304,8 @@ function loadGame() {
 
   // Update streak
   updateStreak();
+
+  if (migratedSave) saveGame();
 }
 
 function updateStreak() {
@@ -312,4 +342,3 @@ function showScreen(screenId) {
   else if (screenId === 'guild') renderGuild();
   else if (screenId === 'settings') renderSettings();
 }
-
