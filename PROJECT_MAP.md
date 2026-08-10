@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-04 (fix/sw-assets -- SW cache v21 + validador v1.1 con check 10) |
+| Ultima actualizacion | 2026-08-10 (fix/project-map-utf8-clean -- normalizacion UTF-8 para GitHub Pages) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator`, `fix/sw-assets` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator`, `fix/sw-assets`, `fix/project-map-utf8-clean` |
 | Commit base | `b1248e85ce0651a8be044495bd35d618dad694ed` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -283,25 +283,25 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 
 ---
 
-## 5b. Procedimiento para añadir un fichero nuevo
+## 5b. Procedimiento para aÃ±adir un fichero nuevo
 
-Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
+Cada vez que se aÃ±ade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 1. Crear el fichero `.js` en la raiz del repositorio.
-2. Añadir `<script src="nuevo.js"></script>` en `index.html` en la posicion correcta segun dependencias (ver seccion 5).
-3. Añadir `'/nuevo.js'` en `urlsToCache` de `sw.js` en la misma posicion relativa que en `index.html`.
+2. AÃ±adir `<script src="nuevo.js"></script>` en `index.html` en la posicion correcta segun dependencias (ver seccion 5).
+3. AÃ±adir `'/nuevo.js'` en `urlsToCache` de `sw.js` en la misma posicion relativa que en `index.html`.
 4. Incrementar `CACHE_NAME` en `sw.js` (`lifexp-vN` -> `lifexp-v(N+1)`).
 5. Ejecutar `node validate_content.js` -- debe salir sin errores `SW_MISSING_ASSET`.
 6. Abrir PR con los 3 ficheros modificados: el nuevo `.js`, `index.html`, `sw.js`.
 
-> **Regla:** el validador (check 10) detecta cualquier desincronía entre `index.html` y `sw.js` como error bloqueante. Un PR con `SW_MISSING_ASSET` no se mergea.
+> **Regla:** el validador (check 10) detecta cualquier desincronia entre `index.html` y `sw.js` como error bloqueante. Un PR con `SW_MISSING_ASSET` no se mergea.
 
 ---
 
 ## 6. Invariantes criticos
 
 1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
-2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y añade un bloque en `loadGame`.
+2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y aÃ±ade un bloque en `loadGame`.
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
 5. **`update2_content.js` es una IIFE.** Se auto-ejecuta al cargarse. No expone globals. Es idempotente: comprueba si ya se aplico antes de actuar.
@@ -310,7 +310,7 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
-11. **Version de cache incremental.** Al añadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
+11. **Version de cache incremental.** Al aÃ±adir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
 
 ---
 
@@ -318,7 +318,7 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
-| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
+| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se aÃ±ade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
@@ -341,9 +341,10 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 | Fecha | PR / Rama | Cambios |
 |---|---|---|
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
-| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos añadida, branches activas actualizadas |
-| 2026-07-31 | `feat/content-validator` | Añadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 añadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
-| 2026-08-04 | `fix/sw-assets` | `sw.js` CACHE_NAME subida a v21 (fuerza refresh en clientes); eliminado `sw.js` del fetch regex (innecesario); `validate_content.js` v1.1 con check 10 (SW_MISSING_ASSET/SW_ORPHAN_ASSET); seccion 5b añadida (procedimiento para añadir fichero); invariantes 10 y 11 añadidas; DT-01 resuelto |
+| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos aÃ±adida, branches activas actualizadas |
+| 2026-07-31 | `feat/content-validator` | AÃ±adido `validate_content.js` (seccion 2f y seccion 10); invariante 9 aÃ±adida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
+| 2026-08-04 | `fix/sw-assets` | `sw.js` CACHE_NAME subida a v21 (fuerza refresh en clientes); eliminado `sw.js` del fetch regex (innecesario); `validate_content.js` v1.1 con check 10 (SW_MISSING_ASSET/SW_ORPHAN_ASSET); seccion 5b aÃ±adida (procedimiento para aÃ±adir fichero); invariantes 10 y 11 aÃ±adidas; DT-01 resuelto |
+| 2026-08-10 | `fix/project-map-utf8-clean` | Normalizacion de `PROJECT_MAP.md` a UTF-8 valido para evitar el fallo de conversion de Jekyll en GitHub Pages; sin cambios funcionales en el mapa. |
 
 ---
 
@@ -441,7 +442,7 @@ La salida muestra el recuento de catalogos cargados, la lista de errores (si los
 
 ### Regla de uso obligatorio
 
-**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que añada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no se mergea.
+**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que aÃ±ada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no se mergea.
 
 ### Primera ejecucion (2026-07-31, estado actual del repo)
 
