@@ -305,7 +305,10 @@ function equipItemFromInventory(itemId) {
 
     // Show flavor toast — evocative, not a stat sheet
     var situation = prevAttempts === 0 ? 'equip_fail_1' : 'equip_fail_n';
-    var flavor = getItemFlavorText(itemId, situation);
+    var requirementStatus = getItemRequirementStatus(itemId);
+    var flavor = requirementStatus.missingRequirements?.length
+      ? getItemRequirementNarrative(itemId, requirementStatus)
+      : getItemFlavorText(itemId, situation);
     showFlavorDialog(flavor, 'error');
 
     // Refresh modal so the hint appears
