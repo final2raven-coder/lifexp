@@ -26,14 +26,14 @@ const ITEM_FLAVOR_TEXT = {
   // == WEAPONS ==============================================================
 
   cuchilla_llameante: {
-    first_look:    'The blade is warm to the touch. Not hot — warm, the way a stone holds heat long after the fire has moved on. You do not know yet what it asks of you.',
-    equip_fail_1:  'Your hand closes around the grip and the warmth pulls back. The sword does not resist you. It simply waits, as if it already knows you are not ready.',
-    equip_fail_n:  'Again the heat retreats when you reach for it. Something in the blade measures you each time. You are closer than you were. That is not nothing.',
-    equip_success: 'The warmth does not retreat this time. It spreads up your arm slowly, like a fire remembering how to breathe. The blade is yours now — or you are its.',
-    attune_1:      'The edge catches the light differently. You notice it only when you stop looking directly at it.',
-    attune_2:      'During a task, the grip grew hot for a moment. You did not drop it. The blade noticed.',
-    attune_3:      'The old heat answers without being forced. Whatever the sword was waiting for, you have become it.',
-    ritual:        'The pressure builds in the blade and releases in a single breath. The second burn is shorter, sharper. The sword has remembered something it had forgotten.'
+    first_look:    'La hoja está tibia al tacto. No caliente: tibia, como una piedra que conserva el calor mucho después de que el fuego se haya marchado. Todavía no sabes qué te pide.',
+    equip_fail_1:  'Cierras la mano sobre la empuñadura, pero el calor se retira. La espada no se resiste; simplemente espera, como si ya supiera que aún no estás preparado.',
+    equip_fail_n:  'El calor vuelve a alejarse cuando intentas empuñarla. Algo en la hoja te mide cada vez. Estás más cerca que antes, y eso también cuenta.',
+    equip_success: 'Esta vez el calor no se retira. Te sube lentamente por el brazo, como un fuego que recuerda cómo respirar. La hoja es tuya, o quizá tú eres de ella.',
+    attune_1:      'El filo atrapa la luz de otra manera. Solo lo notas cuando dejas de mirarlo directamente.',
+    attune_2:      'Durante una tarea, la empuñadura se calentó un instante. No la soltaste. La hoja lo notó.',
+    attune_3:      'El calor antiguo responde sin que tengas que forzarlo. Sea lo que sea que esperaba la espada, te has convertido en ello.',
+    ritual:        'La presión crece en la hoja y se libera en un solo aliento. La segunda Quemadura es más breve y más intensa. La espada ha recordado algo que había olvidado.'
   },
 
   daga_corrosiva: {
