@@ -89,31 +89,103 @@ function getPlayerStatForRequirement(stat) {
   return Number(gameState?.stats?.[stat] || 0) + Number(getEquipmentStats?.()[stat] || 0);
 }
 
+const ITEM_REQUIREMENT_NARRATIVE = {
+  weapon: {
+    fue: 'El arma te cae encima con un peso inesperado; al levantarla, el brazo se queda sin recorrido.',
+    vit: 'Tras un solo movimiento, el esfuerzo te corta el aliento y el cuerpo pide parar.',
+    des: 'El agarre no acompaña el movimiento: el filo se desvía y pierdes el control de la trayectoria.',
+    int: 'Las marcas del arma se mezclan ante tus ojos; no logras anticipar cómo responderá.',
+    vol: 'La energía que recorre el arma se apaga al tocarte, como una llama sin oxígeno.',
+    pre: 'La presencia del arma te empequeñece; el gesto de empuñarla pierde toda autoridad.',
+    training: 'Intentas reproducir el movimiento, pero el cuerpo no encuentra todavía la técnica que la hoja exige.',
+    attunement: 'Al cerrar la mano sobre la empuñadura, el poder se retira y deja solo un calor lejano.'
+  },
+  armor: {
+    fue: 'La armadura tira de tus hombros y tus piernas protestan antes de que consigas dar el primer paso.',
+    vit: 'El aire se vuelve escaso dentro de la armadura y el cuerpo te obliga a detenerte demasiado pronto.',
+    des: 'Las articulaciones no siguen tus movimientos; cada giro llega tarde y el metal te frena.',
+    int: 'Las piezas esconden un mecanismo que no consigues comprender; no encuentras la forma correcta de ajustarlas.',
+    vol: 'La armadura se cierra, pero su resistencia te hace dudar y el cuerpo pierde firmeza.',
+    pre: 'La armadura pesa más cuando te colocas frente a ella; todavía no consigues ocupar su presencia.',
+    training: 'Las correas y cierres tienen un orden preciso que aún no sabes reproducir.',
+    attunement: 'El metal se aparta de tu cuerpo como si aún no reconociera a quien pretende llevarlo.'
+  },
+  accessory: {
+    fue: 'El accesorio tira de ti con una fuerza incómoda y no consigues llevarlo sin que te desequilibre.',
+    vit: 'Una oleada de cansancio te recorre al tocarlo y el cuerpo no logra sostener su influencia.',
+    des: 'El accesorio se mueve entre tus dedos y no consigues colocarlo en el punto exacto.',
+    int: 'Los detalles del accesorio parecen cambiar cuando intentas descifrar su funcionamiento.',
+    vol: 'La respuesta del accesorio se apaga en cuanto intentas imponerle tu voluntad.',
+    pre: 'El accesorio permanece indiferente, como si no encontrara en ti una presencia a la que responder.',
+    training: 'El gesto necesario para activarlo no termina de salirte de forma natural.',
+    attunement: 'Al acercarlo a tu cuerpo, su poder se repliega y espera a que exista un vínculo real.'
+  },
+  artifact: {
+    fue: 'El artefacto pesa de pronto como una piedra hundida y tu brazo no consigue moverlo con soltura.',
+    vit: 'El contacto te deja sin aire y el esfuerzo supera enseguida lo que tu cuerpo puede sostener.',
+    des: 'El artefacto no sigue tus manos; un pequeño error basta para que pierdas la posición.',
+    int: 'Los símbolos del artefacto se reorganizan y no consigues entender qué está intentando mostrarte.',
+    vol: 'La fuerza interior del artefacto te atraviesa y tu concentración se deshace antes de contenerla.',
+    pre: 'El artefacto parece llenar la habitación, pero tu voz se pierde cuando intentas reclamarlo.',
+    training: 'El artefacto exige una forma de uso que todavía no has aprendido a ejecutar.',
+    attunement: 'El artefacto permanece en silencio al tocarlo, como si aún estuviera esperando reconocerte.'
+  }
+};
+
+const DEFAULT_REQUIREMENT_NARRATIVE = {
+  fue: 'El objeto pesa más de lo que tu cuerpo puede manejar con comodidad.',
+  vit: 'El esfuerzo te alcanza demasiado pronto y tu cuerpo te pide detenerte.',
+  des: 'Tus movimientos no encuentran todavía la precisión necesaria para controlarlo.',
+  int: 'No consigues comprender cómo responde el objeto cuando intentas usarlo.',
+  vol: 'La energía del objeto se apaga cuando intentas sostenerla.',
+  pre: 'El objeto no responde a tu presencia como esperabas.',
+  training: 'Aún no has aprendido el gesto necesario para usarlo.',
+  attunement: 'El objeto no reconoce todavía el vínculo que intentas establecer con él.'
+};
+
+function getItemRequirementNarrative(itemId, status) {
+  const item = getItemDefinition(itemId);
+  if (!item) return 'No consigues identificar qué te impide utilizarlo.';
+  const currentStatus = status || getItemRequirementStatus(itemId);
+  const family = ITEM_REQUIREMENT_NARRATIVE[item.type] || {};
+  const missing = currentStatus.missingRequirements || [];
+  const first = missing[0];
+  if (!first) return 'Algo en el objeto se resiste, aunque todavía no comprendes por qué.';
+  if (first.kind === 'stat') return family[first.stat] || DEFAULT_REQUIREMENT_NARRATIVE[first.stat];
+  if (first.kind === 'training') return family.training || DEFAULT_REQUIREMENT_NARRATIVE.training;
+  if (first.kind === 'attunement') return family.attunement || DEFAULT_REQUIREMENT_NARRATIVE.attunement;
+  return 'El objeto no responde como debería cuando intentas utilizarlo.';
+}
+
 function getItemRequirementStatus(itemId) {
   const item = getItemDefinition(itemId);
-  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'] };
+  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'], missingRequirements: [{ kind: 'unknown' }] };
   const reasons = [];
+  const missingRequirements = [];
   for (const [stat, needed] of Object.entries(item.requirements?.stats || {})) {
     const actual = getPlayerStatForRequirement(stat);
-    if (actual < needed) reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+    if (actual < needed) {
+      reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+      missingRequirements.push({ kind: 'stat', stat, needed: Number(needed), actual });
+    }
   }
   if (item.requirements?.trainingId && !(gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
     reasons.push(`Necesita entrenamiento: ${item.requirements.trainingName || item.requirements.trainingId}`);
+    missingRequirements.push({ kind: 'training', id: item.requirements.trainingId });
   }
   const att = getItemAttunement(itemId);
-  if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
-  return { canEquip: reasons.length === 0, reasons, attunement: att };
+  if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) {
+    reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
+    missingRequirements.push({ kind: 'attunement', stage: att.stage, minimumStage: Number(item.attunement.minimumStage || 0) });
+  }
+  return { canEquip: reasons.length === 0, reasons, missingRequirements, attunement: att };
 }
 
-// Override equipment entry point while preserving old item behavior.
 function equipItem(itemId) {
   const item = getItemDefinition(itemId);
   if (!item || !item.type) return false;
   const status = getItemRequirementStatus(itemId);
-  if (!status.canEquip) {
-    if (typeof showToast === 'function') showToast(status.reasons[0], 'error');
-    return false;
-  }
+  if (!status.canEquip) return false;
   const type = ITEM_TYPE[item.type];
   if (!type || !type.slot) return false;
   let slot = type.slot;
@@ -415,7 +487,7 @@ function showItemModal(itemId, container) {
   var equipAttempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
   if (!req.canEquip && equipAttempts > 0) {
     // Show a vague hint — evocative, not a stat sheet
-    var hint = (req.flavorReasons && req.flavorReasons[0]) || 'Algo en ti todavía no está listo para esto.';
+    var hint = getItemRequirementNarrative(itemId, req);
     html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-style:italic;padding:8px;background:var(--bg-surface);border-radius:6px;border-left:2px solid var(--border);">⟳ ' + escapeItemHtml(hint) + '</div>';
   }
 
@@ -423,118 +495,3 @@ function showItemModal(itemId, container) {
   if (item.attunement && item.attunement.required && (att.stage > 0 || container === 'equipped')) {
     var attText = (item.attunement.stages && item.attunement.stages[att.stage])
       || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
-    var attPct = Math.min(100, att.stage / att.max * 100);
-    html += '<div class="item-panel" style="margin-top:8px;">';
-    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Aclimatación</div>';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
-    html += '<div style="flex:1;height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;">';
-    html += '<div style="height:100%;width:' + attPct + '%;background:var(--purple);border-radius:2px;"></div></div>';
-    html += '<span style="font-size:11px;color:var(--purple);">' + att.stage + '/' + att.max + '</span></div>';
-    html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;">' + escapeItemHtml(attText) + '</div>';
-    html += '</div>';
-  }
-
-  // == ACTIVATION (gated by minimumStage) ===================================
-  var minStage = Number((item.attunement && item.attunement.minimumStage) || 1);
-  if (!item.attunement || !item.attunement.required || att.stage >= minStage) {
-    html += renderActivationPanel(itemId);
-  }
-
-  // == CURSE =================================================================
-  if (item.curse) {
-    html += '<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">';
-    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>';
-    html += '<div style="font-size:12px;color:var(--red);">' + escapeItemHtml((item.curse && item.curse.description) || 'El objeto lleva una maldición.') + '</div>';
-    html += '</div>';
-  }
-
-  // == VALUE =================================================================
-  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">' + (item.value || 0) + ' \uD83E\uDE99</div>';
-
-  document.getElementById('modal-item-content').innerHTML = html;
-
-  // == ACTION BUTTON =========================================================
-  var actionBtn = document.getElementById('btn-item-action');
-  if (!actionBtn) return;
-  actionBtn.style.display = 'flex';
-  actionBtn.style.visibility = 'visible';
-  actionBtn.style.opacity = '1';
-  actionBtn.disabled = false;
-  if (container === 'stash') {
-    actionBtn.textContent = 'Sacar al inventario';
-    actionBtn.onclick = function() { moveItemToInventory(itemId); };
-  } else if (type.slot || ['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) {
-    // Every equippable item keeps the primary action visible. Do not rely
-    // only on ITEM_TYPE.slot: older and expansion definitions may omit it.
-    actionBtn.textContent = 'Equipar';
-    actionBtn.disabled = false;
-    actionBtn.onclick = function() { equipItemFromInventory(itemId); };
-  } else if (item.type === 'consumable') {
-    actionBtn.textContent = 'Usar';
-    actionBtn.onclick = function() { useConsumable(itemId); };
-  } else {
-    actionBtn.textContent = 'Guardar en baúl';
-    actionBtn.onclick = function() { moveItemToStash(itemId); };
-  }
-  openModal('modal-item');
-}
-
-
-// ============================================================================
-// Block 2.3 - hidden item knowledge
-// ============================================================================
-// Unknown effects are not shown as locked. They remain undiscovered until the
-// item teaches them through attunement, activation, combat or another system.
-// Items may later opt into visible/known effects with `knowledge: 'known'`.
-
-function getItemKnowledgeState(itemId) {
-  initializeItemSystem();
-  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
-  return gameState.itemSystem.knowledge[itemId] || {};
-}
-
-function isItemEffectKnown(itemId, effect) {
-  const item = getItemDefinition(itemId);
-  const knowledge = getItemKnowledgeState(itemId);
-  if (effect.knowledge === 'known' || effect.visibility === 'visible') return true;
-  if (knowledge[effect.id] === true) return true;
-  const stage = Number(effect.unlockStage || 0);
-  return stage > 0 && getItemAttunement(itemId).stage >= stage;
-}
-
-function discoverItemEffect(itemId, effectId) {
-  const item = getItemDefinition(itemId);
-  const effect = item?.effects?.find(e => e.id === effectId);
-  if (!effect) return false;
-  initializeItemSystem();
-  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
-  gameState.itemSystem.knowledge[itemId] = { ...(gameState.itemSystem.knowledge[itemId] || {}), [effectId]: true };
-  saveGame();
-  return true;
-}
-
-function isItemEffectUnlocked(itemId, effect) {
-  const item = getItemDefinition(itemId);
-  const att = getItemAttunement(itemId);
-  const needed = Number(effect.unlockStage || 0);
-  if (att.stage < needed) return false;
-  if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
-  return isItemEffectKnown(itemId, effect);
-}
-
-function getActiveItemEffects(itemId) {
-  const item = getItemDefinition(itemId);
-  return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
-}
-
-
-
-function renderActivationPanel(itemId) {
-  const item = getItemDefinition(itemId);
-  if (!item?.activation) return '';
-  const state = getItemActivationState(itemId);
-  if (state.active) return `<div class="item-panel item-activation-active"><div class="item-panel-label">ACTIVATION</div><div>Ritual complete.</div></div>`;
-  const progress = `${state.count}/${state.needed}`;
-  const button = state.ready ? `<button class="btn btn-primary item-ritual-button" onclick="attemptActivationFromModal('${itemId}')">Attempt activation</button>` : '';
-  return `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || 'Complete the required tasks.')}</div><div class="ritual-progress">${progress}</div>${button}</div>`;
-}
