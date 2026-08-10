@@ -181,11 +181,14 @@ function getItemRequirementStatus(itemId) {
   return { canEquip: reasons.length === 0, reasons, missingRequirements, attunement: att };
 }
 
+// Override equipment entry point while preserving old item behavior.
 function equipItem(itemId) {
   const item = getItemDefinition(itemId);
   if (!item || !item.type) return false;
   const status = getItemRequirementStatus(itemId);
-  if (!status.canEquip) return false;
+  if (!status.canEquip) {
+    return false;
+  }
   const type = ITEM_TYPE[item.type];
   if (!type || !type.slot) return false;
   let slot = type.slot;
@@ -284,7 +287,7 @@ function itemIconSvg(item, size = 38) {
     weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
     armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
     accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
-    artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
+    artifact: '<path d="m20 5 5 9-5 15-5-9 5-15z"/><path d="M9 20h22M12 13h16"/>',
     consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
     material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
     skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
@@ -487,7 +490,7 @@ function showItemModal(itemId, container) {
   var equipAttempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
   if (!req.canEquip && equipAttempts > 0) {
     // Show a vague hint — evocative, not a stat sheet
-    var hint = getItemRequirementNarrative(itemId, req);
+    var hint = (req.flavorReasons && req.flavorReasons[0]) || 'Algo en ti todavía no está listo para esto.';
     html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-style:italic;padding:8px;background:var(--bg-surface);border-radius:6px;border-left:2px solid var(--border);">⟳ ' + escapeItemHtml(hint) + '</div>';
   }
 
@@ -495,3 +498,118 @@ function showItemModal(itemId, container) {
   if (item.attunement && item.attunement.required && (att.stage > 0 || container === 'equipped')) {
     var attText = (item.attunement.stages && item.attunement.stages[att.stage])
       || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
+    var attPct = Math.min(100, att.stage / att.max * 100);
+    html += '<div class="item-panel" style="margin-top:8px;">';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Aclimatación</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<div style="flex:1;height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;">';
+    html += '<div style="height:100%;width:' + attPct + '%;background:var(--purple);border-radius:2px;"></div></div>';
+    html += '<span style="font-size:11px;color:var(--purple);">' + att.stage + '/' + att.max + '</span></div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;">' + escapeItemHtml(attText) + '</div>';
+    html += '</div>';
+  }
+
+  // == ACTIVATION (gated by minimumStage) ===================================
+  var minStage = Number((item.attunement && item.attunement.minimumStage) || 1);
+  if (!item.attunement || !item.attunement.required || att.stage >= minStage) {
+    html += renderActivationPanel(itemId);
+  }
+
+  // == CURSE =================================================================
+  if (item.curse) {
+    html += '<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>';
+    html += '<div style="font-size:12px;color:var(--red);">' + escapeItemHtml((item.curse && item.curse.description) || 'El objeto lleva una maldición.') + '</div>';
+    html += '</div>';
+  }
+
+  // == VALUE =================================================================
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">' + (item.value || 0) + ' \uD83E\uDE99</div>';
+
+  document.getElementById('modal-item-content').innerHTML = html;
+
+  // == ACTION BUTTON =========================================================
+  var actionBtn = document.getElementById('btn-item-action');
+  if (!actionBtn) return;
+  actionBtn.style.display = 'flex';
+  actionBtn.style.visibility = 'visible';
+  actionBtn.style.opacity = '1';
+  actionBtn.disabled = false;
+  if (container === 'stash') {
+    actionBtn.textContent = 'Sacar al inventario';
+    actionBtn.onclick = function() { moveItemToInventory(itemId); };
+  } else if (type.slot || ['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) {
+    // Every equippable item keeps the primary action visible. Do not rely
+    // only on ITEM_TYPE.slot: older and expansion definitions may omit it.
+    actionBtn.textContent = 'Equipar';
+    actionBtn.disabled = false;
+    actionBtn.onclick = function() { equipItemFromInventory(itemId); };
+  } else if (item.type === 'consumable') {
+    actionBtn.textContent = 'Usar';
+    actionBtn.onclick = function() { useConsumable(itemId); };
+  } else {
+    actionBtn.textContent = 'Guardar en baúl';
+    actionBtn.onclick = function() { moveItemToStash(itemId); };
+  }
+  openModal('modal-item');
+}
+
+
+// ============================================================================
+// Block 2.3 - hidden item knowledge
+// ============================================================================
+// Unknown effects are not shown as locked. They remain undiscovered until the
+// item teaches them through attunement, activation, combat or another system.
+// Items may later opt into visible/known effects with `knowledge: 'known'`.
+
+function getItemKnowledgeState(itemId) {
+  initializeItemSystem();
+  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
+  return gameState.itemSystem.knowledge[itemId] || {};
+}
+
+function isItemEffectKnown(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const knowledge = getItemKnowledgeState(itemId);
+  if (effect.knowledge === 'known' || effect.visibility === 'visible') return true;
+  if (knowledge[effect.id] === true) return true;
+  const stage = Number(effect.unlockStage || 0);
+  return stage > 0 && getItemAttunement(itemId).stage >= stage;
+}
+
+function discoverItemEffect(itemId, effectId) {
+  const item = getItemDefinition(itemId);
+  const effect = item?.effects?.find(e => e.id === effectId);
+  if (!effect) return false;
+  initializeItemSystem();
+  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
+  gameState.itemSystem.knowledge[itemId] = { ...(gameState.itemSystem.knowledge[itemId] || {}), [effectId]: true };
+  saveGame();
+  return true;
+}
+
+function isItemEffectUnlocked(itemId, effect) {
+  const item = getItemDefinition(itemId);
+  const att = getItemAttunement(itemId);
+  const needed = Number(effect.unlockStage || 0);
+  if (att.stage < needed) return false;
+  if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
+  return isItemEffectKnown(itemId, effect);
+}
+
+function getActiveItemEffects(itemId) {
+  const item = getItemDefinition(itemId);
+  return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
+}
+
+
+
+function renderActivationPanel(itemId) {
+  const item = getItemDefinition(itemId);
+  if (!item?.activation) return '';
+  const state = getItemActivationState(itemId);
+  if (state.active) return `<div class="item-panel item-activation-active"><div class="item-panel-label">ACTIVATION</div><div>Ritual complete.</div></div>`;
+  const progress = `${state.count}/${state.needed}`;
+  const button = state.ready ? `<button class="btn btn-primary item-ritual-button" onclick="attemptActivationFromModal('${itemId}')">Attempt activation</button>` : '';
+  return `<div class="item-panel"><div class="item-panel-label">ACTIVATION</div><div>${escapeItemHtml(item.activation.description || 'Complete the required tasks.')}</div><div class="ritual-progress">${progress}</div>${button}</div>`;
+}
