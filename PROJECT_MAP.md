@@ -11,11 +11,11 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-10 (fix/item-requirement-narrative -- rareza y narrativa de requisitos de equipamiento) |
+| Ultima actualizacion | 2026-08-11 (fix/inventory-language-boundary -- frontera linguistica de inventario y objetos) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator`, `fix/sw-assets`, `fix/project-map-utf8-clean`, `fix/item-requirement-narrative` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator`, `fix/sw-assets`, `fix/project-map-utf8-clean`, `fix/item-requirement-narrative`, `fix/inventory-language-boundary` |
 | Commit base | `b1248e85ce0651a8be044495bd35d618dad694ed` |
-| Build string | `LIFE_XP_BUILD = 'v13.5-item-requirement-narrative'` |
+| Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
 | Entrada | `index.html` (SPA de una sola pagina) |
@@ -31,7 +31,7 @@ El estado global vive en el objeto `gameState` (definido en `engine.js`) y se pe
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
 Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes mediante `Object.assign` al arrancar.
 `inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, y hace repair() al arrancar.
-`item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel. Tambien traduce requisitos tecnicos de equipamiento a sensaciones narrativas genericas mediante `ITEM_REQUIREMENT_NARRATIVE` y `getItemRequirementNarrative`.
+`item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel. Los mensajes del dominio de objetos se muestran en ingles; las tareas y el flujo del mundo real conservan el espanol.
 `item_flavor.js` contiene el lore narrativo de items (flavor text por item y por stage de attunement).
 `guild.js` implementa el sistema cooperativo (receipts, sync, guild state).
 `main.js` es el punto de entrada: registra el Service Worker y conecta los event listeners del DOM.
@@ -51,18 +51,18 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `combat.js` | ~750 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
 | `guild.js` | 331 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 174 | Subsistema canonico de inventario; repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
-| `item_system.js` | 615 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
+| `item_system.js` | 614 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
 | `main.js` | 84 | Punto de entrada: event listeners + registro del Service Worker | -- |
 
 ### 2b. Ficheros de UI (pantallas)
 
 | Fichero | Lineas | Pantalla / zona | Funciones clave |
 |---|---|---|---|
-| `ui_hub.js` | 414 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
+| `ui_hub.js` | 413 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
 | `ui_tasks.js` | 340 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategory`, `shuffleTask`, `renderTaskScreen`, `completeTask`, `rollDrop`, `dismissComplete` |
 | `ui_combat.js` | 316 | Pantalla de combate, encuentros post-tarea, tareas guardadas, overflow | `checkForEncounter`, `triggerEncounterAfterTask`, `startCombatFromEncounter`, `renderCombatScreen`, `executeCombatAction`, `showCombatVictory`, `saveForLater`, `showSavedTasks`, `showOverflowTasks` |
 | `ui_misc.js` | 397 | Pantallas miscelaneas: mapa, gremio, lore, clase, quests rapidas | `renderMap`, `renderClassScreen`, `renderLore`, `openQuestPanel` |
-| `ui_feedback.js` | 177 | Toasts, notificaciones, animaciones de feedback; controles del dialogo en español | `showFlavorDialog`, `showToast`, `showXpGain`, `showLevelUp`, `showDropNotification` |
+| `ui_feedback.js` | 177 | Toasts, notificaciones, animaciones de feedback; dialogo de descubrimiento de objetos en ingles | `showFlavorDialog`, `showToast`, `showXpGain`, `showLevelUp`, `showDropNotification` |
 | `ui_quests.js` | 234 | Pantalla de quests: lista, detalle, progreso | `renderQuestsScreen`, `renderQuestDetail`, `claimQuestReward` |
 
 ### 2c. Ficheros de datos (contenido)
@@ -74,7 +74,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `enemies.js` | 614 | 85 enemigos base (niveles 1-40+) | `ENEMIES` |
 | `quests.js` | 604 | 33 quests base (dailies, simples, bounties, story, class quests) | `QUESTS` |
 | `data_tasks.js` | 533 | 41 tareas base (`DEFAULT_TASKS`) | `DEFAULT_TASKS` |
-| `item_flavor.js` | 468 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
+| `item_flavor.js` | 467 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
 
 ### 2d. Ficheros de expansion y actualizaciones
 
@@ -84,7 +84,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `expansion_enemies.js` | 21 | 18 enemigos de expansion | `EXPANSION_ENEMIES_V1` |
 | `expansion_quests.js` | 26 | 20 quests de expansion | `EXPANSION_QUESTS_V1` |
 | `expansion_tasks.js` | 30 | 14 tareas de expansion | `EXPANSION_TASKS_V1` |
-| `update2_content.js` | 227 | Patches narrativos de quests (Ashbrand arc); instala Ashbrand en ITEMS si no existe, con rareza `rare` y flavor principal en español | -- (IIFE auto-ejecutable) |
+| `update2_content.js` | 106 | Patches narrativos de quests (Ashbrand arc); instala Ashbrand en ITEMS si no existe, con rareza `rare` y textos del objeto en ingles | -- (IIFE auto-ejecutable) |
 
 ### 2e. Ficheros de soporte / PWA
 
@@ -346,6 +346,7 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 | 2026-08-04 | `fix/sw-assets` | `sw.js` CACHE_NAME subida a v21 (fuerza refresh en clientes); eliminado `sw.js` del fetch regex (innecesario); `validate_content.js` v1.1 con check 10 (SW_MISSING_ASSET/SW_ORPHAN_ASSET); seccion 5b añadida (procedimiento para añadir fichero); invariantes 10 y 11 añadidas; DT-01 resuelto |
 | 2026-08-10 | `fix/project-map-utf8-clean` | Normalizacion de `PROJECT_MAP.md` a UTF-8 valido para evitar el fallo de conversion de Jekyll en GitHub Pages; sin cambios funcionales en el mapa. |
 | 2026-08-10 | `fix/item-requirement-narrative` | Ashbrand pasa a rareza rara sin alterar su ID ni los saves existentes; los requisitos de equipamiento se traducen a sensaciones narrativas declarativas por tipo de objeto y estadistica; el flujo visible de Ashbrand queda en español; `sw.js` pasa a `lifexp-v22` para invalidar la cache anterior. |
+| 2026-08-11 | `fix/inventory-language-boundary` | Separa la frontera de idioma: inventario, equipo, objetos, requisitos, attunement, rituales, curses y activacion usan ingles; tareas, categorias y botones del mundo real permanecen en espanol. Ashbrand conserva su ID y pasa a rareza `rare` con narrativa del objeto en ingles; `sw.js` no se modifica porque `lifexp-v22` ya esta vigente. |
 
 ---
 

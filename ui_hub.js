@@ -187,7 +187,7 @@ function showStashItemModal(itemId) {
 
 function moveItemToStash(itemId) {
   if (!moveBetweenContainers(itemId, 'inventory', 'stash')) {
-    showToast('El baúl está lleno.', 'error');
+    showToast('Stash is full.', 'error');
     return;
   }
   saveGame(); closeModal('modal-item'); renderInventory();
@@ -195,7 +195,7 @@ function moveItemToStash(itemId) {
 
 function moveItemToInventory(itemId) {
   if (!moveBetweenContainers(itemId, 'stash', 'inventory')) {
-    showToast('No hay espacio en el inventario.', 'error');
+    showToast('No room in inventory.', 'error');
     return;
   }
   saveGame(); closeModal('modal-item'); renderInventory();
@@ -207,11 +207,11 @@ function renderEquipment() {
   if (!slots) return;
   
   const slotConfig = [
-    { key: 'weapon', name: 'Arma', icon: '⚔️' },
-    { key: 'armor', name: 'Armadura', icon: '\uD83D\uDEE1️' },
-    { key: 'accessory1', name: 'Accesorio 1', icon: '\uD83D\uDC8D' },
-    { key: 'accessory2', name: 'Accesorio 2', icon: '\uD83D\uDC8D' },
-    { key: 'artifact', name: 'Artefacto', icon: '\uD83D\uDD2E' }
+    { key: 'weapon', name: 'Weapon', icon: '⚔️' },
+    { key: 'armor', name: 'Armor', icon: '\uD83D\uDEE1️' },
+    { key: 'accessory1', name: 'Accessory 1', icon: '\uD83D\uDC8D' },
+    { key: 'accessory2', name: 'Accessory 2', icon: '\uD83D\uDC8D' },
+    { key: 'artifact', name: 'Artifact', icon: '\uD83D\uDD2E' }
   ];
   
   slots.innerHTML = '';
@@ -244,7 +244,7 @@ function renderEquipment() {
         .map(([stat, val]) => `<span style="color: var(--stat-${stat}); margin-right: 12px;">${STATS[stat].abbr} +${val}</span>`)
         .join('');
     } else {
-      statsDiv.innerHTML = '<span style="color: var(--text-muted);">Sin equipo</span>';
+      statsDiv.innerHTML = '<span style="color: var(--text-muted);">No equipment</span>';
     }
   }
 }
@@ -253,27 +253,27 @@ function renderEquipment() {
 function showLegacyItemModal(slotIndex) {
   const slot = gameState.inventory?.[slotIndex];
   if (!slot) return;
-  const oldName = slot.name || slot.legacyName || 'Recompensa sin identificar';
+  const oldName = slot.name || slot.legacyName || 'Unidentified reward';
   const used = Boolean(slot.recoveryUsed);
   document.getElementById('modal-item-content').innerHTML = `
     <div style="text-align:center;margin-bottom:12px;">
       <div style="font-size:48px;">❔</div>
-      <div style="font-size:18px;font-weight:700;color:var(--orange);">Recompensa ilegible</div>
+      <div style="font-size:18px;font-weight:700;color:var(--orange);">Unreadable reward</div>
       <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
     </div>
-    <div style="font-size:13px;color:var(--text);line-height:1.5;">Esta recompensa procede de una versión antigua y no conserva un identificador válido. Puedes intentar reconstruirla o rehacerla una sola vez sin perder progreso.</div>
-    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">El reroll de emergencia es una herramienta de recuperación de datos, no una mecánica normal.</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.5;">This reward comes from an older version and has no valid identifier. You can rebuild or reroll it once without losing progress.</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">Emergency reroll is a data-recovery tool, not a normal mechanic.</div>
   `;
   const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = used ? 'Recuperación ya usada' : '\uD83D\uDD04 Rehacer recompensa';
+  actionBtn.textContent = used ? 'Recovery already used' : '\uD83D\uDD04 Rebuild reward';
   actionBtn.disabled = used;
   actionBtn.onclick = () => {
     if (used || typeof emergencyRerollLegacyItem !== 'function') return;
     const result = emergencyRerollLegacyItem(slotIndex);
-    if (!result.success) { showToast('No se pudo recuperar la recompensa.', 'error'); return; }
+    if (!result.success) { showToast('The reward could not be recovered.', 'error'); return; }
     closeModal('modal-item');
     renderInventory();
-    showToast(result.method === 'name' ? 'Recompensa reconstruida.' : 'Recompensa rehecha.', 'gold');
+    showToast(result.method === 'name' ? 'Reward rebuilt.' : 'Reward rerolled.', 'gold');
   };
   openModal('modal-item');
 }
@@ -343,7 +343,7 @@ function unequipItemToInventory(slot) {
     renderInventory();
     renderCharacter();
   } else {
-    alert('Inventario lleno.');
+    alert('Inventory full.');
   }
 }
 
@@ -357,12 +357,12 @@ function sellItemFromInventory(itemId) {
     closeModal('modal-item');
     renderInventory();
     renderHub();
-    alert('Vendido por ' + gold + ' oro.');
+    alert('Sold for ' + gold + ' gold.');
   }
 }
 
 function useConsumable(itemId) {
-  alert('Sistema de consumibles disponible en combate (Block 4)');
+  alert('Consumables are available in combat (Block 4).');
   closeModal('modal-item');
 }
 

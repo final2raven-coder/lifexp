@@ -11,21 +11,21 @@
     type: 'weapon',
     rarity: 'rare',
     icon: 'FIRE',
-    desc: 'Una espada corta tomada de un santuario después de que el fuego se extinguiera. La hoja conserva el calor.',
-    lore: 'Ashbrand recuerda un fuego que se negó a convertirse en ruina.',
+    desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
+    lore: 'Ashbrand remembers a fire that refused to become a ruin.',
     stats: {},
     value: 120,
     themes: ['fuego', 'fuego_comida', 'ash'],
     effects: [
-      { id: 'burning_edge', name: 'Filo ardiente', trigger: 'passive', unlockStage: 1, description: 'Los ataques pueden aplicar Quemadura durante 3 turnos.' },
-      { id: 'pressure', name: 'Presión', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'Un objetivo en llamas puede recibir otra Quemadura más breve.' }
+      { id: 'burning_edge', name: 'Burning Edge', trigger: 'passive', unlockStage: 1, description: 'Attacks can apply Burn for 3 turns.' },
+      { id: 'pressure', name: 'Pressure', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'A burning target can receive another, shorter Burn.' }
     ],
     attunement: {
       required: true,
       max: 3,
       minimumStage: 1,
       themes: ['fuego', 'fuego_comida', 'ash'],
-      stages: ['La empuñadura está fría.', 'El filo conserva su calor.', 'El fuego antiguo responde a tu mano.']
+      stages: ['The grip is cold.', 'The edge holds its heat.', 'The old fire answers your hand.']
     }
   };
 
