@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-11 (fix/dt14-dt06-quickwins -- DT-06 y DT-14 confirmados resueltos; mapa saneado) |
+| Ultima actualizacion | 2026-08-11 (fix/dt13-dt02-drop-ids -- DT-13 y DT-02 resueltos; expansion_items.js ampliado a 88 items; drops de tareas normalizados a IDs canonicos; validador endurecido check 6) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/dt14-dt06-quickwins` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/dt13-dt02-drop-ids` |
 | Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -80,7 +80,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 
 | Fichero | Lineas | Contenido | Constante exportada |
 |---|---|---|---|
-| `expansion_items.js` | 34 | 11 items de expansion | `EXPANSION_ITEMS_V1` |
+| `expansion_items.js` | 171 | 88 items de expansion + 25 drop tables tematicas | `EXPANSION_ITEMS_V1`, `EXPANSION_DROP_TABLES_V1` |
 | `expansion_enemies.js` | 21 | 18 enemigos de expansion | `EXPANSION_ENEMIES_V1` |
 | `expansion_quests.js` | 26 | 20 quests de expansion | `EXPANSION_QUESTS_V1` |
 | `expansion_tasks.js` | 30 | 14 tareas de expansion | `EXPANSION_TASKS_V1` |
@@ -316,7 +316,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
-| DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
+| DT-02 | ~~`DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente~~ | -- | **RESUELTO** (fix/dt13-dt02-drop-ids: todos los drops de tareas normalizados a IDs canonicos snake_case; validador check 6 endurecido detecta cualquier regresion) |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
 | DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
@@ -327,7 +327,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 | DT-10 | Algunos items en `inventory` del save pueden tener formato legacy (sin `id` canonico); `inventory_system.js` los normaliza al arrancar pero el proceso no es 100% determinista para todos los casos edge | Alta | Abierto |
 | DT-11 | ~~Rama huerfana `refactor/flavor-text-extract`~~ | -- | **RESUELTO** (rama no existe en el repo actual) |
 | DT-12 | `item_system.js` y `ui_hub.js` tienen logica de renderizado de inventario duplicada; `renderInventoryGrid` existe en ambos | Media | Abierto |
-| DT-13 | `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings de display (con espacios/mayusculas/acentos) en `drops.items` en lugar de IDs canonicos | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
+| DT-13 | ~~`DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings de display (con espacios/mayusculas/acentos) en `drops.items` en lugar de IDs canonicos~~ | -- | **RESUELTO** (fix/dt13-dt02-drop-ids: 110 strings de display reemplazados por IDs canonicos en `data_tasks.js`; 77 items nuevos con nombres de fantasia en ingles anadidos a `expansion_items.js`; inventario `docs/DROP_MAPPING.md` generado) |
 | DT-14 | ~~`THEME_ENEMIES["refugio"]` referencia `vigia_del_refugio` que no existe en ENEMIES~~ | -- | **RESUELTO** (verificado 2026-08-11: corregido en PR anterior como parte de DT-19; `refugio` mapea a `['rata_gigante', 'poltergeist']`, ambos IDs canonicos existentes.) |
 | DT-18 | ~~PROJECT_MAP.md desactualizado~~ | -- | **RESUELTO** (este PR) |
 
@@ -344,6 +344,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 | 2026-08-10 | `fix/project-map-utf8-clean` | Normalizacion de `PROJECT_MAP.md` a UTF-8 valido para evitar el fallo de conversion de Jekyll en GitHub Pages; sin cambios funcionales en el mapa. |
 | 2026-08-10 | `fix/item-requirement-narrative` | Ashbrand pasa a rareza rara sin alterar su ID ni los saves existentes; los requisitos de equipamiento se traducen a sensaciones narrativas declarativas por tipo de objeto y estadistica; el flujo visible de Ashbrand queda en espanol; `sw.js` pasa a `lifexp-v22` para invalidar la cache anterior. |
 | 2026-08-11 | `fix/inventory-language-boundary` | Separa la frontera de idioma: inventario, equipo, objetos, requisitos, attunement, rituales, curses y activacion usan ingles; tareas, categorias y botones del mundo real permanecen en espanol. Ashbrand conserva su ID y pasa a rareza `rare` con narrativa del objeto en ingles; `sw.js` no se modifica porque `lifexp-v22` ya esta vigente. |
+| 2026-08-11 | `fix/dt13-dt02-drop-ids` | DT-13 y DT-02 resueltos: 110 strings de display en `data_tasks.js` reemplazados por IDs canonicos snake_case; 77 items nuevos con nombres de fantasia en ingles anadidos a `expansion_items.js` (total 88 items, 25 drop tables tematicas); `validate_content.js` check 6 endurecido para validar todos los formatos de drop de tareas; inventario `docs/DROP_MAPPING.md` generado. Errores del validador: 68 -> 3 (los 3 restantes son preexistentes: `arana_domestica` con caracter especial en ID). |
 | 2026-08-11 | `fix/dt14-dt06-quickwins` | DT-06 y DT-14 confirmados resueltos tras verificacion exhaustiva: `ashbrand_hotfix.js` ya no existe en `main` (eliminado en saneamiento previo, sin referencias en `index.html` ni `sw.js`); `THEME_ENEMIES["refugio"]` ya usa IDs canonicos `rata_gigante` y `poltergeist` (corregido como DT-19 en PR anterior). Eliminada entrada de `ashbrand_hotfix.js` de seccion 2e. Branches activas y metadatos actualizados. |
 
 ---
@@ -363,9 +364,9 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 | Fuente | Cantidad | Notas |
 |---|---|---|
 | `items.js` (base) | 85 | weapon: 10, armor: 7, accessory: 8, artifact: 5, consumable: 14, material: 36, skill: 3, key: 4 |
-| `expansion_items.js` | 11 | |
+| `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en ITEMS |
-| **Total** | **~97** | Sin contar duplicados (Ashbrand puede ya estar en base) |
+| **Total** | **~174** | Sin contar duplicados (Ashbrand puede ya estar en base) |
 
 Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios base).
 
@@ -461,3 +462,4 @@ Errores principales detectados (no corregidos en este PR -- solo deteccion):
 - ~90 `TASK_DROP_DISPLAY_NAME`: `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings con espacios/mayusculas/acentos en `drops.items` en lugar de IDs canonicos (DT-13).
 - 3 `DROP_DISPLAY_NAME` / `DROP_TABLE_DISPLAY_NAME`: items con caracteres especiales en drops de enemigos y DROP_TABLES (DT-02).
 - 12 avisos: temas desconocidos en drops de tareas e items no obtenibles.
+
