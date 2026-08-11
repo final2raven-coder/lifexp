@@ -1,7 +1,7 @@
 // ===========================================================================
 // LifeXP RPG - item_system.js
-// Item system runtime: inicializacion, equipado, attunement, rituales,
-// modales de item, knowledge system y activation panel.
+// Item system runtime: initialization, equipment, attunement, rituals,
+// item modals, knowledge system and activation panel.
 // Depende de: engine.js, items.js, item_flavor.js, inventory_system.js.
 // ===========================================================================
 
@@ -91,91 +91,91 @@ function getPlayerStatForRequirement(stat) {
 
 const ITEM_REQUIREMENT_NARRATIVE = {
   weapon: {
-    fue: 'El arma te cae encima con un peso inesperado; al levantarla, el brazo se queda sin recorrido.',
-    vit: 'Tras un solo movimiento, el esfuerzo te corta el aliento y el cuerpo pide parar.',
-    des: 'El agarre no acompaña el movimiento: el filo se desvía y pierdes el control de la trayectoria.',
-    int: 'Las marcas del arma se mezclan ante tus ojos; no logras anticipar cómo responderá.',
-    vol: 'La energía que recorre el arma se apaga al tocarte, como una llama sin oxígeno.',
-    pre: 'La presencia del arma te empequeñece; el gesto de empuñarla pierde toda autoridad.',
-    training: 'Intentas reproducir el movimiento, pero el cuerpo no encuentra todavía la técnica que la hoja exige.',
-    attunement: 'Al cerrar la mano sobre la empuñadura, el poder se retira y deja solo un calor lejano.'
+    fue: 'The weapon settles with unexpected weight; when you lift it, your arm runs out of reach.',
+    vit: 'After one movement, the effort cuts your breath short and your body asks you to stop.',
+    des: 'Your grip does not follow the movement: the edge drifts and the trajectory slips away from you.',
+    int: 'The weapon\'s markings blur together; you cannot anticipate how it will respond.',
+    vol: 'The energy running through the weapon fades when you touch it, like a flame without air.',
+    pre: 'The weapon\'s presence makes you smaller; the gesture of wielding it loses its authority.',
+    training: 'You try to reproduce the movement, but your body has not found the technique the blade demands.',
+    attunement: 'When your hand closes around the grip, the power withdraws and leaves only a distant warmth.'
   },
   armor: {
-    fue: 'La armadura tira de tus hombros y tus piernas protestan antes de que consigas dar el primer paso.',
-    vit: 'El aire se vuelve escaso dentro de la armadura y el cuerpo te obliga a detenerte demasiado pronto.',
-    des: 'Las articulaciones no siguen tus movimientos; cada giro llega tarde y el metal te frena.',
-    int: 'Las piezas esconden un mecanismo que no consigues comprender; no encuentras la forma correcta de ajustarlas.',
-    vol: 'La armadura se cierra, pero su resistencia te hace dudar y el cuerpo pierde firmeza.',
-    pre: 'La armadura pesa más cuando te colocas frente a ella; todavía no consigues ocupar su presencia.',
-    training: 'Las correas y cierres tienen un orden preciso que aún no sabes reproducir.',
-    attunement: 'El metal se aparta de tu cuerpo como si aún no reconociera a quien pretende llevarlo.'
+    fue: 'The armor pulls at your shoulders and your legs protest before you take the first step.',
+    vit: 'The air grows scarce inside the armor and your body makes you stop too soon.',
+    des: 'The joints do not follow your movements; every turn arrives late and the metal slows you down.',
+    int: 'The pieces conceal a mechanism you cannot understand; you cannot find the right way to adjust them.',
+    vol: 'The armor closes around you, but its resistance makes you hesitate and your body loses steadiness.',
+    pre: 'The armor weighs more when you stand before it; you cannot yet inhabit its presence.',
+    training: 'The straps and fasteners follow a precise order you have not learned to reproduce.',
+    attunement: 'The metal pulls away from your body as if it does not yet recognize the one who would wear it.'
   },
   accessory: {
-    fue: 'El accesorio tira de ti con una fuerza incómoda y no consigues llevarlo sin que te desequilibre.',
-    vit: 'Una oleada de cansancio te recorre al tocarlo y el cuerpo no logra sostener su influencia.',
-    des: 'El accesorio se mueve entre tus dedos y no consigues colocarlo en el punto exacto.',
-    int: 'Los detalles del accesorio parecen cambiar cuando intentas descifrar su funcionamiento.',
-    vol: 'La respuesta del accesorio se apaga en cuanto intentas imponerle tu voluntad.',
-    pre: 'El accesorio permanece indiferente, como si no encontrara en ti una presencia a la que responder.',
-    training: 'El gesto necesario para activarlo no termina de salirte de forma natural.',
-    attunement: 'Al acercarlo a tu cuerpo, su poder se repliega y espera a que exista un vínculo real.'
+    fue: 'The accessory pulls with an uncomfortable force and you cannot wear it without losing your balance.',
+    vit: 'A wave of fatigue runs through you when you touch it and your body cannot sustain its influence.',
+    des: 'The accessory shifts between your fingers and you cannot place it at the exact point.',
+    int: 'The accessory\'s details seem to change when you try to understand how it works.',
+    vol: 'The accessory\'s response fades as soon as you try to impose your will on it.',
+    pre: 'The accessory remains indifferent, as if it finds no presence in you to answer.',
+    training: 'The gesture needed to activate it does not come naturally to you.',
+    attunement: 'When you bring it close to your body, its power withdraws and waits for a real bond.'
   },
   artifact: {
-    fue: 'El artefacto pesa de pronto como una piedra hundida y tu brazo no consigue moverlo con soltura.',
-    vit: 'El contacto te deja sin aire y el esfuerzo supera enseguida lo que tu cuerpo puede sostener.',
-    des: 'El artefacto no sigue tus manos; un pequeño error basta para que pierdas la posición.',
-    int: 'Los símbolos del artefacto se reorganizan y no consigues entender qué está intentando mostrarte.',
-    vol: 'La fuerza interior del artefacto te atraviesa y tu concentración se deshace antes de contenerla.',
-    pre: 'El artefacto parece llenar la habitación, pero tu voz se pierde cuando intentas reclamarlo.',
-    training: 'El artefacto exige una forma de uso que todavía no has aprendido a ejecutar.',
-    attunement: 'El artefacto permanece en silencio al tocarlo, como si aún estuviera esperando reconocerte.'
+    fue: 'The artifact suddenly weighs like a sunken stone and your arm cannot move it freely.',
+    vit: 'The contact leaves you breathless and the effort quickly exceeds what your body can sustain.',
+    des: 'The artifact does not follow your hands; one small error is enough to make you lose position.',
+    int: 'The artifact\'s symbols rearrange themselves and you cannot understand what it is trying to show you.',
+    vol: 'The artifact\'s inner force passes through you and your concentration breaks before you can contain it.',
+    pre: 'The artifact seems to fill the room, but your voice is lost when you try to claim it.',
+    training: 'The artifact demands a method of use you have not yet learned to perform.',
+    attunement: 'The artifact remains silent when you touch it, as if it is still waiting to recognize you.'
   }
 };
 
 const DEFAULT_REQUIREMENT_NARRATIVE = {
-  fue: 'El objeto pesa más de lo que tu cuerpo puede manejar con comodidad.',
-  vit: 'El esfuerzo te alcanza demasiado pronto y tu cuerpo te pide detenerte.',
-  des: 'Tus movimientos no encuentran todavía la precisión necesaria para controlarlo.',
-  int: 'No consigues comprender cómo responde el objeto cuando intentas usarlo.',
-  vol: 'La energía del objeto se apaga cuando intentas sostenerla.',
-  pre: 'El objeto no responde a tu presencia como esperabas.',
-  training: 'Aún no has aprendido el gesto necesario para usarlo.',
-  attunement: 'El objeto no reconoce todavía el vínculo que intentas establecer con él.'
+  fue: 'The item weighs more than your body can comfortably handle.',
+  vit: 'The effort catches up with you too soon and your body asks you to stop.',
+  des: 'Your movements do not yet have the precision needed to control it.',
+  int: 'You cannot understand how the item responds when you try to use it.',
+  vol: 'The item\'s energy fades when you try to hold it.',
+  pre: 'The item does not respond to your presence as you expected.',
+  training: 'You have not yet learned the gesture needed to use it.',
+  attunement: 'The item does not yet recognize the bond you are trying to establish.'
 };
 
 function getItemRequirementNarrative(itemId, status) {
   const item = getItemDefinition(itemId);
-  if (!item) return 'No consigues identificar qué te impide utilizarlo.';
+  if (!item) return 'You cannot identify what prevents you from using it.';
   const currentStatus = status || getItemRequirementStatus(itemId);
   const family = ITEM_REQUIREMENT_NARRATIVE[item.type] || {};
   const missing = currentStatus.missingRequirements || [];
   const first = missing[0];
-  if (!first) return 'Algo en el objeto se resiste, aunque todavía no comprendes por qué.';
+  if (!first) return 'Something in the item resists you, though you do not yet understand why.';
   if (first.kind === 'stat') return family[first.stat] || DEFAULT_REQUIREMENT_NARRATIVE[first.stat];
   if (first.kind === 'training') return family.training || DEFAULT_REQUIREMENT_NARRATIVE.training;
   if (first.kind === 'attunement') return family.attunement || DEFAULT_REQUIREMENT_NARRATIVE.attunement;
-  return 'El objeto no responde como debería cuando intentas utilizarlo.';
+  return 'The item does not respond as it should when you try to use it.';
 }
 
 function getItemRequirementStatus(itemId) {
   const item = getItemDefinition(itemId);
-  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'], missingRequirements: [{ kind: 'unknown' }] };
+  if (!item) return { canEquip: false, reasons: ['Unknown item'], missingRequirements: [{ kind: 'unknown' }] };
   const reasons = [];
   const missingRequirements = [];
   for (const [stat, needed] of Object.entries(item.requirements?.stats || {})) {
     const actual = getPlayerStatForRequirement(stat);
     if (actual < needed) {
-      reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+      reasons.push(`Requires ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (current ${actual})`);
       missingRequirements.push({ kind: 'stat', stat, needed: Number(needed), actual });
     }
   }
   if (item.requirements?.trainingId && !(gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
-    reasons.push(`Necesita entrenamiento: ${item.requirements.trainingName || item.requirements.trainingId}`);
+    reasons.push(`Needs training: ${item.requirements.trainingName || item.requirements.trainingId}`);
     missingRequirements.push({ kind: 'training', id: item.requirements.trainingId });
   }
   const att = getItemAttunement(itemId);
   if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) {
-    reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
+    reasons.push(`Needs attunement (${att.stage}/${item.attunement.minimumStage})`);
     missingRequirements.push({ kind: 'attunement', stage: att.stage, minimumStage: Number(item.attunement.minimumStage || 0) });
   }
   return { canEquip: reasons.length === 0, reasons, missingRequirements, attunement: att };
@@ -225,10 +225,10 @@ function getItemCurseState(itemId) {
 
 function canUnequipItem(slot) {
   const itemId = gameState.equipment?.[slot];
-  if (!itemId) return { ok: false, reason: 'No hay objeto equipado.' };
+  if (!itemId) return { ok: false, reason: 'No item equipped.' };
   const curse = getItemCurseState(itemId);
   const item = getItemDefinition(itemId);
-  if (curse.active && item?.curse?.cannotUnequip) return { ok: false, reason: item.curse.removeHint || 'El objeto no puede desequiparse todavía.' };
+  if (curse.active && item?.curse?.cannotUnequip) return { ok: false, reason: item.curse.removeHint || 'The item cannot be unequipped yet.' };
   return { ok: true };
 }
 
@@ -250,7 +250,7 @@ function showEquippedItemModal(slot) {
   showItemModal(itemId, 'equipped');
   const actionBtn = document.getElementById('btn-item-action');
   const check = canUnequipItem(slot);
-  actionBtn.textContent = check.ok ? 'Desequipar' : check.reason;
+  actionBtn.textContent = check.ok ? 'Unequip' : check.reason;
   actionBtn.disabled = !check.ok;
   actionBtn.onclick = () => unequipItemToInventory(slot);
 }
@@ -423,7 +423,7 @@ function showItemModal(itemId, container) {
     }
   }
   var rarity  = RARITY[item.rarity]  || RARITY.common;
-  var type    = ITEM_TYPE[item.type] || { name: item.type || 'Objeto', slot: null };
+  var type    = ITEM_TYPE[item.type] || { name: item.type || 'Item', slot: null };
   var qty     = container === 'stash'
     ? ((gameState.stash || []).find(function(s){ return s.id === itemId; }) || {}).qty || 1
     : getItemCount(itemId);
@@ -469,16 +469,16 @@ function showItemModal(itemId, container) {
   var knownEffects = (item.effects || []).filter(function(e){ return isItemEffectKnown(itemId, e); });
   if (knownEffects.length) {
     html += '<div class="item-panel" style="margin-top:10px;">';
-    html += '<div class="item-panel-label" style="color:var(--orange);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Efectos conocidos</div>';
+    html += '<div class="item-panel-label" style="color:var(--orange);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;" >Known effects</div>';
     knownEffects.forEach(function(e) {
       var unlocked = isItemEffectUnlocked(itemId, e);
       if (unlocked) {
         html += '<div style="font-size:12px;margin-bottom:4px;">';
-        html += '<span style="color:var(--orange);font-weight:600;">' + escapeItemHtml(e.name || 'Efecto') + '</span>';
+        html += '<span style="color:var(--orange);font-weight:600;">' + escapeItemHtml(e.name || 'Effect') + '</span>';
         html += ' <span style="color:var(--text-muted);">— ' + escapeItemHtml(e.description || '') + '</span></div>';
       } else {
-        html += '<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">\uD83D\uDD12 ' + escapeItemHtml(e.name || 'Efecto');
-        html += ' <span style="font-size:10px;">(Aclimatación ' + (e.unlockStage || '?') + '/' + att.max + (e.activationRequired ? ' · Ritual' : '') + ')</span></div>';
+        html += '<div style="font-size:12px;margin-bottom:4px;color:var(--text-muted);opacity:.5;">\uD83D\uDD12 ' + escapeItemHtml(e.name || 'Effect');
+        html += ' <span style="font-size:10px;">(Attunement ' + (e.unlockStage || '?') + '/' + att.max + (e.activationRequired ? ' · Ritual' : '') + ')</span></div>';
       }
     });
     html += '</div>';
@@ -490,7 +490,7 @@ function showItemModal(itemId, container) {
   var equipAttempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
   if (!req.canEquip && equipAttempts > 0) {
     // Show a vague hint — evocative, not a stat sheet
-    var hint = (req.flavorReasons && req.flavorReasons[0]) || 'Algo en ti todavía no está listo para esto.';
+    var hint = (req.flavorReasons && req.flavorReasons[0]) || 'Something in you is not ready for this yet.';
     html += '<div style="margin-top:8px;font-size:12px;color:var(--text-muted);font-style:italic;padding:8px;background:var(--bg-surface);border-radius:6px;border-left:2px solid var(--border);">⟳ ' + escapeItemHtml(hint) + '</div>';
   }
 
@@ -500,55 +500,53 @@ function showItemModal(itemId, container) {
       || (att.stage >= att.max ? 'Attunement complete.' : 'The item has not responded yet.');
     var attPct = Math.min(100, att.stage / att.max * 100);
     html += '<div class="item-panel" style="margin-top:8px;">';
-    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Aclimatación</div>';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--purple);">Attunement</div>';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
-    html += '<div style="flex:1;height:4px;background:var(--bg-surface);border-radius:2px;overflow:hidden;">';
-    html += '<div style="height:100%;width:' + attPct + '%;background:var(--purple);border-radius:2px;"></div></div>';
+    html += '<div class="attunement-track" style="flex:1;"><span style="width:' + attPct + '%;"></span></div>';
     html += '<span style="font-size:11px;color:var(--purple);">' + att.stage + '/' + att.max + '</span></div>';
-    html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;">' + escapeItemHtml(attText) + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);font-style:italic;">' + escapeItemHtml(attText) + '</div>';
     html += '</div>';
   }
 
   // == ACTIVATION (gated by minimumStage) ===================================
-  var minStage = Number((item.attunement && item.attunement.minimumStage) || 1);
-  if (!item.attunement || !item.attunement.required || att.stage >= minStage) {
+  if (item.activation && (att.stage >= Number(item.activation.minimumStage || 0))) {
     html += renderActivationPanel(itemId);
   }
 
-  // == CURSE =================================================================
-  if (item.curse) {
+  // == CURSE ================================================================
+  var curse = getItemCurseState(itemId);
+  if (curse.active && item.curse) {
     html += '<div class="item-panel item-curse" style="margin-top:8px;border-color:var(--red);">';
-    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Maldición</div>';
-    html += '<div style="font-size:12px;color:var(--red);">' + escapeItemHtml((item.curse && item.curse.description) || 'El objeto lleva una maldición.') + '</div>';
+    html += '<div class="item-panel-label" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;color:var(--red);">Curse</div>';
+    html += '<div style="font-size:12px;color:var(--red);">' + escapeItemHtml((item.curse && item.curse.description) || 'This item bears a curse.') + '</div>';
     html += '</div>';
   }
 
-  // == VALUE =================================================================
-  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:right;">' + (item.value || 0) + ' \uD83E\uDE99</div>';
+  // == ACTION ================================================================
+  html += '<div class="item-modal-actions">';
+  html += '<button id="btn-item-action" class="btn btn-primary" type="button"></button>';
+  html += '<button class="btn btn-ghost item-modal-close" type="button" aria-label="Close item details" onclick="closeModal(\'modal-item\')">✕</button>';
+  html += '</div>';
 
   document.getElementById('modal-item-content').innerHTML = html;
-
-  // == ACTION BUTTON =========================================================
   var actionBtn = document.getElementById('btn-item-action');
-  if (!actionBtn) return;
-  actionBtn.style.display = 'flex';
   actionBtn.style.visibility = 'visible';
   actionBtn.style.opacity = '1';
   actionBtn.disabled = false;
   if (container === 'stash') {
-    actionBtn.textContent = 'Sacar al inventario';
+    actionBtn.textContent = 'Move to inventory';
     actionBtn.onclick = function() { moveItemToInventory(itemId); };
   } else if (type.slot || ['weapon', 'armor', 'accessory', 'artifact'].includes(item.type)) {
     // Every equippable item keeps the primary action visible. Do not rely
     // only on ITEM_TYPE.slot: older and expansion definitions may omit it.
-    actionBtn.textContent = 'Equipar';
+    actionBtn.textContent = 'Equip';
     actionBtn.disabled = false;
     actionBtn.onclick = function() { equipItemFromInventory(itemId); };
   } else if (item.type === 'consumable') {
-    actionBtn.textContent = 'Usar';
+    actionBtn.textContent = 'Use';
     actionBtn.onclick = function() { useConsumable(itemId); };
   } else {
-    actionBtn.textContent = 'Guardar en baúl';
+    actionBtn.textContent = 'Store in stash';
     actionBtn.onclick = function() { moveItemToStash(itemId); };
   }
   openModal('modal-item');
@@ -558,23 +556,15 @@ function showItemModal(itemId, container) {
 // ============================================================================
 // Block 2.3 - hidden item knowledge
 // ============================================================================
-// Unknown effects are not shown as locked. They remain undiscovered until the
-// item teaches them through attunement, activation, combat or another system.
-// Items may later opt into visible/known effects with `knowledge: 'known'`.
-
-function getItemKnowledgeState(itemId) {
-  initializeItemSystem();
-  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
-  return gameState.itemSystem.knowledge[itemId] || {};
-}
 
 function isItemEffectKnown(itemId, effect) {
   const item = getItemDefinition(itemId);
-  const knowledge = getItemKnowledgeState(itemId);
+  if (!item || !effect) return false;
   if (effect.knowledge === 'known' || effect.visibility === 'visible') return true;
+  const knowledge = gameState.itemSystem.knowledge?.[itemId] || {};
   if (knowledge[effect.id] === true) return true;
   const stage = Number(effect.unlockStage || 0);
-  return stage > 0 && getItemAttunement(itemId).stage >= stage;
+  return stage > 0 && getItemAttunementStage(itemId) >= stage;
 }
 
 function discoverItemEffect(itemId, effectId) {
@@ -582,7 +572,6 @@ function discoverItemEffect(itemId, effectId) {
   const effect = item?.effects?.find(e => e.id === effectId);
   if (!effect) return false;
   initializeItemSystem();
-  if (!gameState.itemSystem.knowledge || typeof gameState.itemSystem.knowledge !== 'object') gameState.itemSystem.knowledge = {};
   gameState.itemSystem.knowledge[itemId] = { ...(gameState.itemSystem.knowledge[itemId] || {}), [effectId]: true };
   saveGame();
   return true;
@@ -590,9 +579,9 @@ function discoverItemEffect(itemId, effectId) {
 
 function isItemEffectUnlocked(itemId, effect) {
   const item = getItemDefinition(itemId);
-  const att = getItemAttunement(itemId);
+  if (!item || !effect) return false;
   const needed = Number(effect.unlockStage || 0);
-  if (att.stage < needed) return false;
+  if (getItemAttunementStage(itemId) < needed) return false;
   if (effect.activationRequired && !getItemActivationState(itemId).active) return false;
   return isItemEffectKnown(itemId, effect);
 }
@@ -601,8 +590,6 @@ function getActiveItemEffects(itemId) {
   const item = getItemDefinition(itemId);
   return (item?.effects || []).filter(effect => isItemEffectUnlocked(itemId, effect));
 }
-
-
 
 function renderActivationPanel(itemId) {
   const item = getItemDefinition(itemId);
