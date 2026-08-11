@@ -19,9 +19,9 @@ function showFlavorDialog(message, type = 'default') {
   var dialog = document.createElement('section');
   dialog.className = 'flavor-dialog ' + type;
   dialog.setAttribute('role', 'dialog');
-  dialog.setAttribute('aria-label', 'Descubrimiento de objeto');
+  dialog.setAttribute('aria-label', 'Item discovery');
   dialog.innerHTML = '<div class="flavor-dialog-text"></div>' +
-    '<button class="btn btn-ghost flavor-dialog-dismiss" type="button">Continuar</button>';
+    '<button class="btn btn-ghost flavor-dialog-dismiss" type="button">Continue</button>';
   dialog.querySelector('.flavor-dialog-text').textContent = message;
   document.body.appendChild(dialog);
 
