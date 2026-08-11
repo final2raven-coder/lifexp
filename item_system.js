@@ -89,20 +89,96 @@ function getPlayerStatForRequirement(stat) {
   return Number(gameState?.stats?.[stat] || 0) + Number(getEquipmentStats?.()[stat] || 0);
 }
 
+const ITEM_REQUIREMENT_NARRATIVE = {
+  weapon: {
+    fue: 'El arma te cae encima con un peso inesperado; al levantarla, el brazo se queda sin recorrido.',
+    vit: 'Tras un solo movimiento, el esfuerzo te corta el aliento y el cuerpo pide parar.',
+    des: 'El agarre no acompaña el movimiento: el filo se desvía y pierdes el control de la trayectoria.',
+    int: 'Las marcas del arma se mezclan ante tus ojos; no logras anticipar cómo responderá.',
+    vol: 'La energía que recorre el arma se apaga al tocarte, como una llama sin oxígeno.',
+    pre: 'La presencia del arma te empequeñece; el gesto de empuñarla pierde toda autoridad.',
+    training: 'Intentas reproducir el movimiento, pero el cuerpo no encuentra todavía la técnica que la hoja exige.',
+    attunement: 'Al cerrar la mano sobre la empuñadura, el poder se retira y deja solo un calor lejano.'
+  },
+  armor: {
+    fue: 'La armadura tira de tus hombros y tus piernas protestan antes de que consigas dar el primer paso.',
+    vit: 'El aire se vuelve escaso dentro de la armadura y el cuerpo te obliga a detenerte demasiado pronto.',
+    des: 'Las articulaciones no siguen tus movimientos; cada giro llega tarde y el metal te frena.',
+    int: 'Las piezas esconden un mecanismo que no consigues comprender; no encuentras la forma correcta de ajustarlas.',
+    vol: 'La armadura se cierra, pero su resistencia te hace dudar y el cuerpo pierde firmeza.',
+    pre: 'La armadura pesa más cuando te colocas frente a ella; todavía no consigues ocupar su presencia.',
+    training: 'Las correas y cierres tienen un orden preciso que aún no sabes reproducir.',
+    attunement: 'El metal se aparta de tu cuerpo como si aún no reconociera a quien pretende llevarlo.'
+  },
+  accessory: {
+    fue: 'El accesorio tira de ti con una fuerza incómoda y no consigues llevarlo sin que te desequilibre.',
+    vit: 'Una oleada de cansancio te recorre al tocarlo y el cuerpo no logra sostener su influencia.',
+    des: 'El accesorio se mueve entre tus dedos y no consigues colocarlo en el punto exacto.',
+    int: 'Los detalles del accesorio parecen cambiar cuando intentas descifrar su funcionamiento.',
+    vol: 'La respuesta del accesorio se apaga en cuanto intentas imponerle tu voluntad.',
+    pre: 'El accesorio permanece indiferente, como si no encontrara en ti una presencia a la que responder.',
+    training: 'El gesto necesario para activarlo no termina de salirte de forma natural.',
+    attunement: 'Al acercarlo a tu cuerpo, su poder se repliega y espera a que exista un vínculo real.'
+  },
+  artifact: {
+    fue: 'El artefacto pesa de pronto como una piedra hundida y tu brazo no consigue moverlo con soltura.',
+    vit: 'El contacto te deja sin aire y el esfuerzo supera enseguida lo que tu cuerpo puede sostener.',
+    des: 'El artefacto no sigue tus manos; un pequeño error basta para que pierdas la posición.',
+    int: 'Los símbolos del artefacto se reorganizan y no consigues entender qué está intentando mostrarte.',
+    vol: 'La fuerza interior del artefacto te atraviesa y tu concentración se deshace antes de contenerla.',
+    pre: 'El artefacto parece llenar la habitación, pero tu voz se pierde cuando intentas reclamarlo.',
+    training: 'El artefacto exige una forma de uso que todavía no has aprendido a ejecutar.',
+    attunement: 'El artefacto permanece en silencio al tocarlo, como si aún estuviera esperando reconocerte.'
+  }
+};
+
+const DEFAULT_REQUIREMENT_NARRATIVE = {
+  fue: 'El objeto pesa más de lo que tu cuerpo puede manejar con comodidad.',
+  vit: 'El esfuerzo te alcanza demasiado pronto y tu cuerpo te pide detenerte.',
+  des: 'Tus movimientos no encuentran todavía la precisión necesaria para controlarlo.',
+  int: 'No consigues comprender cómo responde el objeto cuando intentas usarlo.',
+  vol: 'La energía del objeto se apaga cuando intentas sostenerla.',
+  pre: 'El objeto no responde a tu presencia como esperabas.',
+  training: 'Aún no has aprendido el gesto necesario para usarlo.',
+  attunement: 'El objeto no reconoce todavía el vínculo que intentas establecer con él.'
+};
+
+function getItemRequirementNarrative(itemId, status) {
+  const item = getItemDefinition(itemId);
+  if (!item) return 'No consigues identificar qué te impide utilizarlo.';
+  const currentStatus = status || getItemRequirementStatus(itemId);
+  const family = ITEM_REQUIREMENT_NARRATIVE[item.type] || {};
+  const missing = currentStatus.missingRequirements || [];
+  const first = missing[0];
+  if (!first) return 'Algo en el objeto se resiste, aunque todavía no comprendes por qué.';
+  if (first.kind === 'stat') return family[first.stat] || DEFAULT_REQUIREMENT_NARRATIVE[first.stat];
+  if (first.kind === 'training') return family.training || DEFAULT_REQUIREMENT_NARRATIVE.training;
+  if (first.kind === 'attunement') return family.attunement || DEFAULT_REQUIREMENT_NARRATIVE.attunement;
+  return 'El objeto no responde como debería cuando intentas utilizarlo.';
+}
+
 function getItemRequirementStatus(itemId) {
   const item = getItemDefinition(itemId);
-  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'] };
+  if (!item) return { canEquip: false, reasons: ['Objeto desconocido'], missingRequirements: [{ kind: 'unknown' }] };
   const reasons = [];
+  const missingRequirements = [];
   for (const [stat, needed] of Object.entries(item.requirements?.stats || {})) {
     const actual = getPlayerStatForRequirement(stat);
-    if (actual < needed) reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+    if (actual < needed) {
+      reasons.push(`Requiere ${(STATS[stat]?.abbr || stat).toUpperCase()} ${needed} (actual ${actual})`);
+      missingRequirements.push({ kind: 'stat', stat, needed: Number(needed), actual });
+    }
   }
   if (item.requirements?.trainingId && !(gameState.training?.[item.requirements.trainingId] || gameState.unlockedTrainings?.includes?.(item.requirements.trainingId))) {
     reasons.push(`Necesita entrenamiento: ${item.requirements.trainingName || item.requirements.trainingId}`);
+    missingRequirements.push({ kind: 'training', id: item.requirements.trainingId });
   }
   const att = getItemAttunement(itemId);
-  if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
-  return { canEquip: reasons.length === 0, reasons, attunement: att };
+  if (item.attunement?.required && att.stage < Number(item.attunement.minimumStage || 0)) {
+    reasons.push(`Necesita aclimatación (${att.stage}/${item.attunement.minimumStage})`);
+    missingRequirements.push({ kind: 'attunement', stage: att.stage, minimumStage: Number(item.attunement.minimumStage || 0) });
+  }
+  return { canEquip: reasons.length === 0, reasons, missingRequirements, attunement: att };
 }
 
 // Override equipment entry point while preserving old item behavior.
@@ -111,7 +187,6 @@ function equipItem(itemId) {
   if (!item || !item.type) return false;
   const status = getItemRequirementStatus(itemId);
   if (!status.canEquip) {
-    if (typeof showToast === 'function') showToast(status.reasons[0], 'error');
     return false;
   }
   const type = ITEM_TYPE[item.type];
@@ -212,7 +287,7 @@ function itemIconSvg(item, size = 38) {
     weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
     armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
     accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
-    artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
+    artifact: '<path d="m20 5 5 9-5 15-5-9 5-15z"/><path d="M9 20h22M12 13h16"/>',
     consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
     material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
     skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
