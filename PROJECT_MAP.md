@@ -11,10 +11,10 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-11 (fix/inventory-language-boundary -- frontera linguistica de inventario y objetos) |
+| Ultima actualizacion | 2026-08-11 (fix/dt14-dt06-quickwins -- DT-06 y DT-14 confirmados resueltos; mapa saneado) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `feat/content-validator`, `fix/sw-assets`, `fix/project-map-utf8-clean`, `fix/item-requirement-narrative`, `fix/inventory-language-boundary` |
-| Commit base | `b1248e85ce0651a8be044495bd35d618dad694ed` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/dt14-dt06-quickwins` |
+| Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
@@ -93,7 +93,6 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `sw.js` | Service Worker cache-first. `CACHE_NAME = lifexp-v22`. Lista de assets sincronizada con `index.html` (verificada por check 10 del validador). |
 | `manifest.json` | Metadatos PWA (nombre, iconos, colores) |
 | `emergency-save.html` | Herramienta standalone de recuperacion de save |
-| `ashbrand_hotfix.js` | **HUERFANO** - stub vacio de compatibilidad. No esta incluido en `index.html`. Candidato a eliminar en proximo refactor de limpieza. |
 
 ### 2f. Herramientas de desarrollo (no se cargan en produccion)
 
@@ -279,17 +278,15 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 23. main.js             -- Punto de entrada (event listeners, SW)
 ```
 
-> **IMPORTANTE:** `ashbrand_hotfix.js` existe en el repositorio pero **NO esta incluido** en `index.html`. Es un fichero huerfano (ver seccion 2e).
-
 ---
 
-## 5b. Procedimiento para añadir un fichero nuevo
+## 5b. Procedimiento para anadir un fichero nuevo
 
-Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
+Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 1. Crear el fichero `.js` en la raiz del repositorio.
-2. Añadir `<script src="nuevo.js"></script>` en `index.html` en la posicion correcta segun dependencias (ver seccion 5).
-3. Añadir `'/nuevo.js'` en `urlsToCache` de `sw.js` en la misma posicion relativa que en `index.html`.
+2. Anadir `<script src="nuevo.js"></script>` en `index.html` en la posicion correcta segun dependencias (ver seccion 5).
+3. Anadir `'/nuevo.js'` en `urlsToCache` de `sw.js` en la misma posicion relativa que en `index.html`.
 4. Incrementar `CACHE_NAME` en `sw.js` (`lifexp-vN` -> `lifexp-v(N+1)`).
 5. Ejecutar `node validate_content.js` -- debe salir sin errores `SW_MISSING_ASSET`.
 6. Abrir PR con los 3 ficheros modificados: el nuevo `.js`, `index.html`, `sw.js`.
@@ -301,7 +298,7 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 ## 6. Invariantes criticos
 
 1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
-2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y añade un bloque en `loadGame`.
+2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y anade un bloque en `loadGame`.
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
 5. **`update2_content.js` es una IIFE.** Se auto-ejecuta al cargarse. No expone globals. Es idempotente: comprueba si ya se aplico antes de actuar.
@@ -310,7 +307,7 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
-11. **Version de cache incremental.** Al añadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
+11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
 
 ---
 
@@ -318,12 +315,12 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
-| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se añade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
+| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | `DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
 | DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
-| DT-06 | `ashbrand_hotfix.js` existe en el repo pero no se carga en `index.html`; es un fichero huerfano que debe eliminarse o integrarse | Media | Abierto |
+| DT-06 | ~~`ashbrand_hotfix.js` existe en el repo pero no se carga en `index.html`; es un fichero huerfano que debe eliminarse o integrarse~~ | -- | **RESUELTO** (verificado 2026-08-11: el fichero ya no existe en `main`; fue eliminado en el saneamiento previo. No hay referencias en `index.html` ni en `sw.js`.) |
 | DT-07 | `expansion_*.js` usan `Object.assign` sin guard de duplicados; si un ID de expansion colisiona con uno base, el base se sobreescribe silenciosamente | Media | Abierto |
 | DT-08 | `update2_content.js` parchea quests por ID hardcodeado (`daily_any_3`, `daily_casa_2`); si esos IDs cambian, el patch falla silenciosamente | Baja | Abierto |
 | DT-09 | ~~Split de `game.js` en `engine.js` + ficheros UI~~ | -- | **RESUELTO** (`game.js` eliminado, `engine.js` es el motor canonico) |
@@ -331,7 +328,7 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 | DT-11 | ~~Rama huerfana `refactor/flavor-text-extract`~~ | -- | **RESUELTO** (rama no existe en el repo actual) |
 | DT-12 | `item_system.js` y `ui_hub.js` tienen logica de renderizado de inventario duplicada; `renderInventoryGrid` existe en ambos | Media | Abierto |
 | DT-13 | `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings de display (con espacios/mayusculas/acentos) en `drops.items` en lugar de IDs canonicos | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
-| DT-14 | `THEME_ENEMIES["refugio"]` referencia `vigia_del_refugio` que no existe en ENEMIES | Alta | **Detectado por validador** -- pendiente fix en FASE 2 |
+| DT-14 | ~~`THEME_ENEMIES["refugio"]` referencia `vigia_del_refugio` que no existe en ENEMIES~~ | -- | **RESUELTO** (verificado 2026-08-11: corregido en PR anterior como parte de DT-19; `refugio` mapea a `['rata_gigante', 'poltergeist']`, ambos IDs canonicos existentes.) |
 | DT-18 | ~~PROJECT_MAP.md desactualizado~~ | -- | **RESUELTO** (este PR) |
 
 ---
@@ -341,12 +338,13 @@ Cada vez que se añade un nuevo `.js` a la app, seguir estos pasos en orden:
 | Fecha | PR / Rama | Cambios |
 |---|---|---|
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
-| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos añadida, branches activas actualizadas |
-| 2026-07-31 | `feat/content-validator` | Añadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 añadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
-| 2026-08-04 | `fix/sw-assets` | `sw.js` CACHE_NAME subida a v21 (fuerza refresh en clientes); eliminado `sw.js` del fetch regex (innecesario); `validate_content.js` v1.1 con check 10 (SW_MISSING_ASSET/SW_ORPHAN_ASSET); seccion 5b añadida (procedimiento para añadir fichero); invariantes 10 y 11 añadidas; DT-01 resuelto |
+| 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos anadida, branches activas actualizadas |
+| 2026-07-31 | `feat/content-validator` | Anadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 anadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
+| 2026-08-04 | `fix/sw-assets` | `sw.js` CACHE_NAME subida a v21 (fuerza refresh en clientes); eliminado `sw.js` del fetch regex (innecesario); `validate_content.js` v1.1 con check 10 (SW_MISSING_ASSET/SW_ORPHAN_ASSET); seccion 5b anadida (procedimiento para anadir fichero); invariantes 10 y 11 anadidas; DT-01 resuelto |
 | 2026-08-10 | `fix/project-map-utf8-clean` | Normalizacion de `PROJECT_MAP.md` a UTF-8 valido para evitar el fallo de conversion de Jekyll en GitHub Pages; sin cambios funcionales en el mapa. |
-| 2026-08-10 | `fix/item-requirement-narrative` | Ashbrand pasa a rareza rara sin alterar su ID ni los saves existentes; los requisitos de equipamiento se traducen a sensaciones narrativas declarativas por tipo de objeto y estadistica; el flujo visible de Ashbrand queda en español; `sw.js` pasa a `lifexp-v22` para invalidar la cache anterior. |
+| 2026-08-10 | `fix/item-requirement-narrative` | Ashbrand pasa a rareza rara sin alterar su ID ni los saves existentes; los requisitos de equipamiento se traducen a sensaciones narrativas declarativas por tipo de objeto y estadistica; el flujo visible de Ashbrand queda en espanol; `sw.js` pasa a `lifexp-v22` para invalidar la cache anterior. |
 | 2026-08-11 | `fix/inventory-language-boundary` | Separa la frontera de idioma: inventario, equipo, objetos, requisitos, attunement, rituales, curses y activacion usan ingles; tareas, categorias y botones del mundo real permanecen en espanol. Ashbrand conserva su ID y pasa a rareza `rare` con narrativa del objeto en ingles; `sw.js` no se modifica porque `lifexp-v22` ya esta vigente. |
+| 2026-08-11 | `fix/dt14-dt06-quickwins` | DT-06 y DT-14 confirmados resueltos tras verificacion exhaustiva: `ashbrand_hotfix.js` ya no existe en `main` (eliminado en saneamiento previo, sin referencias en `index.html` ni `sw.js`); `THEME_ENEMIES["refugio"]` ya usa IDs canonicos `rata_gigante` y `poltergeist` (corregido como DT-19 en PR anterior). Eliminada entrada de `ashbrand_hotfix.js` de seccion 2e. Branches activas y metadatos actualizados. |
 
 ---
 
@@ -444,7 +442,7 @@ La salida muestra el recuento de catalogos cargados, la lista de errores (si los
 
 ### Regla de uso obligatorio
 
-**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que añada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no se mergea.
+**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que anada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no se mergea.
 
 ### Primera ejecucion (2026-07-31, estado actual del repo)
 
@@ -462,5 +460,4 @@ Result: 100 error(s), 12 warning(s)
 Errores principales detectados (no corregidos en este PR -- solo deteccion):
 - ~90 `TASK_DROP_DISPLAY_NAME`: `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings con espacios/mayusculas/acentos en `drops.items` en lugar de IDs canonicos (DT-13).
 - 3 `DROP_DISPLAY_NAME` / `DROP_TABLE_DISPLAY_NAME`: items con caracteres especiales en drops de enemigos y DROP_TABLES (DT-02).
-- 1 `BROKEN_ENEMY_REF`: `THEME_ENEMIES["refugio"]` referencia un enemigo que no existe en ENEMIES (DT-14).
 - 12 avisos: temas desconocidos en drops de tareas e items no obtenibles.
