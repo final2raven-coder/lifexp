@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-12 (fix/dt13-dt02-drop-ids -- inventario DROP_MAPPING regenerado contra el codigo actual; sin cambios de contenido; bloqueo de sintaxis en expansion_items.js documentado) |
+| Ultima actualizacion | 2026-08-12 (fix/expansion-items-syntax -- sintaxis de expansion_items.js reparada; sin cambios de contenido jugable, drops ni balance) |
 | Branch de produccion | `main` |
-| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/dt13-dt02-drop-ids` |
+| Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/dt13-dt02-drop-ids`, `fix/expansion-items-syntax` |
 | Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -58,6 +58,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 
 | Fichero | Lineas | Pantalla / zona | Funciones clave |
 |---|---|---|---|
+| `index.html` | ~1400 | CSS + HTML completo | -- |
 | `ui_hub.js` | 413 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
 | `ui_tasks.js` | 340 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategory`, `shuffleTask`, `renderTaskScreen`, `completeTask`, `rollDrop`, `dismissComplete` |
 | `ui_combat.js` | 316 | Pantalla de combate, encuentros post-tarea, tareas guardadas, overflow | `checkForEncounter`, `triggerEncounterAfterTask`, `startCombatFromEncounter`, `renderCombatScreen`, `executeCombatAction`, `showCombatVictory`, `saveForLater`, `showSavedTasks`, `showOverflowTasks` |
@@ -268,7 +269,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 13. update2_content.js  -- IIFE: patches narrativos + instala Ashbrand si falta
 14. inventory_system.js -- LifeXPInventory, repair() al arrancar
 15. ui_hub.js           -- UI del hub, inventario, equipamiento
-16. ui_tasks.js         -- UI de tareas
+16. ui_tasks.js          -- UI de tareas
 17. ui_combat.js        -- UI de combate, encuentros y feedback de post-tarea
 18. ui_misc.js          -- UI miscelanea (mapa, clase, lore)
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
@@ -345,8 +346,9 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 | 2026-08-10 | `fix/item-requirement-narrative` | Ashbrand pasa a rareza rara sin alterar su ID ni los saves existentes; los requisitos de equipamiento se traducen a sensaciones narrativas declarativas por tipo de objeto y estadistica; el flujo visible de Ashbrand queda en espanol; `sw.js` pasa a `lifexp-v22` para invalidar la cache anterior. |
 | 2026-08-11 | `fix/inventory-language-boundary` | Separa la frontera de idioma: inventario, equipo, objetos, requisitos, attunement, rituales, curses y activacion usan ingles; tareas, categorias y botones del mundo real permanecen en espanol. Ashbrand conserva su ID y pasa a rareza `rare` con narrativa del objeto en ingles; `sw.js` no se modifica porque `lifexp-v22` ya esta vigente. |
 | 2026-08-11 | `fix/dt13-dt02-drop-ids` | DT-13 y DT-02 resueltos: 110 strings de display en `data_tasks.js` reemplazados por IDs canonicos snake_case; 77 items nuevos con nombres de fantasia en ingles anadidos a `expansion_items.js` (total 88 items, 25 drop tables tematicas); `validate_content.js` check 6 endurecido para validar todos los formatos de drop de tareas; inventario inicial `docs/DROP_MAPPING.md` generado. |
-| 2026-08-11 | `fix/dt14-dt06-quickwins` | DT-06 y DT-14 confirmados resueltos tras verificacion exhaustiva: `ashbrand_hotfix.js` ya no existe en `main` (eliminado en saneamiento previo, sin referencias en `index.html` ni `sw.js`); `THEME_ENEMIES["refugio"]` ya usa IDs canonicos `rata_gigante` y `poltergeist` (corregido como DT-19 en PR anterior). Eliminada entrada de `ashbrand_hotfix.js` de seccion 2e. |
+| 2026-08-11 | `fix/dt14-dt06-quickwins` | DT-06 y DT-14 confirmados resueltos tras verificacion exhaustiva: `ashbrand_hotfix.js` ya no existe en `main` (eliminado en saneamiento previo, sin referencias en `index.html` ni `sw.js`); `THEME_ENEMIES["refugio"]` ya usa IDs canonicos `rata_gigante` y `poltergeist` (corregido como DT-19 en PR anterior). Eliminada entrada de `ashbrand_hotfix.js` de seccion 2e. Branches activas y metadatos actualizados. |
 | 2026-08-12 | `fix/dt13-dt02-drop-ids` | Inventario `docs/DROP_MAPPING.md` regenerado contra el estado actual: 110 referencias en `data_tasks.js`, 39 en `expansion_tasks.js` y 120 en `DROP_TABLES`; no se aplican sustituciones. Se documenta el error de sintaxis de `expansion_items.js` que bloquea la validacion completa. |
+| 2026-08-12 | `fix/expansion-items-syntax` | Reparados exclusivamente errores estructurales de `expansion_items.js`: apostrofos internos escapados, cierres prematuros eliminados y propiedades duplicadas que impedían parsear la expansion. No cambian nombres visibles, IDs, drops, stats, valores, tablas ni balance. `node --check` pasa; el validador carga 175 items y conserva 3 errores y 26 avisos preexistentes ajenos a este PR. |
 
 ---
 
@@ -462,11 +464,10 @@ Result: 100 error(s), 12 warning(s)
 
 ### Verificacion actual de la rama (2026-08-12)
 
-La ejecucion actual de `node validate_content.js` carga 87 items base, 37 enemigos, 15 quests, 102 clases y 55 tareas, pero termina con 116 errores porque `expansion_items.js` falla al parsearse con `Unexpected identifier 's'`. Los `BROKEN_ITEM_REF` derivados de no cargar la expansion no se interpretan como renombres de drops. La correccion de esa sintaxis debe ser un cambio tecnico separado.
+La ejecucion de `node --check expansion_items.js` pasa correctamente. La ejecucion de `node validate_content.js` carga 175 items, 37 enemigos, 15 quests, 102 clases y 55 tareas, y termina con 3 errores y 26 avisos. El error sintactico de `expansion_items.js` queda resuelto; los errores restantes son referencias independientes en enemigos y temas, y no se modifican en este PR.
 
-Errores principales detectados (no corregidos en este PR -- solo deteccion):
-- `expansion_items.js` no carga por `Unexpected identifier 's'`; por ello el validador no incorpora los 88 items de expansion.
-- Las referencias de tareas y tablas que dependen de la expansion aparecen como `BROKEN_ITEM_REF` hasta reparar esa sintaxis; no se renombran por este motivo.
-- Persisten referencias de contenido independientes en enemigos, quests y tablas tematicas; requieren diagnosticos separados.
-- 12 avisos: temas desconocidos en drops de tareas e items no obtenibles.
+Errores principales restantes (fuera del alcance de este PR):
+- `ENEMIES["araña_domestica"].drops` contiene `seda_araña` como nombre de display.
+- `THEME_ENEMIES["agua_quimicos"]` y `THEME_ENEMIES["hallazgos"]` contienen `araña_domestica` como nombre de display.
+- Persisten 26 avisos `UNOBTAINABLE_ITEM`; requieren un diagnostico separado y no se alteran aqui.
 
