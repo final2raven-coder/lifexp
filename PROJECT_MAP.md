@@ -11,7 +11,7 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-11 (fix/dt13-dt02-drop-ids -- DT-13 y DT-02 resueltos; expansion_items.js ampliado a 88 items; drops de tareas normalizados a IDs canonicos; validador endurecido check 6) |
+| Ultima actualizacion | 2026-08-12 (fix/dt13-dt02-drop-ids -- inventario DROP_MAPPING regenerado contra el codigo actual; sin cambios de contenido; bloqueo de sintaxis en expansion_items.js documentado) |
 | Branch de produccion | `main` |
 | Branches activas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/dt13-dt02-drop-ids` |
 | Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
@@ -70,7 +70,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | Fichero | Lineas | Contenido | Constante exportada |
 |---|---|---|---|
 | `classes.js` | 223 | Arbol de clases: 6 clases base, 102 nodos de progresion | `CLASS_TREE` |
-| `items.js` | 268 | 85 items base + `RARITY`, `ITEM_TYPE`, `DROP_TABLES` | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
+| `items.js` | 268 | 87 items base + `RARITY`, `ITEM_TYPE`, `DROP_TABLES` | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
 | `enemies.js` | 614 | 85 enemigos base (niveles 1-40+) | `ENEMIES` |
 | `quests.js` | 604 | 33 quests base (dailies, simples, bounties, story, class quests) | `QUESTS` |
 | `data_tasks.js` | 533 | 41 tareas base (`DEFAULT_TASKS`) | `DEFAULT_TASKS` |
@@ -188,7 +188,7 @@ Logica de migracion en `engine.js` -> funcion `migrateQuestState()` y bloque de 
   stats: { [stat]: number }
   xp: number
   drops?: { theme: string, items: string[] }
-  sideQuest?: { desc, stats, xp, drops, dropBonus }
+  sideQuest?: { desc, stats, xp, sideQuest.drops, dropBonus }
 }
 ```
 
@@ -344,8 +344,9 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 | 2026-08-10 | `fix/project-map-utf8-clean` | Normalizacion de `PROJECT_MAP.md` a UTF-8 valido para evitar el fallo de conversion de Jekyll en GitHub Pages; sin cambios funcionales en el mapa. |
 | 2026-08-10 | `fix/item-requirement-narrative` | Ashbrand pasa a rareza rara sin alterar su ID ni los saves existentes; los requisitos de equipamiento se traducen a sensaciones narrativas declarativas por tipo de objeto y estadistica; el flujo visible de Ashbrand queda en espanol; `sw.js` pasa a `lifexp-v22` para invalidar la cache anterior. |
 | 2026-08-11 | `fix/inventory-language-boundary` | Separa la frontera de idioma: inventario, equipo, objetos, requisitos, attunement, rituales, curses y activacion usan ingles; tareas, categorias y botones del mundo real permanecen en espanol. Ashbrand conserva su ID y pasa a rareza `rare` con narrativa del objeto en ingles; `sw.js` no se modifica porque `lifexp-v22` ya esta vigente. |
-| 2026-08-11 | `fix/dt13-dt02-drop-ids` | DT-13 y DT-02 resueltos: 110 strings de display en `data_tasks.js` reemplazados por IDs canonicos snake_case; 77 items nuevos con nombres de fantasia en ingles anadidos a `expansion_items.js` (total 88 items, 25 drop tables tematicas); `validate_content.js` check 6 endurecido para validar todos los formatos de drop de tareas; inventario `docs/DROP_MAPPING.md` generado. Errores del validador: 68 -> 3 (los 3 restantes son preexistentes: `arana_domestica` con caracter especial en ID). |
+| 2026-08-11 | `fix/dt13-dt02-drop-ids` | DT-13 y DT-02 resueltos: 110 strings de display en `data_tasks.js` reemplazados por IDs canonicos snake_case; 77 items nuevos con nombres de fantasia en ingles anadidos a `expansion_items.js` (total 88 items, 25 drop tables tematicas); `validate_content.js` check 6 endurecido para validar todos los formatos de drop de tareas; inventario inicial `docs/DROP_MAPPING.md` generado. |
 | 2026-08-11 | `fix/dt14-dt06-quickwins` | DT-06 y DT-14 confirmados resueltos tras verificacion exhaustiva: `ashbrand_hotfix.js` ya no existe en `main` (eliminado en saneamiento previo, sin referencias en `index.html` ni `sw.js`); `THEME_ENEMIES["refugio"]` ya usa IDs canonicos `rata_gigante` y `poltergeist` (corregido como DT-19 en PR anterior). Eliminada entrada de `ashbrand_hotfix.js` de seccion 2e. Branches activas y metadatos actualizados. |
+| 2026-08-12 | `fix/dt13-dt02-drop-ids` | Inventario `docs/DROP_MAPPING.md` regenerado contra el estado actual: 110 referencias en `data_tasks.js`, 39 en `expansion_tasks.js` y 120 en `DROP_TABLES`; no se aplican sustituciones. Se documenta el error de sintaxis de `expansion_items.js` que bloquea la validacion completa. |
 
 ---
 
@@ -363,7 +364,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 | Fuente | Cantidad | Notas |
 |---|---|---|
-| `items.js` (base) | 85 | weapon: 10, armor: 7, accessory: 8, artifact: 5, consumable: 14, material: 36, skill: 3, key: 4 |
+| `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en ITEMS |
 | **Total** | **~174** | Sin contar duplicados (Ashbrand puede ya estar en base) |
@@ -458,8 +459,14 @@ Catalogue loaded:
 Result: 100 error(s), 12 warning(s)
 ```
 
+
+### Verificacion actual de la rama (2026-08-12)
+
+La ejecucion actual de `node validate_content.js` carga 87 items base, 37 enemigos, 15 quests, 102 clases y 55 tareas, pero termina con 116 errores porque `expansion_items.js` falla al parsearse con `Unexpected identifier 's'`. Los `BROKEN_ITEM_REF` derivados de no cargar la expansion no se interpretan como renombres de drops. La correccion de esa sintaxis debe ser un cambio tecnico separado.
+
 Errores principales detectados (no corregidos en este PR -- solo deteccion):
-- ~90 `TASK_DROP_DISPLAY_NAME`: `DEFAULT_TASKS` y `EXPANSION_TASKS_V1` usan strings con espacios/mayusculas/acentos en `drops.items` en lugar de IDs canonicos (DT-13).
-- 3 `DROP_DISPLAY_NAME` / `DROP_TABLE_DISPLAY_NAME`: items con caracteres especiales en drops de enemigos y DROP_TABLES (DT-02).
+- `expansion_items.js` no carga por `Unexpected identifier 's'`; por ello el validador no incorpora los 88 items de expansion.
+- Las referencias de tareas y tablas que dependen de la expansion aparecen como `BROKEN_ITEM_REF` hasta reparar esa sintaxis; no se renombran por este motivo.
+- Persisten referencias de contenido independientes en enemigos, quests y tablas tematicas; requieren diagnosticos separados.
 - 12 avisos: temas desconocidos en drops de tareas e items no obtenibles.
 
