@@ -27,7 +27,7 @@
 ## 1. Arquitectura en 10 lineas
 
 LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
-`index.html` contiene todo el CSS y el HTML de todas las pantallas; los scripts se cargan en orden al final del `<body>`.
+`index.html` contiene todo el CSS y el HTML; los scripts se cargan en orden al final del `<body>`.
 El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`.
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
 Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes mediante `Object.assign` al arrancar.
@@ -62,7 +62,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `ui_hub.js` | 413 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
 | `ui_tasks.js` | 340 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategory`, `shuffleTask`, `renderTaskScreen`, `completeTask`, `rollDrop`, `dismissComplete` |
 | `ui_combat.js` | 316 | Pantalla de combate, encuentros post-tarea, tareas guardadas, overflow | `checkForEncounter`, `triggerEncounterAfterTask`, `startCombatFromEncounter`, `renderCombatScreen`, `executeCombatAction`, `showCombatVictory`, `saveForLater`, `showSavedTasks`, `showOverflowTasks` |
-| `ui_misc.js` | 397 | Pantallas miscelaneas: mapa, clase, lore, quests rapidas | `renderMap`, `renderClassScreen`, `renderLore`, `openQuestPanel` |
+| `ui_misc.js` | 397 | Pantallas miscelaneas: mapa, gremio, lore, clase, quests rapidas | `renderMap`, `renderClassScreen`, `renderLore`, `openQuestPanel` |
 | `ui_feedback.js` | 177 | Toasts, notificaciones, animaciones de feedback; dialogo de descubrimiento de objetos en ingles | `showFlavorDialog`, `showToast`, `showXpGain`, `showLevelUp`, `showDropNotification` |
 | `ui_quests.js` | 234 | Pantalla de quests: lista, detalle, progreso | `renderQuestsScreen`, `renderQuestDetail`, `claimQuestReward` |
 
@@ -271,7 +271,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 15. ui_hub.js           -- UI del hub, inventario, equipamiento
 16. ui_tasks.js         -- UI de tareas
 17. ui_combat.js        -- UI de combate, encuentros y feedback de post-tarea
-18. ui_misc.js          -- UI miscelanea (mapa, clase, lore)
+18. ui_misc.js          -- UI miscelanea (mapa, gremio, lore, clase, quests rapidas)
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
 20. ui_feedback.js     -- Toasts y feedback visual
 21. ui_quests.js       -- UI de quests
@@ -316,7 +316,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 | ID | Descripcion | Prioridad | Estado |
 |---|---|---|---|
-| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincrias; CACHE_NAME subida a v21) |
+| DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | ~~`DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente~~ | -- | **RESUELTO en `DROP_TABLES` y drops de tareas** (la trazabilidad historica de las sustituciones queda separada de las 77 definiciones nuevas aprobadas) |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
@@ -359,7 +359,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 ### Tareas
 
 | Fuente | Cantidad | Categorias |
-|---|---:|---|
+|---|---|---|
 | `data_tasks.js` (base) | 41 | casa: 15, personal: 9, cuerpo: 7, gestiones: 5, social: 5 |
 | `expansion_tasks.js` | 14 | casa: 3, cuerpo: 3, gestiones: 3, personal: 3, social: 2 |
 | **Total** | **55** | |
@@ -367,7 +367,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 ### Items
 
 | Fuente | Cantidad | Notas |
-|---|---:|---|
+|---|---|---|
 | `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en ITEMS |
@@ -378,7 +378,7 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 ### Enemigos
 
 | Fuente | Cantidad | Niveles |
-|---|---:|---|
+|---|---|---|
 | `enemies.js` (base) | 85 | 1-40+ (niveles: 1,2,3,4,5,6,7,8,12,14,15,16,18,20,22,25,30,35,40) |
 | `expansion_enemies.js` | 18 | |
 | **Total** | **103** | |
@@ -386,7 +386,7 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 ### Quests
 
 | Fuente | Cantidad | Tipos principales |
-|---|---:|---|
+|---|---|---|
 | `quests.js` (base) | 33 | complete_tasks: 11, daily: 3, simple: 3, bounty: 2, defeat_enemy: 2, defeat_boss: 2, story: 1, class_quest: 1 |
 | `expansion_quests.js` | 20 | |
 | `update2_content.js` | 2 patches narrativos | Parchea `daily_any_3` y `daily_casa_2` con nombre/desc/lore |
@@ -403,7 +403,7 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 ### Lore / Flavor
 
 | Fuente | Cantidad |
-|---|---:|
+|---|---|
 | `item_flavor.js` (items con flavor text) | 87 entradas |
 
 ---
