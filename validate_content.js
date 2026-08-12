@@ -255,34 +255,53 @@ for (const [qid, quest] of Object.entries(QUESTS)) {
 }
 
 // ---------------------------------------------------------------------------
-// CHECK 6 - Task drop references
+// CHECK 6 - Task drop references (hardened: DT-13/DT-02, 2026-08-11)
 // ---------------------------------------------------------------------------
-for (const task of TASKS) {
-  if (!task.drops) continue;
-  const { theme, items } = task.drops;
-  if (theme && !DROP_TABLES[theme]) {
-    warn('UNKNOWN_THEME', `TASKS["${task.id}"].drops.theme: "${theme}" not in DROP_TABLES`);
-  }
-  if (Array.isArray(items)) {
-    for (const itemId of items) {
-      if (looksLikeDisplayName(itemId)) {
-        err('TASK_DROP_DISPLAY_NAME', `TASKS["${task.id}"].drops.items: "${itemId}" looks like a display name`);
-      } else if (!itemIds.has(itemId)) {
-        err('BROKEN_ITEM_REF', `TASKS["${task.id}"].drops.items: "${itemId}" not in ITEMS`);
-      }
+// Validates ALL drop reference forms for every task:
+//   task.drops = { theme, items: [...] }
+//   task.sideQuest.drops = [...]          (array form — most common)
+//   task.sideQuest.drops = { theme, items: [...] }  (object form)
+// Rules:
+//   - theme must exist in DROP_TABLES (WARN if not)
+//   - every item ID must pass ID_RE (ERR TASK_DROP_DISPLAY_NAME if not)
+//   - every item ID must exist in ITEMS (ERR BROKEN_ITEM_REF if not)
+// ---------------------------------------------------------------------------
+function checkDropItems(context, itemsArr) {
+  if (!Array.isArray(itemsArr)) return;
+  for (const itemId of itemsArr) {
+    if (looksLikeDisplayName(itemId)) {
+      err('TASK_DROP_DISPLAY_NAME', `${context}: "${itemId}" looks like a display name, not a canonical ID`);
+    } else if (!itemIds.has(itemId)) {
+      err('BROKEN_ITEM_REF', `${context}: "${itemId}" not in ITEMS`);
     }
   }
+}
+function checkDropTheme(context, theme) {
+  if (theme && !DROP_TABLES[theme]) {
+    warn('UNKNOWN_THEME', `${context}: theme "${theme}" not in DROP_TABLES`);
+  }
+}
+
+for (const task of TASKS) {
+  const tid = task.id;
+
+  // --- task.drops (object form) ---
+  if (task.drops) {
+    const { theme, items } = task.drops;
+    checkDropTheme(`TASKS["${tid}"].drops`, theme);
+    checkDropItems(`TASKS["${tid}"].drops.items`, items);
+  }
+
+  // --- task.sideQuest.drops ---
   if (task.sideQuest && task.sideQuest.drops) {
     const sd = task.sideQuest.drops;
-    if (sd.theme && !DROP_TABLES[sd.theme]) {
-      warn('UNKNOWN_THEME', `TASKS["${task.id}"].sideQuest.drops.theme: "${sd.theme}" not in DROP_TABLES`);
-    }
-    if (Array.isArray(sd.items)) {
-      for (const itemId of sd.items) {
-        if (!itemIds.has(itemId)) {
-          err('BROKEN_ITEM_REF', `TASKS["${task.id}"].sideQuest.drops.items: "${itemId}" not in ITEMS`);
-        }
-      }
+    if (Array.isArray(sd)) {
+      // Array form: drops: ['item_id', ...]
+      checkDropItems(`TASKS["${tid}"].sideQuest.drops`, sd);
+    } else if (sd && typeof sd === 'object') {
+      // Object form: drops: { theme: '...', items: [...] }
+      checkDropTheme(`TASKS["${tid}"].sideQuest.drops`, sd.theme);
+      checkDropItems(`TASKS["${tid}"].sideQuest.drops.items`, sd.items);
     }
   }
 }
