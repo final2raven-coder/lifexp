@@ -1,19 +1,45 @@
 # DROP_MAPPING.md
 
 > **Propósito:** inventario reproducible y exhaustivo de referencias de drop en `data_tasks.js`, `expansion_tasks.js` y `items.js` (`DROP_TABLES`).
-> Regenerado: 2026-08-12 sobre `fix/dt13-dt02-drop-ids`, leyendo el código actual.
-> Este documento no cambia contenido jugable ni aplica sustituciones.
+> Estado actual documentado: 2026-08-12, sobre `main` y la rama de trazabilidad `fix/drop-integrity-traceability`.
+> Este documento separa la evidencia histórica de la auditoría actual. No aplica sustituciones ni cambia contenido jugable.
 
 ---
 
 ## Método y alcance
 
 - Se auditan todas las ocurrencias de `task.drops.items`, `task.sideQuest.drops` y las listas de `DROP_TABLES`.
-- Cada expresión tiene la forma `valor actual -> ID propuesto (confianza)`. En este estado, los valores ya son IDs canónicos; por eso el valor actual y el propuesto coinciden y la confianza es `EXACT`.
+- El inventario histórico y el inventario actual son capas distintas: el segundo se generó después de cambios de código y no puede presentarse como evidencia del estado anterior.
 - Las repeticiones se conservan y se marcan con `xN`; no se eliminan drops ni se alteran tasas o cantidades.
-- No se hacen inferencias `FUZZY` y no se inventan sustituciones `NONE`.
+- Las clasificaciones históricas `EXACT`, `FUZZY` y `NONE` se conservan solo donde proceden del inventario previo. No se recalculan retrospectivamente a partir de los IDs actuales.
+- En las tablas de estado actual, `EXACT` significa que el valor actual ya tiene forma de ID canónico en esa instantánea; no significa que la sustitución histórica original fuera necesariamente `EXACT`.
 
-## Resumen
+## Reconstrucción de trazabilidad
+
+La secuencia correcta de lectura es la siguiente:
+
+| Etapa | Superficie / artefacto | Alcance documentado | Interpretación |
+|---|---|---:|---|
+| Inventario inicial de PR #34 | `data_tasks.js` | 110 ocurrencias | 20 `EXACT`, 8 `FUZZY`, 82 `NONE` |
+| Decisión de contenido posterior | `expansion_items.js` | 77 definiciones nuevas | Contenido nuevo aprobado expresamente por Àngel; no son 77 coincidencias `EXACT` |
+| Implementación de PR #34 | tareas y catálogo de expansión | 110 referencias de tareas sustituidas y catálogo ampliado | Cambió código jugable; no debe confundirse con el inventario previo |
+| Regeneración de PR #35 | `data_tasks.js`, `expansion_tasks.js`, `DROP_TABLES` | 269 ocurrencias | Fotografía del código después de los cambios; no una auditoría pre-cambio |
+| Reparación de PR #36 | `expansion_items.js` | sintaxis del catálogo | Reparación estructural posterior, sin cambio declarado de contenido jugable, drops ni balance |
+
+La diferencia entre las **82 ocurrencias `NONE`** y las **77 definiciones nuevas** no se interpreta como una correspondencia uno-a-uno: son unidades de recuento distintas. La aprobación del contenido nuevo queda registrada como decisión de diseño separada de la normalización de referencias.
+
+No se afirma aquí que las 110 sustituciones implementadas procedieran todas de coincidencias `EXACT`: el inventario regenerado posterior no permite recuperar de forma fiable esa trazabilidad por ocurrencia. La evidencia conservada es suficiente para distinguir lo aprobado como contenido nuevo de la fotografía actual, pero no para inventar una clasificación histórica más precisa.
+
+## Separación de cambios
+
+| Bloque | Qué incluye | Qué no incluye |
+|---|---|---|
+| Normalización de referencias | Sustituir una referencia por un ID canónico confirmado, sin alterar la posición ni el comportamiento del drop | Crear items, cambiar nombres visibles, tasas, cantidades, estadísticas u orden |
+| Contenido aprobado | Las 77 definiciones nuevas de `expansion_items.js` autorizadas por Àngel para cubrir referencias que no tenían item adecuado | Presentar esas definiciones como equivalencias automáticas o como resultado de una inferencia `FUZZY` |
+| Hardening del validador | Detectar regresiones de formato y referencias rotas en las superficies de drops | Reparar datos jugables de forma implícita o esconder avisos |
+| Correcciones heredadas pendientes | Resolver IDs no canónicos confirmados en enemigos y tablas temáticas, en un cambio separado | Mezclar esas correcciones con la creación de contenido o con este inventario documental |
+
+## Resumen de la instantánea actual
 
 | Superficie | Referencias | EXACT | FUZZY | NONE |
 |---|---:|---:|---:|---:|
@@ -22,8 +48,10 @@
 | `items.js` (`DROP_TABLES`) | 120 | 120 | 0 | 0 |
 | **Total** | **269** | **269** | **0** | **0** |
 
-- `items.js`: **87** ejecutables en el catálogo base.
-- `expansion_items.js`: **88** IDs detectables textualmente, pero el validador no puede cargar el fichero por un error de sintaxis independiente.
+> Estos 269 registros describen la instantánea actual. Los valores `EXACT` de esta tabla no sustituyen al reparto histórico 20/8/82 del inventario inicial.
+
+- `items.js`: **87** items ejecutables en el catálogo base.
+- `expansion_items.js`: **88** IDs detectables en el catálogo de expansión; su sintaxis fue reparada posteriormente y el fichero ya puede cargarse.
 
 ## Inventario — `data_tasks.js`
 
@@ -151,14 +179,23 @@
 | `descanso` | `hierba_curativa` -> `hierba_curativa` (EXACT); `pocion_agua` -> `pocion_agua` (EXACT); `pocion_agua_menor` -> `pocion_agua_menor` (EXACT) |
 | `oro_comercio` | `moneda_oro` -> `moneda_oro` (EXACT); `contrato_mercantil` -> `contrato_mercantil` (EXACT); `token_amistad` -> `token_amistad` (EXACT) |
 
-## Bloqueo técnico independiente
+## Estado técnico de la validación
 
-La ejecución actual de `node validate_content.js` carga 87 items base, 37 enemigos, 15 quests, 102 clases y 55 tareas, pero termina con 116 errores porque `expansion_items.js` falla al parsearse con `Unexpected identifier 's'`. Las referencias que dependen de ese catálogo aparecen como `BROKEN_ITEM_REF` mientras no cargue la expansión; no se renombran por ese motivo.
+La reparación de sintaxis de `expansion_items.js` se integró posteriormente en PR #36. En esa revisión, el validador cargó 175 items, 37 enemigos, 15 quests, 102 clases y 55 tareas, y terminó con 3 errores y 26 avisos.
 
-La reparación de sintaxis de `expansion_items.js` queda fuera de este inventario y debe hacerse en una tarea técnica separada, con validación antes y después.
+Los tres errores independientes identificados son referencias heredadas no canónicas en `enemies.js`:
+
+- `ENEMIES["araña_domestica"].drops` contiene `seda_araña` en lugar de un ID ASCII canónico.
+- `THEME_ENEMIES["agua_quimicos"]` contiene `araña_domestica` en lugar de un ID ASCII canónico.
+- `THEME_ENEMIES["hallazgos"]` contiene `araña_domestica` en lugar de un ID ASCII canónico.
+
+Los 26 avisos `UNOBTAINABLE_ITEM` pertenecen a un diagnóstico distinto y no se silencian ni se resuelven en este documento. La normalización de esas referencias heredadas debe hacerse en una rama separada de cualquier nueva creación de contenido.
 
 ## Verificación reproducible
 
 ```text
+node --check expansion_items.js
 node validate_content.js
 ```
+
+El resultado registrado para el estado posterior a PR #36 es: sintaxis correcta; catálogo cargado; 3 errores de referencias heredadas y 26 avisos de items no obtenibles. Este documento no presenta ese estado como verde: el objetivo de la siguiente tarea de código es eliminar los errores de drops, manteniendo los avisos separados.
