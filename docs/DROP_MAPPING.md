@@ -1,325 +1,164 @@
 # DROP_MAPPING.md
 
-> **Propósito:** inventario exhaustivo de referencias de drop rotas en `data_tasks.js`, `expansion_tasks.js` e `items.js` (DROP_TABLES).
-> Generado: 2026-08-11. Rama: `fix/dt13-dt02-drop-ids`.
-> **Acción requerida:** aprobar las filas FUZZY antes de ejecutar el PASO 2.
+> **Propósito:** inventario reproducible y exhaustivo de referencias de drop en `data_tasks.js`, `expansion_tasks.js` y `items.js` (`DROP_TABLES`).
+> Regenerado: 2026-08-12 sobre `fix/dt13-dt02-drop-ids`, leyendo el código actual.
+> Este documento no cambia contenido jugable ni aplica sustituciones.
 
 ---
+
+## Método y alcance
+
+- Se auditan todas las ocurrencias de `task.drops.items`, `task.sideQuest.drops` y las listas de `DROP_TABLES`.
+- Cada expresión tiene la forma `valor actual -> ID propuesto (confianza)`. En este estado, los valores ya son IDs canónicos; por eso el valor actual y el propuesto coinciden y la confianza es `EXACT`.
+- Las repeticiones se conservan y se marcan con `xN`; no se eliminan drops ni se alteran tasas o cantidades.
+- No se hacen inferencias `FUZZY` y no se inventan sustituciones `NONE`.
 
 ## Resumen
 
-| Fichero | Total referencias rotas | EXACT | FUZZY | NONE |
-|---|---|---|---|---|
-| `data_tasks.js` | 110 | 20 | 8 | 82 |
-| `expansion_tasks.js` | 0 | — | — | — |
-| `items.js` (DROP_TABLES) | 0 | — | — | — |
-| **Total** | **110** | **20** | **8** | **82** |
+| Superficie | Referencias | EXACT | FUZZY | NONE |
+|---|---:|---:|---:|---:|
+| `data_tasks.js` | 110 | 110 | 0 | 0 |
+| `expansion_tasks.js` | 39 | 39 | 0 | 0 |
+| `items.js` (`DROP_TABLES`) | 120 | 120 | 0 | 0 |
+| **Total** | **269** | **269** | **0** | **0** |
 
-> **`expansion_tasks.js`:** ya usa IDs canónicos en todos sus drops (corregido en DT-20 según cabecera del fichero). Verificado manualmente: todos los IDs existen en ITEMS.
-> **`items.js` DROP_TABLES:** todos los valores son IDs canónicos. Verificado manualmente: ninguna referencia rota.
+- `items.js`: **87** ejecutables en el catálogo base.
+- `expansion_items.js`: **88** IDs detectables textualmente, pero el validador no puede cargar el fichero por un error de sintaxis independiente.
 
----
+## Inventario — `data_tasks.js`
 
-## Leyenda de confianza
+| task id | field | current value -> proposed ID (confidence) |
+|---|---|---|
+| `casa_1` | `drops.items` | `pocion_agua_menor` -> `pocion_agua_menor` (EXACT); `veneno_basico` -> `veneno_basico` (EXACT); `frasco_vacio` -> `frasco_vacio` (EXACT) |
+| `casa_1` | `sideQuest.drops` | `esencia_purificadora` -> `esencia_purificadora` (EXACT); `cristal_limpieza` -> `cristal_limpieza` (EXACT) |
+| `casa_2` | `drops.items` | `moneda_antigua` -> `moneda_antigua` (EXACT); `objeto_olvidado` -> `objeto_olvidado` (EXACT) |
+| `casa_2` | `sideQuest.drops` | `bolsa_oro_grande` -> `bolsa_oro_grande` (EXACT) |
+| `casa_3` | `drops.items` | `gota_agua_pura` -> `gota_agua_pura` (EXACT) |
+| `casa_3` | `sideQuest.drops` | `esencia_limpieza` -> `esencia_limpieza` (EXACT) |
+| `casa_4` | `drops.items` | `grasa_fuego` -> `grasa_fuego` (EXACT); `espatula_encantada` -> `espatula_encantada` (EXACT) |
+| `casa_4` | `sideQuest.drops` | `llama_culinaria` -> `llama_culinaria` (EXACT) |
+| `casa_6` | `drops.items` | `fragmento_solar` -> `fragmento_solar` (EXACT); `pluma_viento` -> `pluma_viento` (EXACT) |
+| `casa_6` | `sideQuest.drops` | `brisa_atrapada` -> `brisa_atrapada` (EXACT) |
+| `casa_8` | `drops.items` | `pluma_sueno` -> `pluma_sueno` (EXACT); `esencia_descanso` -> `esencia_descanso` (EXACT) |
+| `casa_8` | `sideQuest.drops` | `bendicion_descanso` -> `bendicion_descanso` (EXACT) |
+| `casa_9` | `drops.items` | `prenda_olvidada` -> `prenda_olvidada` (EXACT); `moneda_antigua` -> `moneda_antigua` (EXACT) |
+| `casa_9` | `sideQuest.drops` | `amuleto_explorador` -> `amuleto_explorador` (EXACT) |
+| `casa_10` | `drops.items` | `cristal_solar` -> `cristal_solar` (EXACT); `pluma_viento` -> `pluma_viento` (EXACT) |
+| `casa_10` | `sideQuest.drops` | `luz_atrapada` -> `luz_atrapada` (EXACT) |
+| `casa_11` | `drops.items` | `racion_serena` -> `racion_serena` (EXACT); `gema_fuego_menor` -> `gema_fuego_menor` (EXACT); `receta_secreta` -> `receta_secreta` (EXACT) |
+| `casa_11` | `sideQuest.drops` | `receta_secreta` -> `receta_secreta` (EXACT); `racion_serena` -> `racion_serena` (EXACT) |
+| `casa_12` | `drops.items` | `bolsa_oro_grande` -> `bolsa_oro_grande` (EXACT); `ingrediente_especial` -> `ingrediente_especial` (EXACT) |
+| `casa_12` | `sideQuest.drops` | `ojo_comerciante` -> `ojo_comerciante` (EXACT) |
+| `casa_13` | `drops.items` | `polvo_sueno` -> `polvo_sueno` (EXACT) |
+| `casa_13` | `sideQuest.drops` | `cristal_tranquilidad` -> `cristal_tranquilidad` (EXACT) |
+| `casa_14` | `drops.items` | `hoja_calma` -> `hoja_calma` (EXACT); `rocio_matutino` -> `rocio_matutino` (EXACT x2) |
+| `casa_14` | `sideQuest.drops` | `espiritu_jardin` -> `espiritu_jardin` (EXACT); `flor_luminosa` -> `flor_luminosa` (EXACT) |
+| `casa_15` | `drops.items` | `escarcha_eterna` -> `escarcha_eterna` (EXACT x2) |
+| `casa_15` | `sideQuest.drops` | `cristal_hielo_puro` -> `cristal_hielo_puro` (EXACT) |
+| `cuerpo_3` | `drops.items` | `mapa_zona` -> `mapa_zona` (EXACT); `piedra_camino` -> `piedra_camino` (EXACT); `bolsa_oro_grande` -> `bolsa_oro_grande` (EXACT) |
+| `cuerpo_3` | `sideQuest.drops` | `botas_sendero` -> `botas_sendero` (EXACT); `amuleto_explorador` -> `amuleto_explorador` (EXACT) |
+| `cuerpo_5` | `drops.items` | `orbe_claridad` -> `orbe_claridad` (EXACT); `incienso_mistico` -> `incienso_mistico` (EXACT) |
+| `cuerpo_5` | `sideQuest.drops` | `foco_interior` -> `foco_interior` (EXACT); `mente_cristal` -> `mente_cristal` (EXACT) |
+| `cuerpo_6` | `drops.items` | `coral_magico` -> `coral_magico` (EXACT x2); `escama_brillante` -> `escama_brillante` (EXACT) |
+| `cuerpo_6` | `sideQuest.drops` | `tridente_menor` -> `tridente_menor` (EXACT); `bendicion_mar` -> `bendicion_mar` (EXACT) |
+| `gestiones_1` | `drops.items` | `bolsa_oro_grande` -> `bolsa_oro_grande` (EXACT); `lingote_oro` -> `lingote_oro` (EXACT) |
+| `gestiones_1` | `sideQuest.drops` | `sabiduria_fiscal` -> `sabiduria_fiscal` (EXACT); `corona_contribuyente` -> `corona_contribuyente` (EXACT) |
+| `gestiones_2` | `drops.items` | `bolsa_oro_grande` -> `bolsa_oro_grande` (EXACT); `gema_menor` -> `gema_menor` (EXACT) |
+| `gestiones_2` | `sideQuest.drops` | `ojo_comerciante` -> `ojo_comerciante` (EXACT) |
+| `gestiones_3` | `drops.items` | `cristal_memoria` -> `cristal_memoria` (EXACT); `pergamino_blanco` -> `pergamino_blanco` (EXACT) |
+| `gestiones_3` | `sideQuest.drops` | `biblioteca_personal` -> `biblioteca_personal` (EXACT) |
+| `gestiones_4` | `drops.items` | `mensaje_importante` -> `mensaje_importante` (EXACT); `llave_olvidada` -> `llave_olvidada` (EXACT) |
+| `gestiones_4` | `sideQuest.drops` | `sello_eficiencia` -> `sello_eficiencia` (EXACT) |
+| `gestiones_5` | `drops.items` | `pergamino_planificacion` -> `pergamino_planificacion` (EXACT) |
+| `gestiones_5` | `sideQuest.drops` | `agenda_encantada` -> `agenda_encantada` (EXACT) |
+| `social_1` | `drops.items` | `recuerdo_especial` -> `recuerdo_especial` (EXACT); `lazo_conexion` -> `lazo_conexion` (EXACT) |
+| `social_1` | `sideQuest.drops` | `anillo_vinculo` -> `anillo_vinculo` (EXACT); `flor_eterna` -> `flor_eterna` (EXACT) |
+| `social_2` | `drops.items` | `token_amistad` -> `token_amistad` (EXACT) |
+| `social_2` | `sideQuest.drops` | `sello_hermandad` -> `sello_hermandad` (EXACT) |
+| `social_3` | `drops.items` | `token_amistad` -> `token_amistad` (EXACT) |
+| `social_3` | `sideQuest.drops` | `sello_hermandad` -> `sello_hermandad` (EXACT) |
+| `social_4` | `drops.items` | `bendicion_familiar` -> `bendicion_familiar` (EXACT) |
+| `social_4` | `sideQuest.drops` | `lazo_sangre` -> `lazo_sangre` (EXACT) |
+| `social_5` | `drops.items` | `recuerdo_aventura` -> `recuerdo_aventura` (EXACT); `hidromiel_camaraderia` -> `hidromiel_camaraderia` (EXACT) |
+| `social_5` | `sideQuest.drops` | `corona_organizador` -> `corona_organizador` (EXACT) |
+| `personal_1` | `drops.items` | `dado_destino` -> `dado_destino` (EXACT); `tinta_magica` -> `tinta_magica` (EXACT); `fragmento_historia` -> `fragmento_historia` (EXACT) |
+| `personal_1` | `sideQuest.drops` | `pluma_creador` -> `pluma_creador` (EXACT); `capitulo_terminado` -> `capitulo_terminado` (EXACT) |
+| `personal_2` | `drops.items` | `caracter_antiguo` -> `caracter_antiguo` (EXACT); `talisman_oriental_early` -> `talisman_oriental_early` (EXACT); `jade_menor` -> `jade_menor` (EXACT) |
+| `personal_2` | `sideQuest.drops` | `escama_brillante` -> `escama_brillante` (EXACT); `pergamino_sabiduria` -> `pergamino_sabiduria` (EXACT) |
+| `personal_3` | `drops.items` | `pagina_reflexion` -> `pagina_reflexion` (EXACT); `tinta_pensamiento` -> `tinta_pensamiento` (EXACT) |
+| `personal_3` | `sideQuest.drops` | `claridad_mental` -> `claridad_mental` (EXACT) |
+| `personal_4` | `drops.items` | `pergamino_hechizo` -> `pergamino_hechizo` (EXACT); `conocimiento_antiguo` -> `conocimiento_antiguo` (EXACT) |
+| `personal_4` | `sideQuest.drops` | `grimorio_menor` -> `grimorio_menor` (EXACT); `sabiduria_acumulada` -> `sabiduria_acumulada` (EXACT) |
+| `personal_5` | `drops.items` | `paz_interior` -> `paz_interior` (EXACT); `hoja_calma` -> `hoja_calma` (EXACT) |
+| `personal_5` | `sideQuest.drops` | `reconexion_natural` -> `reconexion_natural` (EXACT); `espiritu_libre` -> `espiritu_libre` (EXACT) |
+| `personal_6` | `drops.items` | `vision_futuro` -> `vision_futuro` (EXACT); `bendicion_oraculo` -> `bendicion_oraculo` (EXACT) |
+| `personal_6` | `sideQuest.drops` | `fragmento_destino` -> `fragmento_destino` (EXACT); `profecia` -> `profecia` (EXACT) |
 
-| Código | Significado |
+## Inventario — `expansion_tasks.js`
+
+| task id | field | current value -> proposed ID (confidence) |
+|---|---|---|
+| `casa_exp_01` | `drops.items` | `moneda_antigua` -> `moneda_antigua` (EXACT); `objeto_olvidado` -> `objeto_olvidado` (EXACT) |
+| `casa_exp_01` | `sideQuest.drops` | `llave_cofre` -> `llave_cofre` (EXACT) |
+| `casa_exp_02` | `drops.items` | `fragmento_solar` -> `fragmento_solar` (EXACT); `pluma_viento` -> `pluma_viento` (EXACT) |
+| `casa_exp_02` | `sideQuest.drops` | `cristal_solar` -> `cristal_solar` (EXACT) |
+| `casa_exp_03` | `drops.items` | `antidoto` -> `antidoto` (EXACT); `frasco_vacio` -> `frasco_vacio` (EXACT) |
+| `casa_exp_03` | `sideQuest.drops` | `pocion_vida_menor` -> `pocion_vida_menor` (EXACT) |
+| `cuerpo_exp_01` | `drops.items` | `caparazon` -> `caparazon` (EXACT); `mapa_tesoro` -> `mapa_tesoro` (EXACT) |
+| `cuerpo_exp_01` | `sideQuest.drops` | `amuleto_brisa` -> `amuleto_brisa` (EXACT) |
+| `cuerpo_exp_03` | `drops.items` | `racion_combate` -> `racion_combate` (EXACT); `especia_rara` -> `especia_rara` (EXACT) |
+| `cuerpo_exp_03` | `sideQuest.drops` | `semilla_rara` -> `semilla_rara` (EXACT) |
+| `gestiones_exp_01` | `drops.items` | `moneda_oro` -> `moneda_oro` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `gestiones_exp_01` | `sideQuest.drops` | `contrato_mercantil` -> `contrato_mercantil` (EXACT) |
+| `gestiones_exp_02` | `drops.items` | `cristal_solar` -> `cristal_solar` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `gestiones_exp_02` | `sideQuest.drops` | `grimorio_antiguo` -> `grimorio_antiguo` (EXACT) |
+| `gestiones_exp_03` | `drops.items` | `moneda_oro` -> `moneda_oro` (EXACT); `contrato_mercantil` -> `contrato_mercantil` (EXACT) |
+| `gestiones_exp_03` | `sideQuest.drops` | `sello_alianza` -> `sello_alianza` (EXACT) |
+| `social_exp_01` | `drops.items` | `sello_alianza` -> `sello_alianza` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `social_exp_01` | `sideQuest.drops` | `sello_alianza` -> `sello_alianza` (EXACT) |
+| `social_exp_02` | `drops.items` | `token_amistad` -> `token_amistad` (EXACT); `hidromiel` -> `hidromiel` (EXACT) |
+| `social_exp_02` | `sideQuest.drops` | `sello_alianza` -> `sello_alianza` (EXACT) |
+| `personal_exp_01` | `drops.items` | `dado_destino` -> `dado_destino` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `personal_exp_01` | `sideQuest.drops` | `grimorio_antiguo` -> `grimorio_antiguo` (EXACT) |
+| `personal_exp_02` | `drops.items` | `talisman_oriental` -> `talisman_oriental` (EXACT); `cuentas_jade` -> `cuentas_jade` (EXACT) |
+| `personal_exp_02` | `sideQuest.drops` | `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `personal_exp_03` | `drops.items` | `esencia_oscura` -> `esencia_oscura` (EXACT); `orbe_mental` -> `orbe_mental` (EXACT) |
+| `personal_exp_03` | `sideQuest.drops` | `esencia_oscura` -> `esencia_oscura` (EXACT) |
+
+## Inventario — `items.js` (`DROP_TABLES`)
+
+| theme | current values -> proposed IDs (confidence) |
 |---|---|
-| EXACT | El display string mapea sin ambigüedad al ID canónico (mismo concepto, mismo tema). Listo para reemplazar. |
-| FUZZY | Mapeo probable pero requiere confirmación humana (nombre en español ≠ nombre en inglés del item, o plural). |
-| NONE | No existe ningún item canónico que corresponda. El string debe eliminarse o reemplazarse por un item existente. |
+| `hallazgos` | `moneda_antigua` -> `moneda_antigua` (EXACT); `moneda_oro` -> `moneda_oro` (EXACT); `llave_cofre` -> `llave_cofre` (EXACT); `amuleto_espacio` -> `amuleto_espacio` (EXACT); `objeto_olvidado` -> `objeto_olvidado` (EXACT); `seda_arana` -> `seda_arana` (EXACT); `cola_rata` -> `cola_rata` (EXACT); `esencia_espectral` -> `esencia_espectral` (EXACT); `mapa_tesoro` -> `mapa_tesoro` (EXACT) |
+| `exploracion` | `botas_viajero` -> `botas_viajero` (EXACT); `daga_oxidada` -> `daga_oxidada` (EXACT); `caparazon` -> `caparazon` (EXACT); `mapa_tesoro` -> `mapa_tesoro` (EXACT); `pluma_grifo` -> `pluma_grifo` (EXACT); `token_amistad` -> `token_amistad` (EXACT) |
+| `naturaleza` | `hierba_curativa` -> `hierba_curativa` (EXACT); `antidoto` -> `antidoto` (EXACT); `arco_espino` -> `arco_espino` (EXACT); `semilla_rara` -> `semilla_rara` (EXACT); `corazon_bosque` -> `corazon_bosque` (EXACT); `esencia_vida` -> `esencia_vida` (EXACT); `amuleto_bosque` -> `amuleto_bosque` (EXACT); `colmillo_hielo` -> `colmillo_hielo` (EXACT) |
+| `fuego` | `gema_fuego` -> `gema_fuego` (EXACT); `skill_llamarada` -> `skill_llamarada` (EXACT); `cuchilla_llameante` -> `cuchilla_llameante` (EXACT); `corazon_fuego` -> `corazon_fuego` (EXACT); `escama_fuego` -> `escama_fuego` (EXACT) |
+| `fuego_comida` | `racion_combate` -> `racion_combate` (EXACT); `gema_fuego` -> `gema_fuego` (EXACT); `especia_rara` -> `especia_rara` (EXACT); `elixir_vitalidad` -> `elixir_vitalidad` (EXACT); `cuchilla_llameante` -> `cuchilla_llameante` (EXACT); `semilla_rara` -> `semilla_rara` (EXACT); `sake_demonio` -> `sake_demonio` (EXACT) |
+| `agua_quimicos` | `pocion_agua` -> `pocion_agua` (EXACT); `veneno_basico` -> `veneno_basico` (EXACT); `frasco_vacio` -> `frasco_vacio` (EXACT); `daga_corrosiva` -> `daga_corrosiva` (EXACT); `escudo_antiveneno` -> `escudo_antiveneno` (EXACT); `antidoto` -> `antidoto` (EXACT); `esencia_agua` -> `esencia_agua` (EXACT); `escama_fuego` -> `escama_fuego` (EXACT); `pocion_agua_menor` -> `pocion_agua_menor` (EXACT); `seda_arana` -> `seda_arana` (EXACT); `cola_rata` -> `cola_rata` (EXACT) |
+| `agua_profunda` | `perla_marina` -> `perla_marina` (EXACT); `tridente_marino` -> `tridente_marino` (EXACT); `escamas_sirena` -> `escamas_sirena` (EXACT); `pocion_respiracion` -> `pocion_respiracion` (EXACT); `escama_marina` -> `escama_marina` (EXACT); `tentaculo_kraken` -> `tentaculo_kraken` (EXACT); `esencia_oscura` -> `esencia_oscura` (EXACT); `caparazon` -> `caparazon` (EXACT) |
+| `hielo` | `fragmento_hielo` -> `fragmento_hielo` (EXACT); `pocion_escarcha` -> `pocion_escarcha` (EXACT); `hoja_gelida` -> `hoja_gelida` (EXACT); `armadura_invierno` -> `armadura_invierno` (EXACT); `skill_rayo_hielo` -> `skill_rayo_hielo` (EXACT); `colmillo_hielo` -> `colmillo_hielo` (EXACT) |
+| `sol_viento` | `fragmento_solar` -> `fragmento_solar` (EXACT); `pluma_viento` -> `pluma_viento` (EXACT); `amuleto_brisa` -> `amuleto_brisa` (EXACT); `capa_ligera` -> `capa_ligera` (EXACT); `espada_radiante` -> `espada_radiante` (EXACT); `capa_alba` -> `capa_alba` (EXACT); `cristal_solar` -> `cristal_solar` (EXACT); `pluma_grifo` -> `pluma_grifo` (EXACT) |
+| `luz` | `fragmento_solar` -> `fragmento_solar` (EXACT); `cristal_solar` -> `cristal_solar` (EXACT); `espada_radiante` -> `espada_radiante` (EXACT); `capa_alba` -> `capa_alba` (EXACT) |
+| `mente` | `rosario_concentracion` -> `rosario_concentracion` (EXACT); `orbe_mental` -> `orbe_mental` (EXACT); `skill_foco_interior` -> `skill_foco_interior` (EXACT); `fragmento_sueno` -> `fragmento_sueno` (EXACT); `esencia_oscura` -> `esencia_oscura` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `conocimiento` | `grimorio_arcano` -> `grimorio_arcano` (EXACT); `grimorio_antiguo` -> `grimorio_antiguo` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT); `tinta_magica` -> `tinta_magica` (EXACT); `filacteria` -> `filacteria` (EXACT); `contrato_sospechoso` -> `contrato_sospechoso` (EXACT) |
+| `oriente` | `cuentas_jade` -> `cuentas_jade` (EXACT); `talisman_oriental` -> `talisman_oriental` (EXACT); `katana_oriental` -> `katana_oriental` (EXACT); `escama_dragon` -> `escama_dragon` (EXACT); `cola_kitsune` -> `cola_kitsune` (EXACT); `cuerno_oni` -> `cuerno_oni` (EXACT); `sake_demonio` -> `sake_demonio` (EXACT); `tinta_magica` -> `tinta_magica` (EXACT); `pagina_arcana` -> `pagina_arcana` (EXACT) |
+| `social` | `sello_alianza` -> `sello_alianza` (EXACT); `hidromiel` -> `hidromiel` (EXACT); `token_amistad` -> `token_amistad` (EXACT) |
+| `alianzas` | `sello_alianza` -> `sello_alianza` (EXACT); `token_amistad` -> `token_amistad` (EXACT); `contrato_sospechoso` -> `contrato_sospechoso` (EXACT); `daga_asesino` -> `daga_asesino` (EXACT); `capa_sombras` -> `capa_sombras` (EXACT); `veneno_letal` -> `veneno_letal` (EXACT) |
+| `comercio` | `moneda_oro` -> `moneda_oro` (EXACT); `llave_cofre` -> `llave_cofre` (EXACT); `contrato_mercantil` -> `contrato_mercantil` (EXACT); `contrato_sospechoso` -> `contrato_sospechoso` (EXACT) |
+| `destino` | `dado_destino` -> `dado_destino` (EXACT); `fragmento_hielo` -> `fragmento_hielo` (EXACT); `esencia_oscura` -> `esencia_oscura` (EXACT); `fragmento_sueno` -> `fragmento_sueno` (EXACT) |
+| `creacion` | `dado_destino` -> `dado_destino` (EXACT); `tinta_magica` -> `tinta_magica` (EXACT) |
+| `refugio` | `moneda_antigua` -> `moneda_antigua` (EXACT); `objeto_olvidado` -> `objeto_olvidado` (EXACT) |
+| `descanso` | `hierba_curativa` -> `hierba_curativa` (EXACT); `pocion_agua` -> `pocion_agua` (EXACT); `pocion_agua_menor` -> `pocion_agua_menor` (EXACT) |
+| `oro_comercio` | `moneda_oro` -> `moneda_oro` (EXACT); `contrato_mercantil` -> `contrato_mercantil` (EXACT); `token_amistad` -> `token_amistad` (EXACT) |
 
----
+## Bloqueo técnico independiente
 
-## Tabla completa — `data_tasks.js`
+La ejecución actual de `node validate_content.js` carga 87 items base, 37 enemigos, 15 quests, 102 clases y 55 tareas, pero termina con 116 errores porque `expansion_items.js` falla al parsearse con `Unexpected identifier 's'`. Las referencias que dependen de ese catálogo aparecen como `BROKEN_ITEM_REF` mientras no cargue la expansión; no se renombran por ese motivo.
 
-| # | task id | campo | string actual | ID propuesto | confianza |
-|---|---|---|---|---|---|
-| 1 | `casa_1` | `drops.items` | `Poción de Agua Menor` | `pocion_agua_menor` | **EXACT** |
-| 2 | `casa_1` | `drops.items` | `Veneno Básico` | `veneno_basico` | **EXACT** |
-| 3 | `casa_1` | `drops.items` | `Frasco Vacío` | `frasco_vacio` | **EXACT** |
-| 4 | `casa_1` | `sideQuest.drops` | `Esencia Purificadora` | `—` | **NONE** |
-| 5 | `casa_1` | `sideQuest.drops` | `Cristal de Limpieza` | `—` | **NONE** |
-| 6 | `casa_2` | `drops.items` | `Moneda Antigua` | `moneda_antigua` | **EXACT** |
-| 7 | `casa_2` | `drops.items` | `Objeto Olvidado` | `objeto_olvidado` | **EXACT** |
-| 8 | `casa_2` | `sideQuest.drops` | `Moneda de Oro` | `moneda_oro` | **EXACT** |
-| 9 | `casa_3` | `drops.items` | `Gota de Agua Pura` | `—` | **NONE** |
-| 10 | `casa_3` | `sideQuest.drops` | `Esencia de Limpieza` | `—` | **NONE** |
-| 11 | `casa_4` | `drops.items` | `Grasa de Fuego` | `—` | **NONE** |
-| 12 | `casa_4` | `drops.items` | `Espátula Encantada` | `—` | **NONE** |
-| 13 | `casa_4` | `sideQuest.drops` | `Llama Culinaria` | `—` | **NONE** |
-| 14 | `casa_6` | `drops.items` | `Fragmento Solar` | `fragmento_solar` | **EXACT** |
-| 15 | `casa_6` | `drops.items` | `Pluma del Viento` | `pluma_viento` | **FUZZY** |
-| 16 | `casa_6` | `sideQuest.drops` | `Brisa Atrapada` | `—` | **NONE** |
-| 17 | `casa_8` | `drops.items` | `Pluma de Sueño` | `—` | **NONE** |
-| 18 | `casa_8` | `drops.items` | `Esencia de Descanso` | `—` | **NONE** |
-| 19 | `casa_8` | `sideQuest.drops` | `Bendición del Descanso` | `—` | **NONE** |
-| 20 | `casa_9` | `drops.items` | `Prenda Olvidada` | `—` | **NONE** |
-| 21 | `casa_9` | `drops.items` | `Monedas Antiguas` | `moneda_antigua` | **FUZZY** |
-| 22 | `casa_9` | `sideQuest.drops` | `Amuleto de Espacio` | `amuleto_espacio` | **FUZZY** |
-| 23 | `casa_10` | `drops.items` | `Cristal Solar` | `cristal_solar` | **EXACT** |
-| 24 | `casa_10` | `drops.items` | `Pluma de Viento` | `pluma_viento` | **EXACT** |
-| 25 | `casa_10` | `sideQuest.drops` | `Luz Atrapada` | `—` | **NONE** |
-| 26 | `casa_11` | `drops.items` | `Ración de Combate` | `racion_combate` | **EXACT** |
-| 27 | `casa_11` | `drops.items` | `Gema de Fuego Menor` | `—` | **NONE** |
-| 28 | `casa_11` | `drops.items` | `Especia Rara` | `especia_rara` | **EXACT** |
-| 29 | `casa_11` | `sideQuest.drops` | `Receta Secreta` | `—` | **NONE** |
-| 30 | `casa_11` | `sideQuest.drops` | `Elixir de Vitalidad` | `elixir_vitalidad` | **EXACT** |
-| 31 | `casa_12` | `drops.items` | `Monedas` | `—` | **NONE** |
-| 32 | `casa_12` | `drops.items` | `Ingrediente Especial` | `—` | **NONE** |
-| 33 | `casa_12` | `sideQuest.drops` | `Ojo del Comerciante` | `—` | **NONE** |
-| 34 | `casa_13` | `drops.items` | `Polvo de Sueño` | `—` | **NONE** |
-| 35 | `casa_13` | `sideQuest.drops` | `Cristal de Tranquilidad` | `—` | **NONE** |
-| 36 | `casa_14` | `drops.items` | `Hoja Curativa` | `hierba_curativa` | **FUZZY** |
-| 37 | `casa_14` | `drops.items` | `Semilla Rara` | `semilla_rara` | **EXACT** |
-| 38 | `casa_14` | `drops.items` | `Rocío Matutino` | `—` | **NONE** |
-| 39 | `casa_14` | `sideQuest.drops` | `Espíritu del Jardín` | `—` | **NONE** |
-| 40 | `casa_14` | `sideQuest.drops` | `Flor Luminosa` | `—` | **NONE** |
-| 41 | `casa_15` | `drops.items` | `Fragmento de Hielo` | `fragmento_hielo` | **EXACT** |
-| 42 | `casa_15` | `drops.items` | `Escarcha Eterna` | `—` | **NONE** |
-| 43 | `casa_15` | `sideQuest.drops` | `Cristal de Hielo Puro` | `—` | **NONE** |
-| 44 | `cuerpo_3` | `drops.items` | `Mapa de Zona` | `—` | **NONE** |
-| 45 | `cuerpo_3` | `drops.items` | `Piedra del Camino` | `—` | **NONE** |
-| 46 | `cuerpo_3` | `drops.items` | `Monedas` | `—` | **NONE** |
-| 47 | `cuerpo_3` | `sideQuest.drops` | `Botas de Viajero` | `botas_viajero` | **FUZZY** |
-| 48 | `cuerpo_3` | `sideQuest.drops` | `Amuleto del Explorador` | `—` | **NONE** |
-| 49 | `cuerpo_5` | `drops.items` | `Orbe de Claridad` | `—` | **NONE** |
-| 50 | `cuerpo_5` | `drops.items` | `Incienso Místico` | `—` | **NONE** |
-| 51 | `cuerpo_5` | `sideQuest.drops` | `Foco Interior` | `—` | **NONE** |
-| 52 | `cuerpo_5` | `sideQuest.drops` | `Mente de Cristal` | `—` | **NONE** |
-| 53 | `cuerpo_6` | `drops.items` | `Perla Marina` | `perla_marina` | **EXACT** |
-| 54 | `cuerpo_6` | `drops.items` | `Escama Brillante` | `—` | **NONE** |
-| 55 | `cuerpo_6` | `drops.items` | `Coral Mágico` | `—` | **NONE** |
-| 56 | `cuerpo_6` | `sideQuest.drops` | `Tridente Menor` | `—` | **NONE** |
-| 57 | `cuerpo_6` | `sideQuest.drops` | `Bendición del Mar` | `—` | **NONE** |
-| 58 | `gestiones_1` | `drops.items` | `Bolsa de Oro Grande` | `—` | **NONE** |
-| 59 | `gestiones_1` | `drops.items` | `Lingote de Oro` | `—` | **NONE** |
-| 60 | `gestiones_1` | `sideQuest.drops` | `Sabiduría Fiscal` | `—` | **NONE** |
-| 61 | `gestiones_1` | `sideQuest.drops` | `Corona del Contribuyente` | `—` | **NONE** |
-| 62 | `gestiones_2` | `drops.items` | `Monedas de Oro` | `moneda_oro` | **FUZZY** |
-| 63 | `gestiones_2` | `drops.items` | `Gema Menor` | `—` | **NONE** |
-| 64 | `gestiones_2` | `sideQuest.drops` | `Ojo del Comerciante` | `—` | **NONE** |
-| 65 | `gestiones_3` | `drops.items` | `Cristal de Memoria` | `—` | **NONE** |
-| 66 | `gestiones_3` | `drops.items` | `Pergamino en Blanco` | `—` | **NONE** |
-| 67 | `gestiones_3` | `sideQuest.drops` | `Biblioteca Personal` | `—` | **NONE** |
-| 68 | `gestiones_4` | `drops.items` | `Mensaje Importante` | `—` | **NONE** |
-| 69 | `gestiones_4` | `drops.items` | `Llave Olvidada` | `—` | **NONE** |
-| 70 | `gestiones_4` | `sideQuest.drops` | `Sello de Eficiencia` | `—` | **NONE** |
-| 71 | `gestiones_5` | `drops.items` | `Pergamino de Planificación` | `—` | **NONE** |
-| 72 | `gestiones_5` | `sideQuest.drops` | `Agenda Encantada` | `—` | **NONE** |
-| 73 | `social_1` | `drops.items` | `Recuerdo Especial` | `—` | **NONE** |
-| 74 | `social_1` | `drops.items` | `Lazo de Conexión` | `—` | **NONE** |
-| 75 | `social_1` | `sideQuest.drops` | `Anillo de Vínculo` | `—` | **NONE** |
-| 76 | `social_1` | `sideQuest.drops` | `Flor Eterna` | `—` | **NONE** |
-| 77 | `social_2` | `drops.items` | `Token de Amistad` | `token_amistad` | **EXACT** |
-| 78 | `social_2` | `sideQuest.drops` | `Sello de Hermandad` | `—` | **NONE** |
-| 79 | `social_3` | `drops.items` | `Token de Amistad` | `token_amistad` | **EXACT** |
-| 80 | `social_3` | `sideQuest.drops` | `Sello de Hermandad` | `—` | **NONE** |
-| 81 | `social_4` | `drops.items` | `Bendición Familiar` | `—` | **NONE** |
-| 82 | `social_4` | `sideQuest.drops` | `Lazo de Sangre` | `—` | **NONE** |
-| 83 | `social_5` | `drops.items` | `Recuerdo de Aventura` | `—` | **NONE** |
-| 84 | `social_5` | `drops.items` | `Hidromiel de Camaradería` | `hidromiel` | **FUZZY** |
-| 85 | `social_5` | `sideQuest.drops` | `Corona del Organizador` | `—` | **NONE** |
-| 86 | `personal_1` | `drops.items` | `Dado del Destino` | `dado_destino` | **EXACT** |
-| 87 | `personal_1` | `drops.items` | `Tinta Mágica` | `tinta_magica` | **EXACT** |
-| 88 | `personal_1` | `drops.items` | `Fragmento de Historia` | `—` | **NONE** |
-| 89 | `personal_1` | `sideQuest.drops` | `Pluma del Creador` | `—` | **NONE** |
-| 90 | `personal_1` | `sideQuest.drops` | `Capítulo Terminado` | `—` | **NONE** |
-| 91 | `personal_2` | `drops.items` | `Carácter Antiguo` | `—` | **NONE** |
-| 92 | `personal_2` | `drops.items` | `Talismán Oriental` | `talisman_oriental` | **EXACT** |
-| 93 | `personal_2` | `drops.items` | `Jade Menor` | `—` | **NONE** |
-| 94 | `personal_2` | `sideQuest.drops` | `Escama de Dragón` | `escama_dragon` | **FUZZY** |
-| 95 | `personal_2` | `sideQuest.drops` | `Pergamino de Sabiduría` | `—` | **NONE** |
-| 96 | `personal_3` | `drops.items` | `Página de Reflexión` | `—` | **NONE** |
-| 97 | `personal_3` | `drops.items` | `Tinta de Pensamiento` | `—` | **NONE** |
-| 98 | `personal_3` | `sideQuest.drops` | `Claridad Mental` | `—` | **NONE** |
-| 99 | `personal_4` | `drops.items` | `Pergamino de Hechizo` | `—` | **NONE** |
-| 100 | `personal_4` | `drops.items` | `Conocimiento Antiguo` | `—` | **NONE** |
-| 101 | `personal_4` | `sideQuest.drops` | `Grimorio Menor` | `—` | **NONE** |
-| 102 | `personal_4` | `sideQuest.drops` | `Sabiduría Acumulada` | `—` | **NONE** |
-| 103 | `personal_5` | `drops.items` | `Paz Interior` | `—` | **NONE** |
-| 104 | `personal_5` | `drops.items` | `Hoja de Calma` | `—` | **NONE** |
-| 105 | `personal_5` | `sideQuest.drops` | `Reconexión Natural` | `—` | **NONE** |
-| 106 | `personal_5` | `sideQuest.drops` | `Espíritu Libre` | `—` | **NONE** |
-| 107 | `personal_6` | `drops.items` | `Visión del Futuro` | `—` | **NONE** |
-| 108 | `personal_6` | `drops.items` | `Bendición del Oráculo` | `—` | **NONE** |
-| 109 | `personal_6` | `sideQuest.drops` | `Fragmento de Destino` | `—` | **NONE** |
-| 110 | `personal_6` | `sideQuest.drops` | `Profecía` | `—` | **NONE** |
+La reparación de sintaxis de `expansion_items.js` queda fuera de este inventario y debe hacerse en una tarea técnica separada, con validación antes y después.
 
----
+## Verificación reproducible
 
-## Filas EXACT — aprobación automática (20 referencias)
-
-Estas referencias pueden reemplazarse directamente en el PASO 2 sin decisión adicional.
-
-| task id | campo | string actual | ID canónico |
-|---|---|---|---|
-| `casa_1` | `drops.items` | `Poción de Agua Menor` | `pocion_agua_menor` |
-| `casa_1` | `drops.items` | `Veneno Básico` | `veneno_basico` |
-| `casa_1` | `drops.items` | `Frasco Vacío` | `frasco_vacio` |
-| `casa_2` | `drops.items` | `Moneda Antigua` | `moneda_antigua` |
-| `casa_2` | `drops.items` | `Objeto Olvidado` | `objeto_olvidado` |
-| `casa_2` | `sideQuest.drops` | `Moneda de Oro` | `moneda_oro` |
-| `casa_6` | `drops.items` | `Fragmento Solar` | `fragmento_solar` |
-| `casa_10` | `drops.items` | `Cristal Solar` | `cristal_solar` |
-| `casa_10` | `drops.items` | `Pluma de Viento` | `pluma_viento` |
-| `casa_11` | `drops.items` | `Ración de Combate` | `racion_combate` |
-| `casa_11` | `drops.items` | `Especia Rara` | `especia_rara` |
-| `casa_11` | `sideQuest.drops` | `Elixir de Vitalidad` | `elixir_vitalidad` |
-| `casa_14` | `drops.items` | `Semilla Rara` | `semilla_rara` |
-| `casa_15` | `drops.items` | `Fragmento de Hielo` | `fragmento_hielo` |
-| `cuerpo_6` | `drops.items` | `Perla Marina` | `perla_marina` |
-| `social_2` | `drops.items` | `Token de Amistad` | `token_amistad` |
-| `social_3` | `drops.items` | `Token de Amistad` | `token_amistad` |
-| `personal_1` | `drops.items` | `Dado del Destino` | `dado_destino` |
-| `personal_1` | `drops.items` | `Tinta Mágica` | `tinta_magica` |
-| `personal_2` | `drops.items` | `Talismán Oriental` | `talisman_oriental` |
-
----
-
-## Filas FUZZY — requieren confirmación (8 referencias)
-
-Para cada una se indica la razón del mapeo y qué confirmar.
-
-| # | task id | campo | string actual | ID propuesto | razón del mapeo |
-|---|---|---|---|---|---|
-| 1 | `casa_6` | `drops.items` | `Pluma del Viento` | `pluma_viento` | `pluma_viento` (Wind Feather) es el único item de tema `sol_viento` con concepto de pluma. El display usa "del" en lugar de "de". |
-| 2 | `casa_9` | `drops.items` | `Monedas Antiguas` | `moneda_antigua` | Plural de `moneda_antigua`. El motor busca por ID; el plural no existe como ID separado. |
-| 3 | `casa_9` | `sideQuest.drops` | `Amuleto de Espacio` | `amuleto_espacio` | `amuleto_espacio` (Poche of Elsewhere) es el único item con efecto de inventario/espacio. Nombre en español coincide. |
-| 4 | `cuerpo_3` | `sideQuest.drops` | `Botas de Viajero` | `botas_viajero` | `botas_viajero` (Wayfarer Boots) es el único item de tipo armor con tema `exploracion`. Nombre en español coincide. |
-| 5 | `gestiones_2` | `drops.items` | `Monedas de Oro` | `moneda_oro` | Plural de `moneda_oro`. El motor busca por ID; el plural no existe como ID separado. |
-| 6 | `social_5` | `drops.items` | `Hidromiel de Camaradería` | `hidromiel` | `hidromiel` (Mead) es el único item de tema `social` de tipo consumable. El display añade "de Camaradería". |
-| 7 | `personal_2` | `sideQuest.drops` | `Escama de Dragón` | `escama_dragon` | `escama_dragon` (Scale of the Wyrm) es el único item de tema `oriente` con concepto de escama de dragón. |
-| 8 | `casa_14` | `drops.items` | `Hoja Curativa` | `hierba_curativa` | `hierba_curativa` (Healing Herb) es el único item curativo de tema `naturaleza`. "Hoja" y "Hierba" son conceptos próximos. |
-
----
-
-## Filas NONE — sin item canónico (82 referencias)
-
-Estos strings no tienen correspondencia en ITEMS. **No se tocan en el PASO 2.**
-Opciones para cada uno (decisión del Game Master):
-- **A) Eliminar** el string del array (el drop queda vacío o se reduce).
-- **B) Reemplazar** por un item canónico existente temáticamente coherente.
-- **C) Crear** el item en `items.js` y añadirlo al DROP_TABLE correspondiente.
-
-| # | task id | campo | string actual | tema de la tarea | sugerencia de item canónico |
-|---|---|---|---|---|---|
-| 1 | `casa_1` | `sideQuest.drops` | `Esencia Purificadora` | `agua_quimicos` | `esencia_agua` (Water Essence) — mismo tema |
-| 2 | `casa_1` | `sideQuest.drops` | `Cristal de Limpieza` | `agua_quimicos` | `frasco_vacio` o eliminar |
-| 3 | `casa_3` | `drops.items` | `Gota de Agua Pura` | `agua` | `pocion_agua` (Water Potion) — mismo tema agua |
-| 4 | `casa_3` | `sideQuest.drops` | `Esencia de Limpieza` | `agua` | `esencia_agua` o eliminar |
-| 5 | `casa_4` | `drops.items` | `Grasa de Fuego` | `fuego` | `gema_fuego` (Fire Gem) — mismo tema fuego |
-| 6 | `casa_4` | `drops.items` | `Espátula Encantada` | `fuego` | `escoba_encantada` (Enchanted Broom) — item de casa/hallazgos |
-| 7 | `casa_4` | `sideQuest.drops` | `Llama Culinaria` | `fuego` | `corazon_fuego` (Heart of Fire) o eliminar |
-| 8 | `casa_6` | `sideQuest.drops` | `Brisa Atrapada` | `sol_viento` | `amuleto_brisa` (Windglass) — mismo tema |
-| 9 | `casa_8` | `drops.items` | `Pluma de Sueño` | `descanso` | `fragmento_sueno` (Dream Fragment) — concepto sueño |
-| 10 | `casa_8` | `drops.items` | `Esencia de Descanso` | `descanso` | `hierba_curativa` (Healing Herb) — efecto descanso/recuperación |
-| 11 | `casa_8` | `sideQuest.drops` | `Bendición del Descanso` | `descanso` | `pocion_agua` o eliminar |
-| 12 | `casa_9` | `drops.items` | `Prenda Olvidada` | `hallazgos` | `objeto_olvidado` (Forgotten Object) — mismo concepto |
-| 13 | `casa_10` | `sideQuest.drops` | `Luz Atrapada` | `sol_viento` | `cristal_solar` (Sunshard) — mismo tema |
-| 14 | `casa_11` | `drops.items` | `Gema de Fuego Menor` | `fuego_comida` | `gema_fuego` (Fire Gem) — mismo tema |
-| 15 | `casa_11` | `sideQuest.drops` | `Receta Secreta` | `fuego_comida` | `especia_rara` (Rare Spice) o eliminar |
-| 16 | `casa_12` | `drops.items` | `Monedas` | `comercio` | `moneda_antigua` o `moneda_oro` — ambiguo, decidir |
-| 17 | `casa_12` | `drops.items` | `Ingrediente Especial` | `comercio` | `especia_rara` (Rare Spice) — tema fuego_comida/comercio |
-| 18 | `casa_12` | `sideQuest.drops` | `Ojo del Comerciante` | `comercio` | `contrato_mercantil` (Merchant Contract) — mismo tema |
-| 19 | `casa_13` | `drops.items` | `Polvo de Sueño` | `descanso` | `fragmento_sueno` (Dream Fragment) |
-| 20 | `casa_13` | `sideQuest.drops` | `Cristal de Tranquilidad` | `descanso` | `rosario_concentracion` (Counting Beads) — tema mente/calma |
-| 21 | `casa_14` | `drops.items` | `Rocío Matutino` | `naturaleza` | `esencia_vida` (Essence of Life) — tema naturaleza |
-| 22 | `casa_14` | `sideQuest.drops` | `Espíritu del Jardín` | `naturaleza` | `corazon_bosque` (Heart of the Forest) |
-| 23 | `casa_14` | `sideQuest.drops` | `Flor Luminosa` | `naturaleza` | `semilla_rara` o eliminar |
-| 24 | `casa_15` | `drops.items` | `Escarcha Eterna` | `hielo` | `fragmento_hielo` (Ice Fragment) — mismo tema |
-| 25 | `casa_15` | `sideQuest.drops` | `Cristal de Hielo Puro` | `hielo` | `colmillo_hielo` (Ice Fang) o `pocion_escarcha` |
-| 26 | `cuerpo_3` | `drops.items` | `Mapa de Zona` | `exploracion` | `mapa_tesoro` (Treasure Map) — mismo tema |
-| 27 | `cuerpo_3` | `drops.items` | `Piedra del Camino` | `exploracion` | `caparazon` (Shell) o `daga_oxidada` — tema exploracion |
-| 28 | `cuerpo_3` | `drops.items` | `Monedas` | `exploracion` | `moneda_antigua` — tema hallazgos/exploracion |
-| 29 | `cuerpo_3` | `sideQuest.drops` | `Amuleto del Explorador` | `exploracion` | `amuleto_bosque` (Forest Amulet) o `botas_viajero` |
-| 30 | `cuerpo_5` | `drops.items` | `Orbe de Claridad` | `mente` | `orbe_mental` (Thoughtstone) — mismo tema |
-| 31 | `cuerpo_5` | `drops.items` | `Incienso Místico` | `mente` | `rosario_concentracion` (Counting Beads) — tema mente |
-| 32 | `cuerpo_5` | `sideQuest.drops` | `Foco Interior` | `mente` | `skill_foco_interior` (Scroll: Inner Focus) — mismo concepto |
-| 33 | `cuerpo_5` | `sideQuest.drops` | `Mente de Cristal` | `mente` | `fragmento_sueno` o eliminar |
-| 34 | `cuerpo_6` | `drops.items` | `Escama Brillante` | `agua_profunda` | `escama_marina` (Sea Scale) — mismo tema |
-| 35 | `cuerpo_6` | `drops.items` | `Coral Mágico` | `agua_profunda` | `esencia_agua` o eliminar |
-| 36 | `cuerpo_6` | `sideQuest.drops` | `Tridente Menor` | `agua_profunda` | `tridente_marino` (Drownwake) — mismo tema |
-| 37 | `cuerpo_6` | `sideQuest.drops` | `Bendición del Mar` | `agua_profunda` | `perla_marina` o eliminar |
-| 38 | `gestiones_1` | `drops.items` | `Bolsa de Oro Grande` | `oro` | `moneda_oro` (Gold Coin) — tema comercio/oro |
-| 39 | `gestiones_1` | `drops.items` | `Lingote de Oro` | `oro` | `moneda_oro` — no existe lingote; mismo tema |
-| 40 | `gestiones_1` | `sideQuest.drops` | `Sabiduría Fiscal` | `oro` | `contrato_mercantil` o eliminar |
-| 41 | `gestiones_1` | `sideQuest.drops` | `Corona del Contribuyente` | `oro` | eliminar — no hay item equivalente |
-| 42 | `gestiones_2` | `drops.items` | `Gema Menor` | `oro` | `moneda_antigua` o `gema_fuego` — decidir |
-| 43 | `gestiones_2` | `sideQuest.drops` | `Ojo del Comerciante` | `oro` | `contrato_mercantil` — mismo tema comercio |
-| 44 | `gestiones_3` | `drops.items` | `Cristal de Memoria` | `conocimiento` | `pagina_arcana` (Arcane Page) — tema conocimiento |
-| 45 | `gestiones_3` | `drops.items` | `Pergamino en Blanco` | `conocimiento` | `tinta_magica` (Magic Ink) — tema conocimiento |
-| 46 | `gestiones_3` | `sideQuest.drops` | `Biblioteca Personal` | `conocimiento` | `grimorio_antiguo` (Ancient Grimoire) |
-| 47 | `gestiones_4` | `drops.items` | `Mensaje Importante` | `comercio` | `contrato_sospechoso` (Suspicious Contract) — tema gestiones |
-| 48 | `gestiones_4` | `drops.items` | `Llave Olvidada` | `comercio` | `llave_cofre` (Chest Key) — mismo concepto |
-| 49 | `gestiones_4` | `sideQuest.drops` | `Sello de Eficiencia` | `comercio` | `sello_alianza` (Oathseal) — concepto sello |
-| 50 | `gestiones_5` | `drops.items` | `Pergamino de Planificación` | `conocimiento` | `pagina_arcana` (Arcane Page) |
-| 51 | `gestiones_5` | `sideQuest.drops` | `Agenda Encantada` | `conocimiento` | `tinta_magica` o eliminar |
-| 52 | `social_1` | `drops.items` | `Recuerdo Especial` | `vinculo` | `token_amistad` (Friendship Token) — tema social |
-| 53 | `social_1` | `drops.items` | `Lazo de Conexión` | `vinculo` | `sello_alianza` (Oathseal) — tema social/alianzas |
-| 54 | `social_1` | `sideQuest.drops` | `Anillo de Vínculo` | `vinculo` | `sello_alianza` o eliminar |
-| 55 | `social_1` | `sideQuest.drops` | `Flor Eterna` | `vinculo` | eliminar — no hay item equivalente |
-| 56 | `social_2` | `sideQuest.drops` | `Sello de Hermandad` | `amistad` | `sello_alianza` (Oathseal) — mismo concepto |
-| 57 | `social_3` | `sideQuest.drops` | `Sello de Hermandad` | `amistad` | `sello_alianza` (Oathseal) — mismo concepto |
-| 58 | `social_4` | `drops.items` | `Bendición Familiar` | `vinculo` | `token_amistad` — tema social |
-| 59 | `social_4` | `sideQuest.drops` | `Lazo de Sangre` | `vinculo` | `sello_alianza` o eliminar |
-| 60 | `social_5` | `drops.items` | `Recuerdo de Aventura` | `amistad` | `token_amistad` — tema social |
-| 61 | `social_5` | `sideQuest.drops` | `Corona del Organizador` | `amistad` | eliminar — no hay item equivalente |
-| 62 | `personal_1` | `drops.items` | `Fragmento de Historia` | `creacion` | `pagina_arcana` (Arcane Page) — tema conocimiento/creacion |
-| 63 | `personal_1` | `sideQuest.drops` | `Pluma del Creador` | `creacion` | `tinta_magica` (Magic Ink) — tema creacion |
-| 64 | `personal_1` | `sideQuest.drops` | `Capítulo Terminado` | `creacion` | eliminar — no hay item equivalente |
-| 65 | `personal_2` | `drops.items` | `Carácter Antiguo` | `oriente` | `pagina_arcana` — tema conocimiento/oriente |
-| 66 | `personal_2` | `drops.items` | `Jade Menor` | `oriente` | `cuentas_jade` (Jade Knots) — mismo material |
-| 67 | `personal_2` | `sideQuest.drops` | `Pergamino de Sabiduría` | `oriente` | `pagina_arcana` o `tinta_magica` |
-| 68 | `personal_3` | `drops.items` | `Página de Reflexión` | `mente` | `pagina_arcana` (Arcane Page) — mismo concepto |
-| 69 | `personal_3` | `drops.items` | `Tinta de Pensamiento` | `mente` | `tinta_magica` (Magic Ink) — mismo concepto |
-| 70 | `personal_3` | `sideQuest.drops` | `Claridad Mental` | `mente` | `rosario_concentracion` o eliminar |
-| 71 | `personal_4` | `drops.items` | `Pergamino de Hechizo` | `conocimiento` | `skill_llamarada` o `pagina_arcana` — tema conocimiento |
-| 72 | `personal_4` | `drops.items` | `Conocimiento Antiguo` | `conocimiento` | `grimorio_antiguo` (Ancient Grimoire) |
-| 73 | `personal_4` | `sideQuest.drops` | `Grimorio Menor` | `conocimiento` | `grimorio_antiguo` o `pagina_arcana` |
-| 74 | `personal_4` | `sideQuest.drops` | `Sabiduría Acumulada` | `conocimiento` | eliminar — no hay item equivalente |
-| 75 | `personal_5` | `drops.items` | `Paz Interior` | `naturaleza` | `hierba_curativa` o `rosario_concentracion` |
-| 76 | `personal_5` | `drops.items` | `Hoja de Calma` | `naturaleza` | `hierba_curativa` (Healing Herb) — tema naturaleza |
-| 77 | `personal_5` | `sideQuest.drops` | `Reconexión Natural` | `naturaleza` | `corazon_bosque` (Heart of the Forest) |
-| 78 | `personal_5` | `sideQuest.drops` | `Espíritu Libre` | `naturaleza` | `esencia_vida` (Essence of Life) o eliminar |
-| 79 | `personal_6` | `drops.items` | `Visión del Futuro` | `destino` | `esencia_oscura` (Dark Essence) — tema destino |
-| 80 | `personal_6` | `drops.items` | `Bendición del Oráculo` | `destino` | `dado_destino` (The Loaded Bone) — tema destino |
-| 81 | `personal_6` | `sideQuest.drops` | `Fragmento de Destino` | `destino` | `esencia_oscura` o `fragmento_sueno` |
-| 82 | `personal_6` | `sideQuest.drops` | `Profecía` | `destino` | eliminar — no hay item equivalente |
-
----
-
-## Estado de `expansion_tasks.js`
-
-Todos los drops de `expansion_tasks.js` ya usan IDs canónicos. Verificación manual:
-
-| task id | drops.items | sideQuest.drops | estado |
-|---|---|---|---|
-| `casa_exp_01` | moneda_antigua, objeto_olvidado | llave_cofre | ✅ OK |
-| `casa_exp_02` | fragmento_solar, pluma_viento | cristal_solar | ✅ OK |
-| `casa_exp_03` | antidoto, frasco_vacio | pocion_vida_menor | ✅ OK |
-| `cuerpo_exp_01` | caparazon, mapa_tesoro | amuleto_brisa | ✅ OK |
-| `cuerpo_exp_02` | null | null | ✅ OK |
-| `cuerpo_exp_03` | racion_combate, especia_rara | semilla_rara | ✅ OK |
-| `gestiones_exp_01` | moneda_oro, pagina_arcana | contrato_mercantil | ✅ OK |
-| `gestiones_exp_02` | cristal_solar, pagina_arcana | grimorio_antiguo | ✅ OK |
-| `gestiones_exp_03` | moneda_oro, contrato_mercantil | sello_alianza | ✅ OK |
-| `social_exp_01` | sello_alianza, pagina_arcana | sello_alianza | ✅ OK |
-| `social_exp_02` | token_amistad, hidromiel | sello_alianza | ✅ OK |
-| `personal_exp_01` | dado_destino, pagina_arcana | grimorio_antiguo | ✅ OK |
-| `personal_exp_02` | talisman_oriental, cuentas_jade | pagina_arcana | ✅ OK |
-| `personal_exp_03` | esencia_oscura, orbe_mental | esencia_oscura | ✅ OK |
-
----
-
-## Estado de `items.js` DROP_TABLES
-
-Todos los valores de DROP_TABLES son IDs canónicos. Verificación manual completa: ninguna referencia rota.
-
----
-
-## Próximos pasos
-
-1. **Aprobar filas FUZZY** (8 referencias) — confirmar o corregir los IDs propuestos.
-2. **Decidir filas NONE** (82 referencias) — para cada una: eliminar, reemplazar por canónico, o crear item nuevo.
-3. Una vez aprobadas las EXACT + FUZZY, ejecutar PASO 2 (reemplazos en código).
-4. Ejecutar validador y verificar cero errores `TASK_DROP_DISPLAY_NAME`.
+```text
+node validate_content.js
+```
