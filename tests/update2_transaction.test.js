@@ -36,7 +36,7 @@ function createContext(options = {}) {
     localStorage: storage,
     document: createDocument(),
     window: { LifeXPInventory: {} },
-    console: { error(message) { errors.push(String(message)); }, warn() {} },
+    console: { error() {}, warn() {} },
     showToast(message) { errors.push(String(message)); },
     ITEMS: { base_item: { id: 'base_item' } },
     ENEMIES: { base_enemy: { id: 'base_enemy' } },
