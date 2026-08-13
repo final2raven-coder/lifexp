@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-12 (fix/dt16-dt17-save-migrations -- migraciones transaccionales v0->v3, snapshots y assertion de carga de expansion) |
+| Ultima actualizacion | 2026-08-13 (fix/partial-quest-migration -- deteccion de estado canonico antes de defaults y rollback de quests parciales) |
 | Branch de produccion | `main` |
-| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations` |
+| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations`, `fix/partial-quest-migration` |
 | Ramas historicas citadas | `fix/dt13-dt02-drop-ids` y `fix/expansion-items-syntax` fueron integradas o dejaron de existir; se conservan en el changelog como trazabilidad, no como ramas activas |
 | Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
@@ -275,7 +275,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
 20. ui_feedback.js     -- Toasts y feedback visual
 21. ui_quests.js       -- UI de quests
-22. item_system.js     -- Sistema de items (attunement, rituales, modales)
+22. item_system.js      -- Sistema de items (attunement, rituales, modales)
 23. main.js             -- Punto de entrada (event listeners, SW)
 ```
 
@@ -342,14 +342,17 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 - Las migraciones trabajan sobre un candidato; el save original y el estado en memoria se restauran si falla parseo, esquema, migracion o finalizacion.
 - Los campos conocidos reciben defaults declarativos; los campos desconocidos se conservan.
 - La migracion de quests conserva progreso por ID, registra objetivos que se reinician y no borra quests cuyo catalogo no esta disponible.
+- La validez del contenedor canonico se decide sobre el save original, antes de aplicar defaults; un contenedor parcial usa `activeQuests` legacy o aborta con rollback visible si no puede reconstruirse de forma segura.
+- Un estado canonico de quests completo conserva prioridad; los estados parciales no se aceptan por el mero hecho de haber recibido arrays por defaults y conservan el raw save exacto si la reparacion no es segura.
 - `update2_content.js` falla visiblemente si faltan catalogs, instaladores o entradas de expansion despues de instalar.
-- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v3, corrupcion, snapshots y DT-17).
+- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17).
 
 ## 8. Changelog del mapa
 
 | Fecha | PR / Rama | Cambios |
-| 2026-08-12 | `fix/dt16-dt17-save-migrations` | Persistencia transaccional: migraciones v0->v3, defaults de schema, snapshots pre-migracion, rollback ante corrupcion/fallo, progreso de quests por ID y assertion de carga/instalacion de expansion. Incluye fixtures; no toca contenido jugable. |
 |---|---|---|
+| 2026-08-13 | `fix/partial-quest-migration` | Deteccion de `quests` canonico basada en el save original antes de defaults; recuperacion determinista de contenedores parciales desde `activeQuests`, rollback visible cuando no hay fuente legacy suficiente, preservacion de quests desconocidas y fixtures de estado persistido. No toca contenido jugable ni cambia `saveVersion: 3`. |
+| 2026-08-12 | `fix/dt16-dt17-save-migrations` | Persistencia transaccional: migraciones v0->v3, defaults de schema, snapshots pre-migracion, rollback ante corrupcion/fallo, progreso de quests por ID y assertion de carga/instalacion de expansion. Incluye fixtures; no toca contenido jugable. |
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
 | 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos anadida, branches activas actualizadas |
 | 2026-07-31 | `feat/content-validator` | Anadido `validate_content.js` (seccion 2f y seccion 10); invariante 9 anadida; DT-13/14 nuevos (detectados por validador); DT-02 marcado como detectado; branches activas actualizadas |
@@ -381,7 +384,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 |---|---|---|
 | `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
-| `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en ITEMS |
+| `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en base |
 | **Total** | **~174** | Sin contar duplicados (Ashbrand puede ya estar en base) |
 
 Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios base).
