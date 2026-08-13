@@ -94,6 +94,10 @@ function assertCanonicalState(state) {
   assert.ok(state.quests && Array.isArray(state.quests.active));
 }
 
+function getPersistedState(loaded) {
+  return JSON.parse(loaded.api.getSave());
+}
+
 function testV0Migration() {
   const fixture = {
     name: 'V0 hero',
@@ -164,7 +168,7 @@ function testV2WithCanonicalQuestState() {
   const fixture = {
     saveVersion: 2,
     tasks: [],
-    activeQuests: [{ questId: 'quest_progress', objectives: [{ id: 'obj_1', progress: 1 }] }],
+    activeQuests: [{ questId: 'quest_progress', objectives: [{ id: 'obj_1', progress: 99 }] }],
     quests: {
       active: ['quest_progress'],
       completed: [],
@@ -181,6 +185,71 @@ function testV2WithCanonicalQuestState() {
   assertCanonicalState(loaded.state);
   assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 1);
   assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_2').progress, 1);
+  const persisted = getPersistedState(loaded);
+  assert.equal(persisted.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 1);
+}
+
+function testV2PartialCanonicalStateUsesLegacyProgress() {
+  const fixture = {
+    saveVersion: 2,
+    tasks: [],
+    quests: {
+      active: ['quest_progress']
+    },
+    activeQuests: [{
+      questId: 'quest_progress',
+      startedAt: '2026-08-03',
+      objectives: [{ id: 'obj_1', progress: 2, completed: false }, { id: 'legacy_obj', progress: 8 }]
+    }],
+    partialQuestMarker: 'preserve-me'
+  };
+  const loaded = loadFixture(fixture);
+  assert.equal(loaded.result, true);
+  assertCanonicalState(loaded.state);
+  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 2);
+  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_2').progress, 0);
+  assert.ok(loaded.warnings.some(message => message.includes('legacy_obj')));
+  const persisted = getPersistedState(loaded);
+  assert.equal(persisted.partialQuestMarker, 'preserve-me');
+  assert.equal(persisted.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 2);
+}
+
+function testV2PartialCanonicalStateWithoutLegacyRollsBack() {
+  const fixture = {
+    saveVersion: 2,
+    tasks: [],
+    quests: { active: ['quest_progress'] },
+    activeQuests: [],
+    preserveExactBytes: { value: 'yes' }
+  };
+  const raw = JSON.stringify(fixture);
+  const loaded = loadFixture(raw);
+  assert.equal(loaded.result, false);
+  assert.equal(loaded.api.getSave(), raw);
+  assert.equal(loaded.visibleErrors.length, 1);
+  assert.match(loaded.visibleErrors[0], /original save was not modified/i);
+  assert.equal(loaded.api.getSnapshotKeys().length, 1);
+}
+
+function testUnknownCanonicalQuestRemainsRecoverable() {
+  const fixture = {
+    saveVersion: 2,
+    tasks: [],
+    activeQuests: [],
+    quests: {
+      active: ['future_quest'],
+      completed: [],
+      failed: [],
+      dailyReset: null,
+      future_quest: { opaqueProgress: { stage: 4 } }
+    }
+  };
+  const loaded = loadFixture(fixture);
+  assert.equal(loaded.result, true);
+  assert.equal(loaded.state.quests.active[0], 'future_quest');
+  assert.equal(JSON.stringify(loaded.state.quests.future_quest.opaqueProgress), JSON.stringify({ stage: 4 }));
+  const persisted = getPersistedState(loaded);
+  assert.equal(JSON.stringify(persisted.quests.future_quest.opaqueProgress), JSON.stringify({ stage: 4 }));
 }
 
 function testV3AndLegacyEquipmentId() {
@@ -239,8 +308,11 @@ testV0Migration();
 testV1Migration();
 testV2ActiveQuestProgressMigration();
 testV2WithCanonicalQuestState();
+testV2PartialCanonicalStateUsesLegacyProgress();
+testV2PartialCanonicalStateWithoutLegacyRollsBack();
+testUnknownCanonicalQuestRemainsRecoverable();
 testV3AndLegacyEquipmentId();
 testCorruptedSaveDoesNotChangeOriginal();
 testSnapshotRetention();
 testNoUndefinedExpansionInstallerCalls();
-console.log('Save migration fixtures: PASS (v0, v1, v2 legacy quests, v2 canonical quests, v3, legacy equipment id, corruption, snapshot retention, DT-17 static assertion)');
+console.log('Save migration fixtures: PASS (v0, v1, v2 legacy quests, v2 canonical quests, partial quests with legacy recovery, partial quests rollback, unknown canonical quest recovery, v3, legacy equipment id, corruption, snapshot retention, DT-17 static assertion)');
