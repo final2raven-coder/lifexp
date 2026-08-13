@@ -44,6 +44,67 @@
 
   const OBJECTIVE_WORDS = { any: 'any path', casa: 'the refuge', cuerpo: 'the body', gestiones: 'the ledger', social: 'the circle', personal: 'the inner road' };
 
+  function assertExpansionLoadOrder() {
+    const requiredGlobals = [
+      ['gameState', typeof gameState !== 'undefined' && gameState && typeof gameState === 'object'],
+      ['ITEMS', typeof ITEMS !== 'undefined' && ITEMS && typeof ITEMS === 'object' && !Array.isArray(ITEMS)],
+      ['ENEMIES', typeof ENEMIES !== 'undefined' && ENEMIES && typeof ENEMIES === 'object' && !Array.isArray(ENEMIES)],
+      ['QUESTS', typeof QUESTS !== 'undefined' && QUESTS && typeof QUESTS === 'object' && !Array.isArray(QUESTS)],
+      ['DEFAULT_TASKS', typeof DEFAULT_TASKS !== 'undefined' && Array.isArray(DEFAULT_TASKS)],
+      ['DROP_TABLES', typeof DROP_TABLES !== 'undefined' && DROP_TABLES && typeof DROP_TABLES === 'object'],
+      ['THEME_ENEMIES', typeof THEME_ENEMIES !== 'undefined' && THEME_ENEMIES && typeof THEME_ENEMIES === 'object'],
+      ['EXPANSION_ITEMS_V1', typeof EXPANSION_ITEMS_V1 !== 'undefined' && EXPANSION_ITEMS_V1 && typeof EXPANSION_ITEMS_V1 === 'object'],
+      ['EXPANSION_ENEMIES_V1', typeof EXPANSION_ENEMIES_V1 !== 'undefined' && EXPANSION_ENEMIES_V1 && typeof EXPANSION_ENEMIES_V1 === 'object'],
+      ['EXPANSION_QUESTS_V1', typeof EXPANSION_QUESTS_V1 !== 'undefined' && EXPANSION_QUESTS_V1 && typeof EXPANSION_QUESTS_V1 === 'object'],
+      ['EXPANSION_TASKS_V1', typeof EXPANSION_TASKS_V1 !== 'undefined' && Array.isArray(EXPANSION_TASKS_V1)],
+      ['installExpansionItems', typeof installExpansionItems === 'function'],
+      ['installExpansionEnemies', typeof installExpansionEnemies === 'function'],
+      ['installExpansionQuests', typeof installExpansionQuests === 'function'],
+      ['installExpansionTasks', typeof installExpansionTasks === 'function']
+    ];
+    const missing = requiredGlobals.filter(([, present]) => !present).map(([name]) => name);
+    if (missing.length > 0) {
+      throw new Error(`Update 2 load-order assertion failed; missing globals: ${missing.join(', ')}.`);
+    }
+  }
+
+  function assertExpansionInstalled() {
+    const missingItems = Object.keys(EXPANSION_ITEMS_V1).filter(id => !Object.prototype.hasOwnProperty.call(ITEMS, id));
+    const missingEnemies = Object.keys(EXPANSION_ENEMIES_V1).filter(id => !Object.prototype.hasOwnProperty.call(ENEMIES, id));
+    const missingQuests = Object.keys(EXPANSION_QUESTS_V1).filter(id => !Object.prototype.hasOwnProperty.call(QUESTS, id));
+    const installedTaskIds = new Set(DEFAULT_TASKS.map(task => task && task.id));
+    const missingTasks = EXPANSION_TASKS_V1.filter(task => task && !installedTaskIds.has(task.id)).map(task => task.id || '<unknown>');
+    const missingInstallations = [
+      missingItems.length > 0 ? `items: ${missingItems.join(', ')}` : '',
+      missingEnemies.length > 0 ? `enemies: ${missingEnemies.join(', ')}` : '',
+      missingQuests.length > 0 ? `quests: ${missingQuests.join(', ')}` : '',
+      missingTasks.length > 0 ? `tasks: ${missingTasks.join(', ')}` : ''
+    ].filter(Boolean);
+    if (missingInstallations.length > 0) {
+      throw new Error(`Expansion installers did not install all declared content: ${missingInstallations.join('; ')}.`);
+    }
+  }
+
+  function reportInstallFailure(error) {
+    const message = `Official content could not be loaded safely. ${error instanceof Error ? error.message : String(error)}`;
+    console.error(message);
+    if (typeof showToast === 'function') {
+      showToast(message, 'error');
+      return;
+    }
+    if (typeof document !== 'undefined' && document.body) {
+      let banner = document.getElementById('lifexp-content-load-error');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'lifexp-content-load-error';
+        banner.setAttribute('role', 'alert');
+        banner.style.cssText = 'position:fixed;left:16px;right:16px;bottom:16px;z-index:99999;padding:14px 16px;background:#7f1d1d;color:#fff;border:2px solid #fecaca;border-radius:8px;font:600 14px/1.4 sans-serif;';
+        document.body.appendChild(banner);
+      }
+      banner.textContent = message;
+    }
+  }
+
   function backupBeforeMutation() {
     try {
       const raw = localStorage.getItem('lifexp_save');
@@ -87,18 +148,24 @@
   }
 
   function install() {
-    if (typeof gameState === 'undefined' || gameState.__lifexpUpdate2 === UPDATE_ID) return;
-    backupBeforeMutation();
-    if (typeof installExpansionItems === 'function') installExpansionItems();
-    if (typeof installExpansionEnemies === 'function') installExpansionEnemies();
-    if (typeof installExpansionQuests === 'function') installExpansionQuests();
-    if (typeof installExpansionTasks === 'function') installExpansionTasks();
-    restoreAshbrand();
-    patchQuests();
-    gameState.__lifexpUpdate2 = UPDATE_ID;
-    if (typeof renderQuests === 'function') renderQuests();
-    if (typeof renderInventory === 'function') renderInventory();
-    if (typeof saveGame === 'function') saveGame();
+    if (typeof gameState !== 'undefined' && gameState.__lifexpUpdate2 === UPDATE_ID) return;
+    try {
+      assertExpansionLoadOrder();
+      backupBeforeMutation();
+      installExpansionItems();
+      installExpansionEnemies();
+      installExpansionQuests();
+      installExpansionTasks();
+      assertExpansionInstalled();
+      restoreAshbrand();
+      patchQuests();
+      gameState.__lifexpUpdate2 = UPDATE_ID;
+      if (typeof renderQuests === 'function') renderQuests();
+      if (typeof renderInventory === 'function') renderInventory();
+      if (typeof saveGame === 'function') saveGame();
+    } catch (error) {
+      reportInstallFailure(error);
+    }
   }
 
   // DT-11 resolved: window.LifeXPUpdate2 global removed. install() auto-runs via DOMContentLoaded.

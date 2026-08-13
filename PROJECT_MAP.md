@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-12 (fix/drop-integrity-traceability -- trazabilidad historica de drops reconstruida; sin cambios de contenido jugable) |
+| Ultima actualizacion | 2026-08-12 (fix/dt16-dt17-save-migrations -- migraciones transaccionales v0->v3, snapshots y assertion de carga de expansion) |
 | Branch de produccion | `main` |
-| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability` |
+| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations` |
 | Ramas historicas citadas | `fix/dt13-dt02-drop-ids` y `fix/expansion-items-syntax` fueron integradas o dejaron de existir; se conservan en el changelog como trazabilidad, no como ramas activas |
 | Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
@@ -28,9 +28,9 @@
 
 LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
 `index.html` contiene todo el CSS y el HTML; los scripts se cargan en orden al final del `<body>`.
-El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`.
+El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`; el loader actual migra saves versionados de forma secuencial hasta `saveVersion: 3`.
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
-Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes mediante `Object.assign` al arrancar.
+Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_content.js` valida su orden de carga, los ejecuta explicitamente y comprueba la instalacion completa antes de marcar la actualizacion.
 `inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, y hace repair() al arrancar.
 `item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel. Los mensajes del dominio de objetos se muestran en ingles; las tareas y el flujo del mundo real conservan el espanol.
 `item_flavor.js` contiene el lore narrativo de items (flavor text por item y por stage de attunement).
@@ -48,7 +48,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | Fichero | Lineas | Responsabilidad principal | Exports / globals clave |
 |---|---|---|---|
 | `index.html` | ~1400 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
-| `engine.js` | 315 | `gameState`, utilidades, persistencia, migracion de save, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen` |
+| `engine.js` | ~600 | `gameState`, schema canonico, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION` |
 | `combat.js` | ~750 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
 | `guild.js` | 331 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 174 | Subsistema canonico de inventario; repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
@@ -85,7 +85,7 @@ Los ficheros `expansion_*.js` y `update2_content.js` amplian esas constantes med
 | `expansion_enemies.js` | 21 | 18 enemigos de expansion | `EXPANSION_ENEMIES_V1` |
 | `expansion_quests.js` | 26 | 20 quests de expansion | `EXPANSION_QUESTS_V1` |
 | `expansion_tasks.js` | 30 | 14 tareas de expansion | `EXPANSION_TASKS_V1` |
-| `update2_content.js` | 106 | Patches narrativos de quests (Ashbrand arc); instala Ashbrand en ITEMS si no existe, con rareza `rare` y textos del objeto en ingles | -- (IIFE auto-ejecutable) |
+| `update2_content.js` | ~180 | IIFE de instalacion de contenido: valida globals y orden de carga, ejecuta instaladores de expansion, verifica que items/enemigos/quests/tasks quedaron instalados, patches narrativos | -- (IIFE auto-ejecutable) |
 
 ### 2e. Ficheros de soporte / PWA
 
@@ -335,9 +335,20 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 ---
 
+## 3b. Contrato de persistencia y recuperacion
+
+- `engine.js` define `CURRENT_SAVE_VERSION = 3` y una cadena explicita de migraciones `0->1->2->3`.
+- `loadGame()` crea una copia exacta previa bajo `lifexp_premigration_v<version>_<timestamp>` y conserva las tres mas recientes.
+- Las migraciones trabajan sobre un candidato; el save original y el estado en memoria se restauran si falla parseo, esquema, migracion o finalizacion.
+- Los campos conocidos reciben defaults declarativos; los campos desconocidos se conservan.
+- La migracion de quests conserva progreso por ID, registra objetivos que se reinician y no borra quests cuyo catalogo no esta disponible.
+- `update2_content.js` falla visiblemente si faltan catalogs, instaladores o entradas de expansion despues de instalar.
+- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v3, corrupcion, snapshots y DT-17).
+
 ## 8. Changelog del mapa
 
 | Fecha | PR / Rama | Cambios |
+| 2026-08-12 | `fix/dt16-dt17-save-migrations` | Persistencia transaccional: migraciones v0->v3, defaults de schema, snapshots pre-migracion, rollback ante corrupcion/fallo, progreso de quests por ID y assertion de carga/instalacion de expansion. Incluye fixtures; no toca contenido jugable. |
 |---|---|---|
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
 | 2026-07-31 | `chore/sync-project-map` | Saneamiento completo: correccion de arquitectura (engine.js, no game.js), orden real de carga de scripts verificado en index.html, recuentos de contenido verificados en codigo, ficheros UI documentados con funciones clave, deuda tecnica actualizada (DT-09/11/18 resueltos, DT-06/12 nuevos), seccion 9 de recuentos anadida, branches activas actualizadas |
