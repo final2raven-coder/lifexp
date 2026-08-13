@@ -38,7 +38,11 @@ Legacy active quests are migrated by quest ID. For every current objective:
 - Legacy objectives that no longer exist in the current definition are not copied into the active state; a warning identifies each reset.
 - A legacy quest whose definition is unavailable is retained by ID and its opaque state is preserved for later recovery.
 
-A v2 save that already contains canonical `quests.active` is not rebuilt from the legacy `activeQuests` field.
+A v2 save that already contains a complete and valid canonical `quests` container is not rebuilt from the legacy `activeQuests` field. Canonical validity is decided from the original parsed save before schema defaults add missing arrays. The container must include `active`, `completed`, `failed`, a valid `dailyReset`, and an objectives array for every active quest state. A present but partial or invalid container never becomes canonical merely because defaults fill missing fields.
+
+If a partial or invalid canonical container has a usable legacy `activeQuests` array, the legacy state is migrated deterministically by quest ID and objective ID. The same rule is applied to a save already marked as version `3`; the version marker does not make an incomplete container valid. If no usable legacy source exists, loading aborts before commit, the exact raw save remains unchanged, the pre-migration recovery snapshot is retained, and the player sees a visible error.
+
+Active canonical quests whose definitions are not available in the current catalog remain recoverable as opaque quest state. They are not reactivated from old objective definitions and are not silently deleted.
 
 ## Schema defaults
 
@@ -66,7 +70,10 @@ The fixture suite covers:
 | v0 save | migrates sequentially to v3 and receives explicit defaults |
 | v1 save | preserves inventory/equipment and receives item-system defaults |
 | v2 save with legacy `activeQuests` | migrates quest state and preserves matching objective progress |
-| v2 save with canonical `activeQuests`/`quests` | preserves canonical quest progress rather than rebuilding it |
+| v2 save with complete canonical `quests` and legacy `activeQuests` | preserves canonical quest progress rather than rebuilding it |
+| v2 save with partial canonical `quests` and legacy `activeQuests` | rebuilds from legacy IDs, clamps progress, and warns about removed objectives |
+| v2 save with partial canonical `quests` and no usable legacy source | fails visibly, leaves the exact raw save unchanged, and retains a recovery snapshot |
+| canonical save with an unknown active quest | preserves the opaque quest state for later recovery |
 | v3 save | loads without migration and preserves unknown fields |
 | save with legacy equipment ID/value | preserves the legacy value; no DT-10 conversion occurs |
 | corrupted JSON save | returns failure, keeps the exact original raw save, and shows an error |

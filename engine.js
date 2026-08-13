@@ -369,6 +369,33 @@ function logObjectiveReset(questId, objectiveId, reason) {
   console.warn(`Quest objective progress reset: ${questId}/${objectiveId} (${reason}).`);
 }
 
+function isQuestIdList(value) {
+  return Array.isArray(value) && value.every(id => typeof id === 'string' && id.length > 0);
+}
+
+function isCanonicalQuestState(value) {
+  if (!isPlainObject(value)) return false;
+  if (!isQuestIdList(value.active) || !isQuestIdList(value.completed) || !isQuestIdList(value.failed)) return false;
+  if (value.dailyReset !== null && typeof value.dailyReset !== 'string') return false;
+  return value.active.every(questId => {
+    const questState = value[questId];
+    if (!isPlainObject(questState)) return false;
+    const currentDefinition = typeof QUESTS !== 'undefined' ? QUESTS[questId] : null;
+    return !currentDefinition || Array.isArray(questState.objectives);
+  });
+}
+
+function isLegacyQuestEntry(value) {
+  if (typeof value === 'string') return value.length > 0;
+  if (!isPlainObject(value)) return false;
+  const questId = value.questId || value.id;
+  return typeof questId === 'string' && questId.length > 0;
+}
+
+function isUsableLegacyQuestState(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(isLegacyQuestEntry);
+}
+
 function migrateObjectiveList(questId, templates, previousObjectives) {
   const previous = Array.isArray(previousObjectives) ? previousObjectives : [];
   const previousById = new Map(previous.filter(objective => objective && typeof objective.id === 'string').map(objective => [objective.id, objective]));
@@ -466,6 +493,9 @@ function migrateV1ToV2(state) {
 }
 
 function migrateV2ToV3(state, context = {}) {
+  if (context.hasPartialCanonicalQuestState && !context.hasUsableLegacyQuestState) {
+    throw new Error('Partial canonical quest state cannot be reconstructed safely without usable legacy activeQuests.');
+  }
   if (!context.hasCanonicalQuestState) migrateQuestState(state, true);
   state.guildId = state.guildId ?? null;
   state.guildName = state.guildName ?? null;
@@ -484,14 +514,27 @@ const MIGRATIONS = [
 ];
 
 function runMigrations(parsed, from, warnings) {
+  const hasCanonicalQuestState = Object.prototype.hasOwnProperty.call(parsed, 'quests') && isCanonicalQuestState(parsed.quests);
+  const hasPartialCanonicalQuestState = Object.prototype.hasOwnProperty.call(parsed, 'quests') && !hasCanonicalQuestState;
+  const hasUsableLegacyQuestState = isUsableLegacyQuestState(parsed.activeQuests);
   let candidate = applySchemaDefaults({ ...parsed, saveVersion: from }, warnings);
   candidate.saveVersion = from;
+  if (from === CURRENT_SAVE_VERSION && hasPartialCanonicalQuestState) {
+    if (!hasUsableLegacyQuestState) {
+      throw new Error('Partial canonical quest state cannot be reconstructed safely without usable legacy activeQuests.');
+    }
+    migrateQuestState(candidate, true);
+  }
   let version = from;
   while (version < CURRENT_SAVE_VERSION) {
     const migration = MIGRATIONS.find(step => step.from === version);
     if (!migration) throw new Error(`No migration exists from saveVersion ${version}.`);
     const beforeVersion = candidate.saveVersion;
-    migration.fn(candidate, { hasCanonicalQuestState: Object.prototype.hasOwnProperty.call(parsed, 'quests') });
+    migration.fn(candidate, {
+      hasCanonicalQuestState,
+      hasPartialCanonicalQuestState,
+      hasUsableLegacyQuestState
+    });
     if (candidate.saveVersion !== beforeVersion) {
       throw new Error(`Migration ${migration.from}->${migration.to} changed saveVersion before it completed.`);
     }
@@ -605,4 +648,3 @@ function showScreen(screenId) {
   else if (screenId === 'guild') renderGuild();
   else if (screenId === 'settings') renderSettings();
 }
-
