@@ -42,10 +42,9 @@
     class_warrior_berserker: { name: 'The Red Path', desc: 'Prove that force can be guided without being extinguished.', setting: 'The Red Path opens only where discipline and fury meet without either yielding.', lore: 'A berserker is not a storm without a sky. The hardest lesson is choosing where the lightning lands.' }
   };
 
-  const OBJECTIVE_WORDS = { any: 'any path', casa: 'the refuge', cuerpo: 'the body', gestiones: 'the ledger', social: 'the circle', personal: 'the inner road' };
-
   function assertExpansionLoadOrder() {
     const requiredGlobals = [
+      ['localStorage', typeof localStorage !== 'undefined' && localStorage && typeof localStorage.getItem === 'function'],
       ['gameState', typeof gameState !== 'undefined' && gameState && typeof gameState === 'object'],
       ['ITEMS', typeof ITEMS !== 'undefined' && ITEMS && typeof ITEMS === 'object' && !Array.isArray(ITEMS)],
       ['ENEMIES', typeof ENEMIES !== 'undefined' && ENEMIES && typeof ENEMIES === 'object' && !Array.isArray(ENEMIES)],
@@ -60,7 +59,8 @@
       ['installExpansionItems', typeof installExpansionItems === 'function'],
       ['installExpansionEnemies', typeof installExpansionEnemies === 'function'],
       ['installExpansionQuests', typeof installExpansionQuests === 'function'],
-      ['installExpansionTasks', typeof installExpansionTasks === 'function']
+      ['installExpansionTasks', typeof installExpansionTasks === 'function'],
+      ['saveGame', typeof saveGame === 'function']
     ];
     const missing = requiredGlobals.filter(([, present]) => !present).map(([name]) => name);
     if (missing.length > 0) {
@@ -105,14 +105,74 @@
     }
   }
 
-  function backupBeforeMutation() {
+  function backupBeforeMutation(raw) {
+    if (!raw) return;
     try {
-      const raw = localStorage.getItem('lifexp_save');
-      if (raw && !localStorage.getItem('lifexp_update2_backup')) {
+      if (!localStorage.getItem('lifexp_update2_backup')) {
         localStorage.setItem('lifexp_update2_backup', raw);
         localStorage.setItem('lifexp_update2_backup_time', new Date().toISOString());
       }
-    } catch (error) { console.warn('Update 2 backup unavailable:', error); }
+    } catch (error) {
+      throw new Error(`Update 2 backup unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function cloneValue(value) {
+    if (value === undefined) return undefined;
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function captureMutableTarget(snapshots, name, target) {
+    if (target && typeof target === 'object') snapshots.push({ name, target, value: cloneValue(target) });
+  }
+
+  function captureTransactionSnapshot() {
+    const snapshots = [];
+    if (typeof ITEMS !== 'undefined') captureMutableTarget(snapshots, 'ITEMS', ITEMS);
+    if (typeof ENEMIES !== 'undefined') captureMutableTarget(snapshots, 'ENEMIES', ENEMIES);
+    if (typeof QUESTS !== 'undefined') captureMutableTarget(snapshots, 'QUESTS', QUESTS);
+    if (typeof DEFAULT_TASKS !== 'undefined') captureMutableTarget(snapshots, 'DEFAULT_TASKS', DEFAULT_TASKS);
+    if (typeof DROP_TABLES !== 'undefined') captureMutableTarget(snapshots, 'DROP_TABLES', DROP_TABLES);
+    if (typeof THEME_ENEMIES !== 'undefined') captureMutableTarget(snapshots, 'THEME_ENEMIES', THEME_ENEMIES);
+    if (typeof EXPANSION_ITEMS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_ITEMS_V1', EXPANSION_ITEMS_V1);
+    if (typeof EXPANSION_DROP_TABLES_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_DROP_TABLES_V1', EXPANSION_DROP_TABLES_V1);
+    if (typeof EXPANSION_ENEMIES_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_ENEMIES_V1', EXPANSION_ENEMIES_V1);
+    if (typeof EXPANSION_QUESTS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_QUESTS_V1', EXPANSION_QUESTS_V1);
+    if (typeof EXPANSION_TASKS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_TASKS_V1', EXPANSION_TASKS_V1);
+    return {
+      rawSave: localStorage.getItem('lifexp_save'),
+      stateTarget: typeof gameState !== 'undefined' && gameState && typeof gameState === 'object' ? gameState : null,
+      state: typeof gameState !== 'undefined' && gameState && typeof gameState === 'object' ? cloneValue(gameState) : null,
+      catalogs: snapshots
+    };
+  }
+
+  function restoreMutableTarget(snapshot) {
+    const target = snapshot.target;
+    const value = cloneValue(snapshot.value);
+    if (Array.isArray(target)) {
+      target.splice(0, target.length, ...value);
+      return;
+    }
+    Object.keys(target).forEach(key => delete target[key]);
+    Object.assign(target, value);
+  }
+
+  function rollbackTransaction(snapshot) {
+    const errors = [];
+    for (const catalog of snapshot.catalogs) {
+      try { restoreMutableTarget(catalog); } catch (error) { errors.push(`${catalog.name}: ${error.message}`); }
+    }
+    if (snapshot.stateTarget && snapshot.state) {
+      try { restoreMutableTarget({ target: snapshot.stateTarget, value: snapshot.state }); } catch (error) { errors.push(`gameState: ${error.message}`); }
+    }
+    try {
+      if (snapshot.rawSave === null) localStorage.removeItem('lifexp_save');
+      else localStorage.setItem('lifexp_save', snapshot.rawSave);
+    } catch (error) {
+      errors.push(`lifexp_save: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return errors.length > 0 ? new Error(`Update 2 rollback failed (${errors.join('; ')}).`) : null;
   }
 
   function ensureContainer(container, id, qty) {
@@ -147,11 +207,20 @@
     }
   }
 
+  function commitSave() {
+    const expectedSave = JSON.stringify(gameState);
+    saveGame();
+    if (localStorage.getItem('lifexp_save') !== expectedSave) {
+      throw new Error('Update 2 save commit could not be verified.');
+    }
+  }
+
   function install() {
     if (typeof gameState !== 'undefined' && gameState.__lifexpUpdate2 === UPDATE_ID) return;
+    const transaction = captureTransactionSnapshot();
     try {
       assertExpansionLoadOrder();
-      backupBeforeMutation();
+      backupBeforeMutation(transaction.rawSave);
       installExpansionItems();
       installExpansionEnemies();
       installExpansionQuests();
@@ -162,9 +231,11 @@
       gameState.__lifexpUpdate2 = UPDATE_ID;
       if (typeof renderQuests === 'function') renderQuests();
       if (typeof renderInventory === 'function') renderInventory();
-      if (typeof saveGame === 'function') saveGame();
+      commitSave();
     } catch (error) {
-      reportInstallFailure(error);
+      const rollbackError = rollbackTransaction(transaction);
+      if (rollbackError) reportInstallFailure(new Error(`${error instanceof Error ? error.message : String(error)} ${rollbackError.message}`));
+      else reportInstallFailure(error);
     }
   }
 
