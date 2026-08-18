@@ -248,6 +248,7 @@ Logica de migracion en `engine.js` -> funcion `migrateQuestState()` y bloque de 
   setting?: string
   lore?: string
 }
+```
 
 ---
 
@@ -469,7 +470,7 @@ La salida muestra el recuento de catalogos cargados, la lista de errores (si los
 
 ### Regla de uso obligatorio
 
-**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que anada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no debe mergearse hasta resolverlos.
+**Ejecutar antes de abrir cualquier PR** que modifique ficheros de datos (`items.js`, `enemies.js`, `quests.js`, `data_tasks.js`, `expansion_*.js`, `update2_content.js`) o que anada/elimine scripts (`index.html`, `sw.js`). Si hay errores, el PR no se mergea.
 
 ### Primera ejecucion (2026-07-31, estado actual del repo)
 
@@ -492,4 +493,3 @@ Errores principales restantes (fuera del alcance de esta tarea):
 - `ENEMIES["araña_domestica"].drops` contiene `seda_araña` como nombre de display.
 - `THEME_ENEMIES["agua_quimicos"]` y `THEME_ENEMIES["hallazgos"]` contienen `araña_domestica` como nombre de display.
 - Persisten 26 avisos `UNOBTAINABLE_ITEM`; requieren un diagnostico separado y no se alteran aqui.
-
