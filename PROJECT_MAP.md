@@ -2,6 +2,7 @@
 
 > **Proposito:** mapa de referencia para el Game Master y cualquier colaborador.
 > Permite localizar cualquier simbolo, modelo de datos o zona de cambio sin abrir el proyecto completo.
+> **Regla obligatoria:** este fichero debe actualizarse en el mismo PR que cualquier cambio estructural, de ficheros, simbolos, modelos de datos o invariantes que afecte al proyecto.
 > **Regla de uso:** actualizar la seccion 8 (changelog) en cada PR que modifique ficheros listados aqui.
 
 ---
@@ -11,11 +12,13 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-18 (`chore/add-ci` -- workflow reproducible para sintaxis y suites runtime; no ejecuta el validador baseline) |
+| Ultima actualizacion | 2026-08-18 (`chore/dt15-project-map-sync` -- sincronizacion documental con el estado real del repositorio) |
 | Branch de produccion | `main` |
-| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations`, `fix/partial-quest-migration`, `fix/update2-transaction`, `chore/add-ci` |
-| Ramas historicas citadas | `fix/dt13-dt02-drop-ids` y `fix/expansion-items-syntax` fueron integradas o dejaron de existir; se conservan en el changelog como trazabilidad, no como ramas activas |
-| Commit base | `4ead02560790a58fada9b98ac11aadea4cf6fe43` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync` |
+| Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
+| Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
+| Commit de `main` verificado | `491df53416dc7817037759f3c887cd606a05de2d` |
+| Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
@@ -43,68 +46,72 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 
 ## 2. Inventario de ficheros
 
+Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estimaciones de lineas.
+
 ### 2a. Ficheros de motor y UI
 
-| Fichero | Lineas | Responsabilidad principal | Exports / globals clave |
-|---|---|---|---|
-| `index.html` | ~1400 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
-| `engine.js` | ~600 | `gameState`, schema canonico, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION` |
-| `combat.js` | ~750 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
-| `guild.js` | 331 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
-| `inventory_system.js` | 174 | Subsistema canonico de inventario; repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
-| `item_system.js` | 614 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
-| `main.js` | 84 | Punto de entrada: event listeners + registro del Service Worker | -- |
+| Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
+|---|---:|---|---|
+| `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
+| `engine.js` | 27219 | `gameState`, schema canonico, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION` |
+| `combat.js` | 28751 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
+| `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
+| `inventory_system.js` | 10457 | Subsistema canonico de inventario; repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
+| `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
+| `main.js` | 3262 | Punto de entrada: event listeners + registro del Service Worker | -- |
 
 ### 2b. Ficheros de UI (pantallas)
 
-| Fichero | Lineas | Pantalla / zona | Funciones clave |
-|---|---|---|---|
-| `ui_hub.js` | 413 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
-| `ui_tasks.js` | 340 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategory`, `shuffleTask`, `renderTaskScreen`, `completeTask`, `rollDrop`, `dismissComplete` |
-| `ui_combat.js` | 316 | Pantalla de combate, encuentros post-tarea, tareas guardadas, overflow | `checkForEncounter`, `triggerEncounterAfterTask`, `startCombatFromEncounter`, `renderCombatScreen`, `executeCombatAction`, `showCombatVictory`, `saveForLater`, `showSavedTasks`, `showOverflowTasks` |
-| `ui_misc.js` | 397 | Pantallas miscelaneas: mapa, gremio, lore, clase, quests rapidas | `renderMap`, `renderClassScreen`, `renderLore`, `openQuestPanel` |
-| `ui_feedback.js` | 177 | Toasts, notificaciones, animaciones de feedback; dialogo de descubrimiento de objetos en ingles | `showFlavorDialog`, `showToast`, `showXpGain`, `showLevelUp`, `showDropNotification` |
-| `ui_quests.js` | 234 | Pantalla de quests: lista, detalle, progreso | `renderQuestsScreen`, `renderQuestDetail`, `claimQuestReward` |
+| Fichero | Bytes | Pantalla / zona | Funciones clave |
+|---|---:|---|---|
+| `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
+| `ui_tasks.js` | 11643 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategoryTask`, `completeTask`, `renderTaskScreen`, `showPostTaskFeedback` |
+| `ui_combat.js` | 10864 | UI de combate, encuentros y feedback de post-tarea | `renderCombat`, `startCombatFromTask`, `showCombatResult` |
+| `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
+| `ui_quests.js` | 10640 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `completeQuest` |
+| `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
 
 ### 2c. Ficheros de datos (contenido)
 
-| Fichero | Lineas | Contenido | Constante exportada |
-|---|---|---|---|
-| `classes.js` | 223 | Arbol de clases: 6 clases base, 102 nodos de progresion | `CLASS_TREE` |
-| `items.js` | 268 | 87 items base + `RARITY`, `ITEM_TYPE`, `DROP_TABLES` | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
-| `enemies.js` | 614 | 85 enemigos base (niveles 1-40+) | `ENEMIES` |
-| `quests.js` | 604 | 33 quests base (dailies, simples, bounties, story, class quests) | `QUESTS` |
-| `data_tasks.js` | 533 | 41 tareas base (`DEFAULT_TASKS`) | `DEFAULT_TASKS` |
-| `item_flavor.js` | 467 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
+| Fichero | Bytes | Contenido | Global principal |
+|---|---:|---|---|
+| `classes.js` | 21975 | 6 clases y arbol de progresion de 102 nodos | `CLASS_TREE` |
+| `items.js` | 28242 | 87 items base, rarezas, tipos y tablas de drops | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
+| `enemies.js` | 20920 | 85 enemigos base y tablas tematicas | `ENEMIES`, `THEME_ENEMIES` |
+| `quests.js` | 17440 | 33 quests base | `QUESTS` |
+| `data_tasks.js` | 20277 | 41 tareas base | `DEFAULT_TASKS` |
+| `item_flavor.js` | 44397 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
 
 ### 2d. Ficheros de expansion y actualizaciones
 
-| Fichero | Lineas | Contenido | Constante exportada |
-|---|---|---|---|
-| `expansion_items.js` | 171 | 88 items de expansion + 25 drop tables tematicas | `EXPANSION_ITEMS_V1`, `EXPANSION_DROP_TABLES_V1` |
-| `expansion_enemies.js` | 21 | 18 enemigos de expansion | `EXPANSION_ENEMIES_V1` |
-| `expansion_quests.js` | 26 | 20 quests de expansion | `EXPANSION_QUESTS_V1` |
-| `expansion_tasks.js` | 30 | 14 tareas de expansion | `EXPANSION_TASKS_V1` |
-| `update2_content.js` | ~240 | IIFE de instalacion de contenido: valida globals y orden de carga, ejecuta instaladores de expansion, verifica que items/enemigos/quests/tasks quedaron instalados, aplica patches narrativos y garantiza rollback transaccional de catalogos, estado y save | -- (IIFE auto-ejecutable) |
+| Fichero | Bytes | Contenido | Efecto de carga |
+|---|---:|---|---|
+| `expansion_items.js` | 28107 | Expansion declarativa de items | `Object.assign(ITEMS, EXPANSION_ITEMS_V1)` |
+| `expansion_enemies.js` | 3699 | Expansion declarativa de enemigos | `Object.assign(ENEMIES, EXPANSION_ENEMIES_V1)` |
+| `expansion_quests.js` | 3089 | Expansion declarativa de quests | `Object.assign(QUESTS, EXPANSION_QUESTS_V1)` |
+| `expansion_tasks.js` | 7425 | Expansion declarativa de tareas | `DEFAULT_TASKS.push(...)` |
+| `update2_content.js` | 15192 | Instalacion transaccional de Update 2: patches narrativos y contenido adicional | IIFE idempotente con rollback |
 
 ### 2e. Ficheros de soporte / PWA
 
-| Fichero | Responsabilidad |
-|---|---|
-| `sw.js` | Service Worker cache-first. `CACHE_NAME = lifexp-v22`. Lista de assets sincronizada con `index.html` (verificada por check 10 del validador). |
-| `manifest.json` | Metadatos PWA (nombre, iconos, colores) |
-| `emergency-save.html` | Herramienta standalone de recuperacion de save |
+| Fichero | Bytes | Responsabilidad |
+|---|---:|---|
+| `manifest.json` | 530 | Metadatos PWA e iconos |
+| `sw.js` | 2005 | Service Worker cache-first; `CACHE_NAME = lifexp-v22` |
+| `emergency-save.html` | 5646 | Herramienta de recuperacion manual del save |
+| `icon-192.png` | 1447 | Icono PWA 192 px |
+| `icon-512.png` | 3708 | Icono PWA 512 px |
 
 ### 2f. Herramientas de desarrollo (no se cargan en produccion)
 
-| Fichero | Responsabilidad |
-|---|---|
-| `validate_content.js` | Validador de integridad referencial v1.1. Node.js, solo lectura. Ver seccion 10. |
-| `tests/save_migrations.test.js` | Fixtures runtime de migraciones v0->v3, rollback de saves, progreso de quests y compatibilidad hacia delante. |
-| `tests/update2_transaction.test.js` | Fixtures runtime de instalacion correcta, ejecucion de los cuatro instaladores, commit, rollback, reintento e idempotencia de Update 2. |
-| `.github/workflows/ci.yml` | CI reproducible en push y pull request: Node.js 22.14.0, sintaxis de scripts de produccion y suites runtime. |
-
----
+| Fichero | Bytes | Responsabilidad |
+|---|---:|---|
+| `validate_content.js` | 18409 | Validador de integridad de contenido, solo lectura |
+| `tests/save_migrations.test.js` | 11790 | Fixtures y pruebas de migraciones de save |
+| `tests/update2_transaction.test.js` | 7424 | Pruebas de instalacion transaccional de Update 2 |
+| `.github/workflows/ci.yml` | 1427 | CI de sintaxis JS y suites runtime |
+| `docs/DROP_MAPPING.md` | 22020 | Inventario y trazabilidad de referencias de drops |
+| `docs/SAVE_MIGRATION.md` | 9117 | Contrato y procedimiento de migracion/recuperacion de saves |
 
 ## 3. Modelo de datos: `gameState`
 
@@ -284,20 +291,30 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 
 ---
 
-## 5b. Procedimiento para anadir un fichero nuevo
+### 5b. Procedimiento para anadir un fichero nuevo
 
-Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
+1. Crear el fichero en una rama propia.
+2. Anadir su `<script src="...">` en `index.html` en el punto correcto del orden de carga.
+3. Anadir la misma ruta a `urlsToCache` en `sw.js`.
+4. Incrementar `CACHE_NAME` en `sw.js`.
+5. Actualizar este mapa en el mismo PR.
+6. Ejecutar `node --check` y las suites de CI antes de abrir el PR.
 
-1. Crear el fichero `.js` en la raiz del repositorio.
-2. Anadir `<script src="nuevo.js"></script>` en `index.html` en la posicion correcta segun dependencias (ver seccion 5).
-3. Anadir `'/nuevo.js'` en `urlsToCache` de `sw.js` en la misma posicion relativa que en `index.html`.
-4. Incrementar `CACHE_NAME` en `sw.js` (`lifexp-vN` -> `lifexp-v(N+1)`).
-5. Ejecutar `node validate_content.js` -- debe salir sin errores `SW_MISSING_ASSET`.
-6. Abrir PR con los 3 ficheros modificados: el nuevo `.js`, `index.html`, `sw.js`.
+### 5c. Como anadir contenido (formato declarativo Fase 3)
 
-> **Regla:** el validador (check 10) detecta cualquier desincronia entre `index.html` y `sw.js` como error bloqueante. Un PR con `SW_MISSING_ASSET` no se mergea.
+Las nuevas tareas, items, enemigos y quests deben anadirse como datos en los ficheros `expansion_*.js`, no mediante ramas especiales en el motor. Cada expansion publica un objeto o una lista con IDs nuevos y estables, y el instalador existente la incorpora al catalogo correspondiente (`Object.assign` para catalogos y `push` para tareas). Mantener el formato de los catalogos base, usar IDs `snake_case`, referenciar drops por ID canonico y no duplicar IDs existentes.
 
----
+Para una nueva actualizacion de contenido:
+
+1. Elegir la expansion declarativa adecuada: `expansion_items.js`, `expansion_enemies.js`, `expansion_quests.js` o `expansion_tasks.js`.
+2. Definir cada entrada con todos los campos requeridos por su modelo y conectar las referencias a IDs ya existentes o definidos en el mismo bloque.
+3. Si el contenido necesita una regla nueva, comprobar primero si puede expresarse como propiedad declarativa; no anadir un caso especial hardcodeado al motor.
+4. Actualizar las tablas de trazabilidad y este mapa si cambian cantidades, modelos, orden de carga o invariantes.
+5. Verificar sintaxis, referencias, IDs unicos, instalacion idempotente y compatibilidad con saves existentes.
+
+El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos, enemigos, quests y lore; no se deben anadir listas aisladas que no tengan conexiones jugables.
+
+> **Nota historica:** los IDs `DT-*` se reutilizaron en distintas fases del saneamiento; cuando un mismo ID tiene mas de un significado, este registro conserva ambos PRs y lo indica expresamente.
 
 ## 6. Invariantes criticos
 
@@ -315,10 +332,32 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 ---
 
-## 7. Deuda tecnica activa
+## 7. Registro de deuda tecnica
 
-| ID | Descripcion | Prioridad | Estado |
-|---|---|---|---|
+Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18. Los items abiertos conservan owner y siguiente accion.
+
+| ID | Descripcion | Prioridad | Estado real | PR de cierre / siguiente accion |
+|---|---|---|---|---|
+| DT-01 | Lista de assets del Service Worker mantenida manualmente. | -- | **CERRADO** | PR #23 (`fix/sw-assets`): el validador comprueba la sincronizacion `index.html`/`sw.js` y se incrementa la cache. La rama ya no existe. |
+| DT-02 | IDs no canonicos en tablas de drops y compatibilidad de lectura para valores legacy. | -- | **CERRADO** | PR #29 (`fix: migrate drop-table item IDs to canonical ASCII`) corrigio `DROP_TABLES` y preservo aliases de lectura; PRs #34 y #35 regeneraron la trazabilidad. Las ramas ya no existen. |
+| DT-03 | Interfaz exacta entre `combat.js` y `engine.js` no verificada en el mapa. | Baja | **ABIERTO** | Owner: mantenedor. Siguiente accion: revisar ambos contratos y documentar sus simbolos sin cambiar comportamiento. |
+| DT-04 | `ui_misc.js` agrupa mapa, gremio, lore, clase y quests rapidas. | Baja | **ABIERTO** | Owner: mantenedor. Siguiente accion: proponer un refactor separado; no mezclarlo con arreglos ni contenido. |
+| DT-05 | `item_flavor.js` concentra el mayor volumen de datos narrativos. | Baja | **VIGILAR** | Owner: mantenedor. Siguiente accion: medir tiempo de carga antes de plantear cambios. |
+| DT-06 | Stub huerfano `ashbrand_hotfix.js`. | -- | **CERRADO** | PR #26 (`fix/dt-17-remove-ashbrand-stub`) retiro el fichero; PR #33 dejo constancia documental. No existe en `main` ni se referencia desde `index.html`/`sw.js`. |
+| DT-07 | Las expansiones no tienen guard explicito contra colisiones de IDs. | Media | **ABIERTO** | Owner: mantenedor. Siguiente accion: disenar una comprobacion generica de colisiones antes de cambiar los instaladores. |
+| DT-08 | `update2_content.js` parchea quests por IDs concretos. | Baja | **ABIERTO** | Owner: mantenedor. Siguiente accion: evaluar una API declarativa de patches; conservar el comportamiento actual hasta aprobar el refactor. |
+| DT-09 | Split de `game.js` en motor y ficheros de UI. | -- | **CERRADO** | PR #15 (`refactor/split-gamejs`): `game.js` se dividio en modulos y se elimino de la carga; `engine.js` es el motor canonico. |
+| DT-10 | Algunos items legacy del save requieren normalizacion y pueden tener casos edge. | Alta | **ABIERTO** | Owner: mantenedor. Siguiente accion: ampliar fixtures de normalizacion determinista sin perder datos ni cambiar contenido. |
+| DT-11 | Global innecesario `window.LifeXPUpdate2` en la instalacion de Update 2. | -- | **CERRADO** | PR #17 (`fix/dt-11-13`): elimino el global fragil. La rama ya no existe. |
+| DT-12 | Renderizado de inventario duplicado entre `item_system.js` y `ui_hub.js`. | Media | **ABIERTO** | Owner: mantenedor. Siguiente accion: documentar el contrato actual y proponer un refactor separado. |
+| DT-13 | Instalaciones de `expansion_*.js` sin guard de idempotencia. | -- | **CERRADO** | PR #17 (`fix/dt-11-13`): anadio guards `_installed` a las expansiones; PR #24/#28 completo el mismo patron para enemigos. Las ramas ya no existen. |
+| DT-14 | Fallback de recuperacion de items y logica de restauracion especifica de Ashbrand. | -- | **CERRADO** | PR #11 elimino el fallback; PR #25 movio la migracion legacy al subsistema de inventario y PR #27 generalizo la recuperacion determinista. Las ramas ya no existen. |
+| DT-16 | Migraciones de save sin proteccion transaccional completa. | -- | **CERRADO** | PR #38 (`fix/dt16-dt17-save-migrations`): snapshots, backup y rollback de migraciones; pruebas incluidas. La rama ya no existe. |
+| DT-17 | Retirada del stub huerfano `ashbrand_hotfix.js` (ID historico reutilizado despues para save-safety). | -- | **CERRADO** | PR #26 (`fix/dt-17-remove-ashbrand-stub`) retiro el stub; el trabajo de save-safety posterior se documento bajo el mismo ID en PR #38. La rama ya no existe. |
+| DT-18 | `PROJECT_MAP.md` desactualizado frente al repositorio. | -- | **CERRADO** | Este PR: ramas, deuda, tamanos, responsabilidades y guia Fase 3 sincronizados. |
+| DT-19 | Referencias heredadas no ASCII en `enemies.js`: `seda_araña` y `araña_domestica`. | Alta | **ABIERTO** | Owner: mantenedor. Siguiente accion: preparar un cambio de datos separado que migre esas referencias a IDs canonicos y regenere la trazabilidad. |
+
+---|---|---|---|
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | ~~`DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente~~ | -- | **RESUELTO en `DROP_TABLES` y drops de tareas** (la trazabilidad historica de las sustituciones queda separada de las 77 definiciones nuevas aprobadas) |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
@@ -355,6 +394,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 
 ## 8. Changelog del mapa
 
+| 2026-08-18 | `chore/dt15-project-map-sync` | Sincroniza este mapa con el estado real del repositorio: solo ramas existentes, ausencia verificada de tags de backup, deuda tecnica con PRs de cierre y owner/siguiente accion para abiertos, inventario con tamanos en bytes y guia de contenido declarativo Fase 3. Documentacion solamente. |
 | Fecha | PR / Rama | Cambios |
 |---|---|---|
 | 2026-08-18 | `chore/add-ci` | Añade `.github/workflows/ci.yml` para ejecutar en push y pull request una version explicita de Node.js (`22.14.0`), `node --check` sobre los scripts de produccion y las suites de migraciones y de instalacion transaccional. No añade dependencias, no ejecuta `validate_content.js` por sus errores baseline conocidos y no cambia comportamiento de la aplicacion. |
