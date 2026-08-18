@@ -11,9 +11,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-18 (`fix/update2-transaction` -- instalacion transaccional de Update 2, rollback de catalogos/estado/save y fixtures runtime) |
+| Ultima actualizacion | 2026-08-18 (`chore/add-ci` -- workflow reproducible para sintaxis y suites runtime; no ejecuta el validador baseline) |
 | Branch de produccion | `main` |
-| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations`, `fix/partial-quest-migration`, `fix/update2-transaction` |
+| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations`, `fix/partial-quest-migration`, `fix/update2-transaction`, `chore/add-ci` |
 | Ramas historicas citadas | `fix/dt13-dt02-drop-ids` y `fix/expansion-items-syntax` fueron integradas o dejaron de existir; se conservan en el changelog como trazabilidad, no como ramas activas |
 | Commit base | `4ead02560790a58fada9b98ac11aadea4cf6fe43` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
@@ -102,6 +102,7 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 | `validate_content.js` | Validador de integridad referencial v1.1. Node.js, solo lectura. Ver seccion 10. |
 | `tests/save_migrations.test.js` | Fixtures runtime de migraciones v0->v3, rollback de saves, progreso de quests y compatibilidad hacia delante. |
 | `tests/update2_transaction.test.js` | Fixtures runtime de instalacion correcta, ejecucion de los cuatro instaladores, commit, rollback, reintento e idempotencia de Update 2. |
+| `.github/workflows/ci.yml` | CI reproducible en push y pull request: Node.js 22.14.0, sintaxis de scripts de produccion y suites runtime. |
 
 ---
 
@@ -349,11 +350,14 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 - `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo.
 - Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
 - Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
+- `.github/workflows/ci.yml` ejecuta en cada push y pull request `node --check` sobre los scripts de produccion y las suites `tests/save_migrations.test.js` y `tests/update2_transaction.test.js`, usando Node.js `22.14.0`.
+- `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
 
 | Fecha | PR / Rama | Cambios |
 |---|---|---|
+| 2026-08-18 | `chore/add-ci` | Añade `.github/workflows/ci.yml` para ejecutar en push y pull request una version explicita de Node.js (`22.14.0`), `node --check` sobre los scripts de produccion y las suites de migraciones y de instalacion transaccional. No añade dependencias, no ejecuta `validate_content.js` por sus errores baseline conocidos y no cambia comportamiento de la aplicacion. |
 | 2026-08-18 | `fix/update2-transaction` | Instalacion de Update 2 convertida en transaccion: snapshots profundos de catalogos y `gameState`, backup exacto de `lifexp_save`, rollback ante fallo de instalador/verificacion/render/commit, commit de save solo al final y reintento seguro. Se anade `tests/update2_transaction.test.js` con fixtures de exito, cuatro instaladores, rollback, reintento e idempotencia; se actualiza el contrato de persistencia. No toca contenido jugable ni `saveVersion: 3`. |
 | 2026-08-13 | `fix/partial-quest-migration` | Deteccion de `quests` canonico basada en el save original antes de defaults; recuperacion determinista de contenedores parciales desde `activeQuests`, rollback visible cuando no hay fuente legacy suficiente, preservacion de quests desconocidas y fixtures de estado persistido. No toca contenido jugable ni cambia `saveVersion: 3`. |
 | 2026-08-12 | `fix/dt16-dt17-save-migrations` | Persistencia transaccional: migraciones v0->v3, defaults de schema, snapshots pre-migracion, rollback ante corrupcion/fallo, progreso de quests por ID y assertion de carga/instalacion de expansion. Incluye fixtures; no toca contenido jugable. |
@@ -489,4 +493,3 @@ Errores principales restantes (fuera del alcance de esta tarea):
 - `ENEMIES["araña_domestica"].drops` contiene `seda_araña` como nombre de display.
 - `THEME_ENEMIES["agua_quimicos"]` y `THEME_ENEMIES["hallazgos"]` contienen `araña_domestica` como nombre de display.
 - Persisten 26 avisos `UNOBTAINABLE_ITEM`; requieren un diagnostico separado y no se alteran aqui.
-
