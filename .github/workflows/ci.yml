@@ -1,0 +1,52 @@
+name: LifeXP CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  reproducible-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+
+      - name: Check production JavaScript syntax
+        run: |
+          node --check classes.js
+          node --check items.js
+          node --check enemies.js
+          node --check combat.js
+          node --check quests.js
+          node --check item_flavor.js
+          node --check data_tasks.js
+          node --check engine.js
+          node --check expansion_items.js
+          node --check expansion_enemies.js
+          node --check expansion_quests.js
+          node --check expansion_tasks.js
+          node --check update2_content.js
+          node --check inventory_system.js
+          node --check ui_hub.js
+          node --check ui_tasks.js
+          node --check ui_combat.js
+          node --check ui_misc.js
+          node --check guild.js
+          node --check ui_feedback.js
+          node --check ui_quests.js
+          node --check item_system.js
+          node --check main.js
+
+      - name: Run save migration fixtures
+        run: node tests/save_migrations.test.js
+
+      - name: Run Update 2 transaction fixtures
+        run: node tests/update2_transaction.test.js
