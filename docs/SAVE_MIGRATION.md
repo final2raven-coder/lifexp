@@ -52,7 +52,7 @@ Legacy equipment values are intentionally preserved as-is. DT-10 legacy item nor
 
 ## Expansion load order
 
-The expansion files expose installer functions and must load after their base catalogs. `update2_content.js` now asserts at runtime that:
+The expansion files expose installer functions and must load after their base catalogs. `update2_content.js` asserts at runtime that:
 
 - base catalogs and expansion declarations exist;
 - all four installer functions exist;
@@ -61,9 +61,26 @@ The expansion files expose installer functions and must load after their base ca
 
 A load-order or installation failure produces a visible error and prevents the update marker from being written.
 
+## Update 2 installation transaction
+
+The save migration transaction and the Update 2 installation transaction are separate contracts. The latter protects the in-memory catalogs and the save while the additive update is installed.
+
+Before any Update 2 mutation, `update2_content.js`:
+
+1. Captures deep snapshots of the mutable catalogs (`ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, and `THEME_ENEMIES`) and the mutable `gameState`.
+2. Reads the exact current `lifexp_save` string and stores it as the Update 2 backup under `lifexp_update2_backup`.
+3. Validates the load order and required installer functions.
+4. Runs the four installers explicitly.
+5. Verifies that every declared expansion entry is present, then applies the Update 2-specific item and quest state.
+6. Writes the update marker, renders the affected UI, and calls `saveGame()` only after all previous steps succeed.
+
+If an installer, verification, rendering step, or final commit step fails, the transaction restores the catalog snapshots, the previous `gameState`, and the exact original `lifexp_save` string. The marker is therefore not left behind by a failed installation, and a subsequent load can retry from the original state. The failure is reported visibly; no partial Update 2 save is committed.
+
+A successful installation remains idempotent. A later execution sees the marker and exits without duplicating catalog entries or applying the update a second time. The backup is retained independently of the three pre-migration snapshots because it belongs to the Update 2 installation transaction, not to save-version migration.
+
 ## Fixtures and verification
 
-The fixture suite covers:
+The save-loader fixture suite covers:
 
 | Fixture | Expected result |
 | --- | --- |
@@ -80,13 +97,29 @@ The fixture suite covers:
 | four existing snapshots | retains only the three newest snapshots |
 | DT-17 static contract | rejects conditional undefined-installer calls and requires runtime assertions |
 
-Run the suite with:
+Run the save-loader suite with:
 
 ```sh
 node tests/save_migrations.test.js
 ```
 
-The suite is dependency-free and uses an in-memory `localStorage` implementation.
+The Update 2 transaction fixture suite covers:
+
+| Fixture | Expected result |
+| --- | --- |
+| successful installation | runs all four installers, verifies the installed entries, writes the marker, and commits the save |
+| installer failure | restores catalogs, in-memory state, and the exact save without committing a partial update |
+| post-install failure | restores the same surfaces when a later verification, render, or commit step fails |
+| retry after failure | installs successfully from the restored original state |
+| second successful execution | is a no-op and does not duplicate entries or save twice |
+
+Run the Update 2 transaction suite with:
+
+```sh
+node tests/update2_transaction.test.js
+```
+
+Both suites are dependency-free and use in-memory `localStorage` implementations.
 
 ## DT-10 follow-up edge cases
 
