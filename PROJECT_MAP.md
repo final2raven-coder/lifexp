@@ -11,11 +11,11 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-13 (fix/partial-quest-migration -- deteccion de estado canonico antes de defaults y rollback de quests parciales) |
+| Ultima actualizacion | 2026-08-18 (`fix/update2-transaction` -- instalacion transaccional de Update 2, rollback de catalogos/estado/save y fixtures runtime) |
 | Branch de produccion | `main` |
-| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations`, `fix/partial-quest-migration` |
+| Branches conocidas | `main`, `backup/pre-sanitation-2026-07-30`, `fix/drop-integrity-traceability`, `fix/dt16-dt17-save-migrations`, `fix/partial-quest-migration`, `fix/update2-transaction` |
 | Ramas historicas citadas | `fix/dt13-dt02-drop-ids` y `fix/expansion-items-syntax` fueron integradas o dejaron de existir; se conservan en el changelog como trazabilidad, no como ramas activas |
-| Commit base | `21f934ff6a31ca2e4090bfe34e586b15c2690e35` |
+| Commit base | `4ead02560790a58fada9b98ac11aadea4cf6fe43` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
@@ -30,7 +30,7 @@ LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
 `index.html` contiene todo el CSS y el HTML; los scripts se cargan en orden al final del `<body>`.
 El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`; el loader actual migra saves versionados de forma secuencial hasta `saveVersion: 3`.
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
-Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_content.js` valida su orden de carga, los ejecuta explicitamente y comprueba la instalacion completa antes de marcar la actualizacion.
+Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_content.js` valida su orden de carga, los ejecuta explicitamente, comprueba la instalacion completa antes de marcar la actualizacion y revierte catalogos, estado en memoria y save si falla cualquier paso.
 `inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, y hace repair() al arrancar.
 `item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel. Los mensajes del dominio de objetos se muestran en ingles; las tareas y el flujo del mundo real conservan el espanol.
 `item_flavor.js` contiene el lore narrativo de items (flavor text por item y por stage de attunement).
@@ -85,7 +85,7 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 | `expansion_enemies.js` | 21 | 18 enemigos de expansion | `EXPANSION_ENEMIES_V1` |
 | `expansion_quests.js` | 26 | 20 quests de expansion | `EXPANSION_QUESTS_V1` |
 | `expansion_tasks.js` | 30 | 14 tareas de expansion | `EXPANSION_TASKS_V1` |
-| `update2_content.js` | ~180 | IIFE de instalacion de contenido: valida globals y orden de carga, ejecuta instaladores de expansion, verifica que items/enemigos/quests/tasks quedaron instalados, patches narrativos | -- (IIFE auto-ejecutable) |
+| `update2_content.js` | ~240 | IIFE de instalacion de contenido: valida globals y orden de carga, ejecuta instaladores de expansion, verifica que items/enemigos/quests/tasks quedaron instalados, aplica patches narrativos y garantiza rollback transaccional de catalogos, estado y save | -- (IIFE auto-ejecutable) |
 
 ### 2e. Ficheros de soporte / PWA
 
@@ -100,6 +100,8 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 | Fichero | Responsabilidad |
 |---|---|
 | `validate_content.js` | Validador de integridad referencial v1.1. Node.js, solo lectura. Ver seccion 10. |
+| `tests/save_migrations.test.js` | Fixtures runtime de migraciones v0->v3, rollback de saves, progreso de quests y compatibilidad hacia delante. |
+| `tests/update2_transaction.test.js` | Fixtures runtime de instalacion correcta, ejecucion de los cuatro instaladores, commit, rollback, reintento e idempotencia de Update 2. |
 
 ---
 
@@ -266,7 +268,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 10. expansion_enemies.js-- EXPANSION_ENEMIES_V1 -> Object.assign(ENEMIES, ...)
 11. expansion_quests.js -- EXPANSION_QUESTS_V1 -> Object.assign(QUESTS, ...)
 12. expansion_tasks.js  -- EXPANSION_TASKS_V1 -> DEFAULT_TASKS.push(...)
-13. update2_content.js  -- IIFE: patches narrativos + instala Ashbrand si falta
+13. update2_content.js  -- IIFE: patches narrativos + instala Ashbrand si falta; rollback transaccional si falla
 14. inventory_system.js -- LifeXPInventory, repair() al arrancar
 15. ui_hub.js           -- UI del hub, inventario, equipamiento
 16. ui_tasks.js         -- UI de tareas
@@ -302,7 +304,7 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y anade un bloque en `loadGame`.
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
-5. **`update2_content.js` es una IIFE.** Se auto-ejecuta al cargarse. No expone globals. Es idempotente: comprueba si ya se aplico antes de actuar.
+5. **`update2_content.js` es una IIFE transaccional.** Se auto-ejecuta al cargarse; comprueba si ya se aplico antes de actuar; si falla un instalador o cualquier paso posterior restaura catalogos, `gameState` y `lifexp_save`; una instalacion correcta es idempotente.
 6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
@@ -344,13 +346,15 @@ Cada vez que se anade un nuevo `.js` a la app, seguir estos pasos en orden:
 - La migracion de quests conserva progreso por ID, registra objetivos que se reinician y no borra quests cuyo catalogo no esta disponible.
 - La validez del contenedor canonico se decide sobre el save original, antes de aplicar defaults; un contenedor parcial usa `activeQuests` legacy o aborta con rollback visible si no puede reconstruirse de forma segura.
 - Un estado canonico de quests completo conserva prioridad; los estados parciales no se aceptan por el mero hecho de haber recibido arrays por defaults y conservan el raw save exacto si la reparacion no es segura.
-- `update2_content.js` falla visiblemente si faltan catalogs, instaladores o entradas de expansion despues de instalar.
-- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17).
+- `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo.
+- Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
+- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
 
 ## 8. Changelog del mapa
 
 | Fecha | PR / Rama | Cambios |
 |---|---|---|
+| 2026-08-18 | `fix/update2-transaction` | Instalacion de Update 2 convertida en transaccion: snapshots profundos de catalogos y `gameState`, backup exacto de `lifexp_save`, rollback ante fallo de instalador/verificacion/render/commit, commit de save solo al final y reintento seguro. Se anade `tests/update2_transaction.test.js` con fixtures de exito, cuatro instaladores, rollback, reintento e idempotencia; se actualiza el contrato de persistencia. No toca contenido jugable ni `saveVersion: 3`. |
 | 2026-08-13 | `fix/partial-quest-migration` | Deteccion de `quests` canonico basada en el save original antes de defaults; recuperacion determinista de contenedores parciales desde `activeQuests`, rollback visible cuando no hay fuente legacy suficiente, preservacion de quests desconocidas y fixtures de estado persistido. No toca contenido jugable ni cambia `saveVersion: 3`. |
 | 2026-08-12 | `fix/dt16-dt17-save-migrations` | Persistencia transaccional: migraciones v0->v3, defaults de schema, snapshots pre-migracion, rollback ante corrupcion/fallo, progreso de quests por ID y assertion de carga/instalacion de expansion. Incluye fixtures; no toca contenido jugable. |
 | 2026-07-30 | PR #14 / Fase F saneamiento | Creacion inicial del mapa post-saneamiento |
