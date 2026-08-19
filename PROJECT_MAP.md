@@ -276,7 +276,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 9.  expansion_items.js  -- EXPANSION_ITEMS_V1 -> Object.assign(ITEMS, ...)
 10. expansion_enemies.js-- EXPANSION_ENEMIES_V1 -> Object.assign(ENEMIES, ...)
 11. expansion_quests.js -- EXPANSION_QUESTS_V1 -> Object.assign(QUESTS, ...)
-12. expansion_tasks.js  -- EXPANSION_TASKS_V1 -> DEFAULT_TASKS.push(...)
+12. expansion_tasks.js  -- DEFAULT_TASKS.push(...)
 13. update2_content.js  -- IIFE: patches narrativos + instala Ashbrand si falta; rollback transaccional si falla
 14. inventory_system.js -- LifeXPInventory, repair() al arrancar
 15. ui_hub.js           -- UI del hub, inventario, equipamiento
