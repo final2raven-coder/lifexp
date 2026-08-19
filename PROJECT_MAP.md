@@ -12,7 +12,7 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-19 (`fix/rewards-contract` -- conexion de recompensas de tareas y side quests) |
+| Ultima actualizacion | 2026-08-19 (`fix/rewards-contract` -- conexion de recompensas de tareas, side quests y combate) |
 | Branch de produccion | `main` |
 | Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
@@ -54,7 +54,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
 | `engine.js` | 30403 | `gameState`, schema canonico, contrato durable de recompensas, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState` |
-| `combat.js` | 28751 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
+| `combat.js` | 30528 | Logica de combate, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
@@ -65,11 +65,11 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Pantalla / zona | Funciones clave |
 |---|---:|---|---|
 | `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
-| `ui_tasks.js` | 13561 | Pantalla de tarea, completado, drops, encuentros y entrega durable de recompensas | `openRandomTask`, `openCategoryTask`, `completeTask`, `finalizeCompletion`, `normalizeTaskRewardDrop`, `renderTaskScreen`, `showPostTaskFeedback` |
-| `ui_combat.js` | 10864 | UI de combate, encuentros y feedback de post-tarea | `renderCombat`, `startCombatFromTask`, `showCombatResult` |
+| `ui_tasks.js` | 11643 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategoryTask`, `completeTask`, `renderTaskScreen`, `showPostTaskFeedback` |
+| `ui_combat.js` | 11288 | UI de combate, encuentros y feedback estructurado de recompensas | `renderCombatScreen`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
-| `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
 | `ui_quests.js` | 10640 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `completeQuest` |
+| `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
 
 ### 2c. Ficheros de datos (contenido)
 
@@ -284,9 +284,9 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 17. ui_combat.js        -- UI de combate, encuentros y feedback de post-tarea
 18. ui_misc.js          -- UI miscelanea (mapa, gremio, lore, clase, quests rapidas)
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
-20. ui_feedback.js     -- Toasts y feedback visual
-21. ui_quests.js       -- UI de quests
-22. item_system.js     -- Sistema de items (attunement, rituales, modales)
+20. ui_feedback.js      -- Toasts y feedback visual
+21. ui_quests.js        -- UI de quests
+22. item_system.js      -- Sistema de items (attunement, rituales, modales)
 23. main.js             -- Punto de entrada (event listeners, SW)
 ```
 
@@ -297,7 +297,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 1. Crear el fichero en una rama propia.
 2. Anadir su `<script src="...">` en `index.html` en el punto correcto del orden de carga.
 3. Anadir la misma ruta a `urlsToCache` en `sw.js`.
-4. Incrementar `CACHE_NAME` en `sw.js`.
+4. Incrementar `CACHE_NAME` en `sw.js`. 
 5. Actualizar este mapa en el mismo PR.
 6. Ejecutar `node --check` y las suites de CI antes de abrir el PR.
 
@@ -313,7 +313,7 @@ Para una nueva actualizacion de contenido:
 4. Actualizar las tablas de trazabilidad y este mapa si cambian cantidades, modelos, orden de carga o invariantes.
 5. Verificar sintaxis, referencias, IDs unicos, instalacion idempotente y compatibilidad con saves existentes.
 
-El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos, enemigos, quests y lore; no se deben anadir listas aisladas que no tengan conexiones jugables.
+El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos, enemigos y quests; no se deben anadir listas aisladas que no tengan conexiones jugables.
 
 > **Nota historica:** los IDs `DT-*` se reutilizaron en distintas fases del saneamiento; cuando un mismo ID tiene mas de un significado, este registro conserva ambos PRs y lo indica expresamente.
 
@@ -330,7 +330,7 @@ El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
 11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
-12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` ya conecta tareas y side quests a `LifeXPInventory.deliverReward()`; combate y quests quedan para fases posteriores de `fix/rewards-contract`.
+12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; quests y la UI general de recuperacion quedan para fases posteriores de `fix/rewards-contract`.
 
 ---
 
@@ -386,17 +386,22 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - Las migraciones trabajan sobre un candidato; el save original y el estado en memoria se restauran si falla parseo, esquema, migracion o finalizacion.
 - Los campos conocidos reciben defaults declarativos; los campos desconocidos se conservan.
 - La migracion de quests conserva progreso por ID, registra objetivos que se reinician y no borra quests cuyo catalogo no esta disponible.
-- La validez del contenedor canonico se decide sobre el save original, antes de aplicar defaults; un contenedor parcial usa `activeQuests` legacy o aborta con rollback visible si no puede reconstruirse de forma segura.
+- La validez del contenedor canonico se decide sobre el save original, antes de aplicar defaults; un save parcial usa `activeQuests` legacy o aborta con rollback visible si no puede reconstruirse de forma segura.
 - Un estado canonico de quests completo conserva prioridad; los estados parciales no se aceptan por el mero hecho de haber recibido arrays por defaults y conservan el raw save exacto si la reparacion no es segura.
 - `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo.
 - Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
-- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, rollback, reintento e idempotencia).
+- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
 - `.github/workflows/ci.yml` ejecuta en cada push y pull request `node --check` sobre los scripts de produccion y las suites `tests/save_migrations.test.js` y `tests/update2_transaction.test.js`, usando Node.js `22.14.0`.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
 
+| 2026-08-19 | `fix/rewards-contract` (Fase 1C) | Conecta combate con la frontera canonica: el paquete de recompensas y su claim ID se crean una sola vez por combate; XP y oro se aplican una sola vez; cada drop usa un claim independiente y conserva los estados `granted`, `pending` o `rejected` para reintento sin reroll. La UI muestra el resultado estructurado de cada drop. No toca contenido jugable; quests siguen pendientes. |
+
+| 2026-08-19 | `fix/rewards-contract` (Fase 1B) | Conecta drops de tareas y side quests con `LifeXPInventory.deliverReward()`, normaliza formas actuales y legacy y elimina inserciones directas no canonicas. No cambia XP, oro, historial ni reglas de drop. |
+
 | 2026-08-19 | `fix/rewards-contract` (Fase 1A) | Introduce el contrato durable de recompensas sin tocar contenido: `pendingLoot` pasa a `{ version: 1, entries: [] }` con normalizacion compatible con `null`, arrays y formatos legacy; `rewardLedger` registra `claimId` y estados; `LifeXPInventory.deliverReward()` resuelve IDs canonicos, comprueba la insercion real y devuelve `granted`, `pending` o `rejected`, conservando pendientes y referencias recuperables. La rama parte de `main` en `dcc567034ff3319595770fb29206d14f3e98258a`; quedan pendientes de esta misma tarea la conexion de consumidores y la UI visible de recuperacion. |
+
 | 2026-08-19 | `fix/rewards-contract` (Fase 1B) | `ui_tasks.js` conecta drops de tareas y side quests con `LifeXPInventory.deliverReward()` usando `claimId` estable por tarea, fecha y variante; elimina inserciones directas y normaliza descriptores actuales y legacy antes de entregar. Los estados `pending` y `rejected` se muestran como recuperables sin alterar el XP, oro, historial ni reglas de drop. Combate y quests no se tocan en esta fase. |
 
 | 2026-08-18 | `chore/dt15-project-map-sync` | Sincroniza este mapa con el estado real del repositorio: solo ramas existentes, ausencia verificada de tags de backup, deuda tecnica con PRs de cierre y owner/siguiente accion para abiertos, inventario con tamanos en bytes y guia de contenido declarativo Fase 3. Documentacion solamente. |
@@ -434,7 +439,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ### Items
 
 | Fuente | Cantidad | Notas |
-|---|---:|---|
+|---|---|---|
 | `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en base |
@@ -470,10 +475,8 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 ### Lore / Flavor
 
 | Fuente | Cantidad |
-|---|---|
+|---|---:|
 | `item_flavor.js` (items con flavor text) | 87 entradas |
-
----
 
 ## 10. Validador de integridad de contenido
 
