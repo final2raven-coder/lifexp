@@ -80,6 +80,41 @@ function createContext(options = {}) {
     if (options.failAfterInstall === 'quests') throw new Error('synthetic quest render failure');
   };
   context.renderInventory = () => {};
+  if (options.invalidRewardReference === 'task') {
+    context.EXPANSION_TASKS_V1 = [{
+      id: 'update_task',
+      drops: { theme: 'update_theme', items: ['missing_item'] }
+    }];
+  }
+  if (options.invalidRewardReference === 'sideQuestArray') {
+    context.DEFAULT_TASKS[0].sideQuest = { drops: ['missing_item'] };
+  }
+  if (options.invalidRewardReference === 'sideQuestObject') {
+    context.EXPANSION_TASKS_V1 = [{
+      id: 'update_task',
+      sideQuest: { drops: { theme: 'base_theme', items: ['missing_item'] } }
+    }];
+  }
+  if (options.invalidRewardReference === 'enemy') {
+    context.EXPANSION_ENEMIES_V1 = { update_enemy: { id: 'update_enemy', drops: [{ itemId: 'missing_item' }] } };
+  }
+  if (options.invalidRewardReference === 'dropTable') {
+    context.EXPANSION_DROP_TABLES_V1 = { update_theme: ['missing_item'] };
+  }
+  if (options.invalidRewardReference === 'questReward') {
+    context.EXPANSION_QUESTS_V1 = {
+      update_quest: { id: 'update_quest', name: 'Update quest', reward: { items: ['missing_item'] } }
+    };
+  }
+  if (options.invalidRewardReference === 'chapterReward') {
+    context.EXPANSION_QUESTS_V1 = {
+      update_quest: {
+        id: 'update_quest',
+        name: 'Update quest',
+        chapters: [{ id: 'chapter_one', rewards: { items: ['missing_item'] } }]
+      }
+    };
+  }
   vm.createContext(context);
   return { context, storage, errors, saveCalls };
 }
@@ -184,7 +219,36 @@ function testPostInstallFailureRollsBack() {
   assert.match(harness.errors[0], /synthetic quest render failure/);
 }
 
+function testRewardReferenceValidationRollsBackEveryDropShape() {
+  const cases = [
+    ['task', 'TASKS["update_task"].drops.items'],
+    ['sideQuestArray', 'TASKS["base_task"].sideQuest.drops'],
+    ['sideQuestObject', 'TASKS["update_task"].sideQuest.drops.items'],
+    ['enemy', 'ENEMIES["update_enemy"].drops[0].itemId'],
+    ['dropTable', 'DROP_TABLES["update_theme"]'],
+    ['questReward', 'QUESTS["update_quest"].reward.items'],
+    ['chapterReward', 'QUESTS["update_quest"].chapters[chapter_one].rewards.items']
+  ];
+
+  for (const [invalidRewardReference, contextLabel] of cases) {
+    const harness = createContext({ writeSave: true, invalidRewardReference });
+    const before = snapshot(harness);
+    const rawBefore = harness.storage.getItem('lifexp_save');
+
+    runUpdate(harness);
+
+    assert.equal(snapshot(harness), before, contextLabel);
+    assert.equal(harness.storage.getItem('lifexp_save'), rawBefore, contextLabel);
+    assert.equal(harness.context.gameState.__lifexpUpdate2, undefined, contextLabel);
+    assert.equal(harness.saveCalls.length, 0, contextLabel);
+    assert.equal(harness.errors.length, 1, contextLabel);
+    assert.match(harness.errors[0], /Reward reference validation failed/, contextLabel);
+    assert.match(harness.errors[0], /missing_item/, contextLabel);
+  }
+}
+
 testSuccessfulInstallationAndIdempotence();
 testInstallerFailureRollsBackAndCanRetry();
 testPostInstallFailureRollsBack();
-console.log('Update 2 transaction fixtures: PASS (success, four installers, save commit, rollback after installer failure, rollback after post-install failure, retry, idempotence)');
+testRewardReferenceValidationRollsBackEveryDropShape();
+console.log('Update 2 transaction fixtures: PASS (success, reward reference validation, four installers, save commit, rollback, retry, idempotence)');
