@@ -44,132 +44,70 @@ function renderQuests() {
     const questId = quest.id;
     // getQuestProgress uses gameState.quests[questId] internally
     const prog = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
-    const progressPct = prog ? prog.percent : 0;
-    
-    const typeColors = {
-      daily: 'var(--green)',
-      simple: 'var(--blue)',
-      compound: 'var(--purple)',
-      story: 'var(--gold)',
-      bounty: 'var(--red)',
-      class_quest: 'var(--cyan)',
-      event: 'var(--orange)'
-    };
-    const color = typeColors[quest.type] || 'var(--text-muted)';
+    const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : { name: quest.type, icon: '\uD83D\uDCDC', color: 'var(--gold)' };
+    const percent = prog?.percent || 0;
+    const isStory = quest.type === 'story';
+    const chapterInfo = isStory && quest.chapters ? `Capítulo ${(quest.currentChapter || 0) + 1}/${quest.chapters.length}` : '';
     
     container.innerHTML += `
-      <div class="card" onclick="showQuestDetail('${questId}')" style="cursor: pointer; border-left: 3px solid ${color};">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div>
-            <div style="font-size: 11px; color: ${color}; text-transform: uppercase; margin-bottom: 4px;">
-              ${quest.type}
+      <div class="card quest-card" style="border-left: 3px solid ${typeInfo.color || 'var(--gold)'}; margin-bottom: 12px; cursor: pointer;" onclick="showQuestDetail('${questId}')">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 11px; color: ${typeInfo.color || 'var(--gold)'}; text-transform: uppercase; letter-spacing: 1px;">
+              ${typeInfo.icon || '\uD83D\uDCDC'} ${typeInfo.name || quest.type} ${chapterInfo ? `· ${chapterInfo}` : ''}
             </div>
-            <div style="font-weight: 700;">${quest.name}</div>
+            <div style="font-size: 16px; font-weight: 700; margin-top: 4px;">${quest.name}</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>
           </div>
-          <div style="text-align: right;">
-            <div style="font-size: 20px;">${quest.icon || '\uD83D\uDCDC'}</div>
-          </div>
+          <div style="font-size: 20px;">${quest.icon || '\uD83D\uDCDC'}</div>
         </div>
         <div style="margin-top: 12px;">
-          <div style="height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;">
-            <div style="height: 100%; width: ${progressPct}%; background: ${color}; border-radius: 2px;"></div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+            <span>Progreso</span>
+            <span>${percent}%</span>
           </div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${progressPct}% completado</div>
+          <div style="height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background: ${typeInfo.color || 'var(--gold)'}; transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px;">
+          <span style="color: var(--text-muted);">Ver detalles</span>
+          <span style="color: var(--gold);">+${quest.rewards?.xp || 0} XP · +${quest.rewards?.gold || 0} \uD83E\uDE99</span>
         </div>
       </div>
     `;
   }
-  
-  // Add button to see more quests
-  container.innerHTML += `
-    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="showAvailableQuests()">
-      + Ver más quests
-    </button>
-  `;
+}
+
+function getQuestTypeInfo(type) {
+  const config = typeof QUEST_TYPE !== 'undefined' ? QUEST_TYPE[type] : null;
+  return config || { name: type || 'Quest', icon: '\uD83D\uDCDC', color: 'var(--gold)' };
 }
 
 function showAvailableQuests() {
-  const modal = document.getElementById('modal-tasks');
-  const list  = document.getElementById('modal-tasks-list');
-  const title = document.getElementById('modal-tasks-title');
-  if (!modal || !list || !title) return;
-  title.textContent = '\uD83D\uDCDC Quests disponibles';
-
-  if (typeof QUESTS === 'undefined') {
-    list.innerHTML = '<div class="text-muted">Sistema de quests no disponible</div>';
-    openModal('modal-tasks');
-    return;
-  }
-
-  // Ensure update2 patches are applied (idempotent — safe to call every time)
-  if (typeof window !== 'undefined' && window.LifeXPUpdate2) {
-    if (typeof window.LifeXPUpdate2.patchQuests === 'function') window.LifeXPUpdate2.patchQuests();
-    if (typeof window.LifeXPUpdate2.patchExpansionQuestLanguage === 'function') window.LifeXPUpdate2.patchExpansionQuestLanguage();
-  }
-
-  const typeConfig = {
-    daily:       { color: 'var(--green)',  label: 'Diaria',    icon: '\uD83D\uDCC5' },
-    simple:      { color: 'var(--blue)',   label: 'Misión',    icon: '\uD83D\uDCDC' },
-    compound:    { color: 'var(--purple)', label: 'Compuesta', icon: '\uD83D\uDCDA' },
-    story:       { color: 'var(--gold)',   label: 'Historia',  icon: '⭐' },
-    bounty:      { color: 'var(--red)',    label: 'Bounty',    icon: '\uD83C\uDFAF' },
-    class_quest: { color: 'var(--cyan)',   label: 'Clase',     icon: '⚔️' },
-    event:       { color: 'var(--orange)', label: 'Evento',    icon: '\uD83C\uDF89' },
-  };
-
-  // getAvailableQuests() (quests.js) applies level/class/stat/active/completed filters
   const available = typeof getAvailableQuests === 'function' ? getAvailableQuests() : [];
-
-  list.innerHTML = '';
-  let count = 0;
-
-  for (const quest of available) {
-    const questId = quest.id;
-
-    const cfg   = typeConfig[quest.type] || { color: 'var(--text-muted)', label: quest.type, icon: '\uD83D\uDCDC' };
-    // Prefer EN fantasy name if patched by update2, fall back to ES name
-    const displayName = quest.name || questId;
-    // Lore line: setting > lore > desc (in that priority — setting is the world-flavour hook)
-    const loreLine = quest.setting || quest.lore || '';
-    // Practical desc always shown below (ES)
-    const practicalDesc = quest.desc || '';
-
-    const rewardXp   = quest.rewards?.xp   || 0;
-    const rewardGold = quest.rewards?.gold  || 0;
-    const rewardItems = (quest.rewards?.items || []).length;
-
-    list.innerHTML += `
-      <div class="card" style="cursor:pointer;border-left:3px solid ${cfg.color};margin-bottom:8px;" onclick="acceptQuest('${questId}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:10px;color:${cfg.color};text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">${cfg.icon} ${cfg.label}</div>
-            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">${escapeHtml(displayName)}</div>
-            ${loreLine ? `<div style="font-size:12px;color:var(--text-muted);font-style:italic;line-height:1.4;margin-bottom:4px;">${escapeHtml(loreLine)}</div>` : ''}
-            ${practicalDesc ? `<div style="font-size:11px;color:var(--text-muted);line-height:1.4;">${escapeHtml(practicalDesc)}</div>` : ''}
+  const list = available.map(quest => {
+    const typeInfo = getQuestTypeInfo(quest.type);
+    return `
+      <div class="card" style="cursor:pointer;margin-bottom:8px;" onclick="acceptQuest('${quest.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:11px;color:${typeInfo.color};text-transform:uppercase;">${typeInfo.icon} ${typeInfo.name}</div>
+            <div style="font-weight:700;margin-top:4px;">${quest.name}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${quest.desc || ''}</div>
           </div>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
-          ${rewardXp   ? `<span style="font-size:11px;color:var(--gold);">+${rewardXp} XP</span>` : ''}
-          ${rewardGold ? `<span style="font-size:11px;color:var(--gold);">+${rewardGold} \uD83E\uDE99</span>` : ''}
-          ${rewardItems ? `<span style="font-size:11px;color:var(--blue);">+${rewardItems} objeto${rewardItems>1?'s':''}</span>` : ''}
+          <div style="color:var(--gold);font-size:12px;">+${quest.rewards?.xp || 0} XP</div>
         </div>
       </div>
     `;
-    count++;
-  }
-
-  if (!count) {
-    list.innerHTML = '<div class="text-muted text-center" style="padding:20px;">No hay quests disponibles ahora</div>';
-  }
-
-  openModal('modal-tasks');
+  }).join('');
+  
+  const content = document.getElementById('modal-item-content');
+  if (!content) return;
+  content.innerHTML = list || '<div class="text-muted text-center">No hay quests disponibles.</div>';
+  document.getElementById('btn-item-action').style.display = 'none';
+  openModal('modal-item');
 }
-
-// ===========================================================================
-// QUEST FUNCTIONS — delegations to quests.js canonical implementations
-// (Fase E saneamiento: duplicados eliminados, game.js delega a quests.js)
-// ===========================================================================
 
 function acceptQuest(questId) {
   if (typeof window.acceptQuestCanonical !== 'function') return;
@@ -178,7 +116,7 @@ function acceptQuest(questId) {
     if (typeof showToast === 'function') showToast(result.message, 'error');
     return;
   }
-  closeModal('modal-tasks');
+  closeModal('modal-item');
   renderQuests();
 }
 
@@ -188,6 +126,7 @@ function showQuestDetail(questId) {
   if (!quest) return;
 
   const prog = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
+  const rewardStatus = typeof getQuestRewardStatus === 'function' ? getQuestRewardStatus(questId) : null;
   const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : {};
   const color = typeInfo.color || 'var(--gold)';
 
@@ -215,6 +154,27 @@ function showQuestDetail(questId) {
     </div>
   `;
 
+  const rewardApplications = [
+    ...(rewardStatus?.final ? [{ label: 'Recompensa final', ...rewardStatus.final }] : []),
+    ...(rewardStatus?.chapters || []).map(chapter => ({
+      label: `Recompensa de capítulo ${chapter.rewardKey}`,
+      ...chapter
+    }))
+  ];
+  const statusLabel = status => status === 'granted'
+    ? 'concedida'
+    : status === 'pending'
+      ? 'pendiente de espacio'
+      : 'requiere recuperación';
+  const recoveryApplications = rewardApplications.filter(application => application.status !== 'granted');
+  const rewardStatusHtml = rewardApplications.length
+    ? `<div style="margin-top:12px;font-size:12px;">
+        ${rewardApplications.map(application => `<div style="color:${application.status === 'granted' ? 'var(--green)' : 'var(--orange)'};margin-top:4px;">${escapeHtml(application.label)}: ${statusLabel(application.status)}</div>`).join('')}
+        ${recoveryApplications.length ? `<button class="btn btn-ghost" style="margin-top:8px;width:100%;" onclick="retryQuestRewards('${questId}'); showQuestDetail('${questId}');">Reintentar recompensas recuperables</button>` : ''}
+      </div>`
+    : '';
+  contentEl.innerHTML += rewardStatusHtml;
+
   const actionBtn = document.getElementById('btn-item-action');
   actionBtn.textContent = '\u274C Abandonar quest';
   actionBtn.onclick = () => abandonQuest(questId);
@@ -232,3 +192,9 @@ function abandonQuest(questId) {
 
 // ===========================================================================
 // PWA Service Worker Registration
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}

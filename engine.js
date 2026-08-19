@@ -45,7 +45,8 @@ const DEFAULT_GAME_STATE = {
   stash: [],
   stashCapacity: 30,
   inventoryCapacityBonus: 0,
-  pendingLoot: null,
+  pendingLoot: { version: 1, entries: [] },
+  rewardLedger: {},
   saveVersion: 3, // v3 is the current canonical version (migration in loadGame handles v<3 saves)
   
   // Class (placeholder for next block)
@@ -224,6 +225,60 @@ function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+const PENDING_LOOT_SCHEMA_VERSION = 1;
+
+function getPendingLootMetadata(entry) {
+  if (!isPlainObject(entry)) return {};
+  const knownKeys = new Set([
+    'claimId', 'itemId', 'id', 'requestedItem', 'quantity', 'qty', 'displayName',
+    'name', 'source', 'reason', 'status', 'createdAt', 'metadata'
+  ]);
+  const metadata = isPlainObject(entry.metadata) ? cloneSaveState(entry.metadata) : {};
+  for (const [key, value] of Object.entries(entry)) {
+    if (!knownKeys.has(key)) metadata[key] = cloneSaveState(value);
+  }
+  return metadata;
+}
+
+function normalizePendingLootEntry(entry, index) {
+  const source = isPlainObject(entry) ? entry : {};
+  const rawItemId = isPlainObject(entry)
+    ? (typeof entry.itemId === 'string' ? entry.itemId : (typeof entry.id === 'string' ? entry.id : null))
+    : (typeof entry === 'string' ? entry : null);
+  const requestedItem = isPlainObject(entry)
+    ? (typeof entry.requestedItem === 'string' ? entry.requestedItem : rawItemId || (typeof entry.name === 'string' ? entry.name : null))
+    : rawItemId;
+  const quantityValue = isPlainObject(entry) ? (entry.quantity ?? entry.qty ?? 1) : 1;
+  const quantity = Number.isFinite(Number(quantityValue)) ? Math.max(1, Math.floor(Number(quantityValue))) : 1;
+  return {
+    claimId: typeof source.claimId === 'string' && source.claimId ? source.claimId : `legacy-pending-${index}`,
+    itemId: rawItemId,
+    requestedItem,
+    quantity,
+    displayName: typeof source.displayName === 'string' ? source.displayName : (typeof source.name === 'string' ? source.name : null),
+    source: typeof source.source === 'string' && source.source ? source.source : 'legacy',
+    reason: typeof source.reason === 'string' && source.reason ? source.reason : 'legacy',
+    status: source.status === 'rejected' ? 'rejected' : 'pending',
+    createdAt: typeof source.createdAt === 'string' ? source.createdAt : null,
+    metadata: getPendingLootMetadata(entry)
+  };
+}
+
+function normalizePendingLootState(value, warnings = []) {
+  if (value === null || value === undefined) return { version: PENDING_LOOT_SCHEMA_VERSION, entries: [] };
+  let rawEntries;
+  if (Array.isArray(value)) rawEntries = value;
+  else if (isPlainObject(value) && Array.isArray(value.entries)) rawEntries = value.entries;
+  else rawEntries = [value];
+  if (isPlainObject(value) && value.version !== undefined && value.version !== PENDING_LOOT_SCHEMA_VERSION) {
+    warnings.push(`Normalized pendingLoot schema version ${String(value.version)} to ${PENDING_LOOT_SCHEMA_VERSION}.`);
+  }
+  return {
+    version: PENDING_LOOT_SCHEMA_VERSION,
+    entries: rawEntries.map((entry, index) => normalizePendingLootEntry(entry, index))
+  };
+}
+
 function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
@@ -292,7 +347,17 @@ function applySchemaDefaults(input, warnings = []) {
   if (!Array.isArray(state.stash)) { state.stash = []; recordSchemaDefault(warnings, 'stash'); }
   if (!isFiniteNumber(state.stashCapacity) || state.stashCapacity < 0) { state.stashCapacity = defaults.stashCapacity; recordSchemaDefault(warnings, 'stashCapacity'); }
   if (!isFiniteNumber(state.inventoryCapacityBonus) || state.inventoryCapacityBonus < 0) { state.inventoryCapacityBonus = defaults.inventoryCapacityBonus; recordSchemaDefault(warnings, 'inventoryCapacityBonus'); }
-  if (!Object.prototype.hasOwnProperty.call(state, 'pendingLoot')) { state.pendingLoot = defaults.pendingLoot; recordSchemaDefault(warnings, 'pendingLoot'); }
+  if (!hasOwn('pendingLoot')) {
+    state.pendingLoot = normalizePendingLootState(defaults.pendingLoot, warnings);
+    recordSchemaDefault(warnings, 'pendingLoot');
+  } else {
+    const normalizedPendingLoot = normalizePendingLootState(state.pendingLoot, warnings);
+    if (JSON.stringify(normalizedPendingLoot) !== JSON.stringify(state.pendingLoot)) {
+      state.pendingLoot = normalizedPendingLoot;
+      recordSchemaDefault(warnings, 'pendingLoot');
+    }
+  }
+  if (!isPlainObject(state.rewardLedger)) { state.rewardLedger = {}; recordSchemaDefault(warnings, 'rewardLedger'); }
 
   if (!hasOwn('classId') || typeof state.classId !== 'string') { state.classId = defaults.classId; recordSchemaDefault(warnings, 'classId'); }
   if (!isFiniteNumber(state.classLevel) || state.classLevel < 1) { state.classLevel = defaults.classLevel; recordSchemaDefault(warnings, 'classLevel'); }
@@ -432,7 +497,6 @@ function getQuestObjectiveTemplates(quest, questState) {
 function migrateQuestState(state, force = false) {
   if (!force && state.quests && Array.isArray(state.quests.active)) return state;
   if (typeof QUESTS === 'undefined') throw new Error('Quest catalog is unavailable during save migration.');
-
   const canonical = {
     active: [],
     completed: Array.isArray(state.completedQuests) ? [...state.completedQuests] : [],
@@ -477,7 +541,8 @@ function migrateV0ToV1(state) {
   state.stash = Array.isArray(state.stash) ? state.stash : [];
   state.stashCapacity = isFiniteNumber(state.stashCapacity) ? state.stashCapacity : DEFAULT_GAME_STATE.stashCapacity;
   state.inventoryCapacityBonus = isFiniteNumber(state.inventoryCapacityBonus) ? state.inventoryCapacityBonus : DEFAULT_GAME_STATE.inventoryCapacityBonus;
-  state.pendingLoot = Object.prototype.hasOwnProperty.call(state, 'pendingLoot') ? state.pendingLoot : null;
+  state.pendingLoot = normalizePendingLootState(state.pendingLoot, []);
+  state.rewardLedger = isPlainObject(state.rewardLedger) ? state.rewardLedger : {};
   return state;
 }
 

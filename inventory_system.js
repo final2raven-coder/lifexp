@@ -20,8 +20,8 @@
     'arco de espino': 'arco_espino',
     'tridente marino': 'tridente_marino',
     'katana oriental': 'katana_oriental',
-    'seda araña': 'seda_arana',
-    'fragmento sueño': 'fragmento_sueno'
+    'seda araÃ±a': 'seda_arana',
+    'fragmento sueÃ±o': 'fragmento_sueno'
   };
 
   function text(value) {
@@ -52,6 +52,155 @@
     if (!id) return null;
     if (typeof entry === 'string') return { id, qty: 1 };
     return { ...entry, id, qty: Math.max(1, Number(entry.qty ?? entry.quantity ?? 1) || 1) };
+  }
+
+  function ensurePendingLootState() {
+    if (typeof gameState === 'undefined') return null;
+    if (typeof normalizePendingLootState === 'function') {
+      const normalized = normalizePendingLootState(gameState.pendingLoot, []);
+      if (JSON.stringify(normalized) !== JSON.stringify(gameState.pendingLoot)) gameState.pendingLoot = normalized;
+      return gameState.pendingLoot;
+    }
+    if (!gameState.pendingLoot || !Array.isArray(gameState.pendingLoot.entries)) {
+      gameState.pendingLoot = { version: 1, entries: [] };
+    }
+    return gameState.pendingLoot;
+  }
+
+  function ensureRewardLedger() {
+    if (typeof gameState === 'undefined') return null;
+    if (!gameState.rewardLedger || typeof gameState.rewardLedger !== 'object' || Array.isArray(gameState.rewardLedger)) {
+      gameState.rewardLedger = {};
+    }
+    return gameState.rewardLedger;
+  }
+
+  function getRewardInput(entry) {
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      return entry.itemId ?? entry.id ?? entry.requestedItem ?? entry.name ?? entry.itemName ?? null;
+    }
+    return entry;
+  }
+
+  function getRewardQuantity(entry, options) {
+    const value = options.quantity ?? entry?.quantity ?? entry?.qty ?? 1;
+    const quantity = Number(value);
+    return Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1;
+  }
+
+  let generatedClaimSequence = 0;
+
+  function getRewardClaimId(entry, options, source, input) {
+    if (typeof options.claimId === 'string' && options.claimId) return options.claimId;
+    if (entry && typeof entry === 'object' && typeof entry.claimId === 'string' && entry.claimId) return entry.claimId;
+    generatedClaimSequence += 1;
+    return `reward:${source || 'unknown'}:${Date.now()}:${generatedClaimSequence}`;
+  }
+
+  function getPendingEntryIndex(queue, claimId) {
+    return queue.entries.findIndex(entry => entry && entry.claimId === claimId);
+  }
+
+  function upsertPendingEntry(queue, entry) {
+    const index = getPendingEntryIndex(queue, entry.claimId);
+    if (index === -1) queue.entries.push(entry);
+    else queue.entries[index] = { ...queue.entries[index], ...entry };
+  }
+
+  function removePendingEntry(queue, claimId) {
+    const index = getPendingEntryIndex(queue, claimId);
+    if (index !== -1) queue.entries.splice(index, 1);
+  }
+
+  function persistRewardState() {
+    if (typeof saveGame === 'function') saveGame();
+  }
+
+  function createPendingEntry({ claimId, input, itemId, quantity, source, reason, status, metadata }) {
+    const item = itemId && typeof ITEMS !== 'undefined' ? ITEMS[itemId] : null;
+    const displayName = typeof input === 'object' && input !== null
+      ? (input.displayName || input.name || input.itemName || item?.name || itemId || null)
+      : (item?.name || (typeof input === 'string' ? input : null));
+    return {
+      claimId,
+      itemId: itemId || (typeof input === 'string' ? input : null),
+      requestedItem: typeof input === 'object' && input !== null ? (input.requestedItem || input.itemId || input.id || input.name || null) : input,
+      quantity,
+      displayName,
+      source,
+      reason,
+      status,
+      createdAt: new Date().toISOString(),
+      metadata: typeof input === 'object' && input !== null && input.metadata ? { ...input.metadata, ...(metadata || {}) } : { ...(metadata || {}) }
+    };
+  }
+
+  function rewardResult(status, details = {}) {
+    return { status, granted: status === 'granted', pending: status === 'pending', rejected: status === 'rejected', ...details };
+  }
+
+  function deliverReward(entry, options = {}) {
+    if (typeof gameState === 'undefined' || typeof ITEMS === 'undefined') {
+      return rewardResult('rejected', { reason: 'inventory_unavailable', recoverable: false });
+    }
+    const queue = ensurePendingLootState();
+    const ledger = ensureRewardLedger();
+    const input = getRewardInput(entry);
+    const source = options.source || entry?.source || 'unknown';
+    const claimId = getRewardClaimId(entry, options, source, input);
+    const quantity = getRewardQuantity(entry, options);
+    const previous = ledger[claimId];
+
+    if (previous?.status === 'granted') {
+      return rewardResult('granted', { claimId, itemId: previous.itemId, quantity: previous.quantity, duplicate: true });
+    }
+    if (previous?.status === 'rejected' && options.retryRejected !== true) {
+      return rewardResult('rejected', { claimId, itemId: previous.itemId || null, quantity: previous.quantity || quantity, reason: previous.reason, recoverable: true, duplicate: true });
+    }
+
+    const resolvedId = resolve(input);
+    if (!resolvedId) {
+      const pending = createPendingEntry({ claimId, input: entry, itemId: null, quantity, source, reason: 'unknown_item', status: 'rejected', metadata: options.metadata });
+      upsertPendingEntry(queue, pending);
+      ledger[claimId] = { status: 'rejected', itemId: null, quantity, source, reason: 'unknown_item', updatedAt: new Date().toISOString() };
+      persistRewardState();
+      return rewardResult('rejected', { claimId, itemId: null, quantity, reason: 'unknown_item', recoverable: true, pending: true, displayName: pending.displayName });
+    }
+
+    const insertion = typeof addToContainer === 'function'
+      ? addToContainer(resolvedId, 'inventory', quantity)
+      : { success: false, reason: 'inventory_api_unavailable' };
+    const inserted = insertion === true || insertion?.success === true;
+    if (inserted) {
+      removePendingEntry(queue, claimId);
+      ledger[claimId] = { status: 'granted', itemId: resolvedId, quantity, source, updatedAt: new Date().toISOString() };
+      persistRewardState();
+      return rewardResult('granted', { claimId, itemId: resolvedId, quantity, duplicate: false, stacked: insertion?.stacked === true });
+    }
+
+    const reason = insertion?.reason || 'inventory_rejected';
+    const status = reason === 'full' ? 'pending' : 'rejected';
+    const pending = createPendingEntry({ claimId, input: entry, itemId: resolvedId, quantity, source, reason, status, metadata: options.metadata });
+    upsertPendingEntry(queue, pending);
+    ledger[claimId] = { status, itemId: resolvedId, quantity, source, reason, updatedAt: new Date().toISOString() };
+    persistRewardState();
+    return rewardResult(status, { claimId, itemId: resolvedId, quantity, reason, recoverable: true, pending: true, displayName: pending.displayName });
+  }
+
+  function getPendingLoot() {
+    const queue = ensurePendingLootState();
+    return queue ? queue.entries.map(entry => ({ ...entry, metadata: { ...(entry.metadata || {}) } })) : [];
+  }
+
+  function retryPendingLoot() {
+    const queue = ensurePendingLootState();
+    if (!queue) return [];
+    return [...queue.entries].map(entry => deliverReward(entry, {
+      claimId: entry.claimId,
+      source: entry.source,
+      retryRejected: true,
+      metadata: entry.metadata
+    }));
   }
 
   function repairList(list) {
@@ -151,7 +300,16 @@
     }).join('');
   }
 
-  window.LifeXPInventory = { BUILD, resolve, normalize, repair, recoverItemIfLost };
+  window.LifeXPInventory = {
+    BUILD,
+    resolve,
+    normalize,
+    repair,
+    recoverItemIfLost,
+    deliverReward,
+    getPendingLoot,
+    retryPendingLoot
+  };
   window.renderCanonicalInventory = function () { render('inventory-grid', 'inventory-empty', 'inventory', 'showItemModal'); };
   window.renderCanonicalStash = function () { render('stash-grid', 'stash-empty', 'stash', 'showStashItemModal'); };
   window.normalizeItemText = text;
