@@ -14,10 +14,10 @@
 | Fecha de generacion | 2026-07-30 |
 | Ultima actualizacion | 2026-08-18 (`chore/dt15-project-map-sync` -- sincronizacion documental con el estado real del repositorio) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `491df53416dc7817037759f3c887cd606a05de2d` |
+| Commit de `main` verificado | `dcc567034ff3319595770fb29206d14f3e98258a` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -34,7 +34,7 @@ LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
 El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`; el loader actual migra saves versionados de forma secuencial hasta `saveVersion: 3`.
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
 Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_content.js` valida su orden de carga, los ejecuta explicitamente, comprueba la instalacion completa antes de marcar la actualizacion y revierte catalogos, estado en memoria y save si falla cualquier paso.
-`inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, y hace repair() al arrancar.
+`inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, hace repair() al arrancar y concentra la entrega estructurada de recompensas mediante `LifeXPInventory.deliverReward()`.
 `item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel. Los mensajes del dominio de objetos se muestran en ingles; las tareas y el flujo del mundo real conservan el espanol.
 `item_flavor.js` contiene el lore narrativo de items (flavor text por item y por stage de attunement).
 `guild.js` implementa el sistema cooperativo (receipts, sync, guild state).
@@ -53,10 +53,10 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
-| `engine.js` | 27219 | `gameState`, schema canonico, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION` |
+| `engine.js` | 30403 | `gameState`, schema canonico, contrato durable de recompensas, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState` |
 | `combat.js` | 28751 | Logica de combate (turnos, acciones, drops de combate) | `startCombat`, `executeCombatRound`, `COMBAT_STATE` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
-| `inventory_system.js` | 10457 | Subsistema canonico de inventario; repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
+| `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
 | `main.js` | 3262 | Punto de entrada: event listeners + registro del Service Worker | -- |
 
@@ -141,7 +141,8 @@ gameState {
   stash: ItemInstance[]
   stashCapacity: number   // default 30
   inventoryCapacityBonus: number
-  pendingLoot: ItemInstance | null
+  pendingLoot: { version: 1, entries: PendingReward[] }
+  rewardLedger: { [claimId]: RewardLedgerEntry }
 
   // Clase
   classId: string         // default 'novato'
@@ -323,12 +324,13 @@ El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
 5. **`update2_content.js` es una IIFE transaccional.** Se auto-ejecuta al cargarse; comprueba si ya se aplico antes de actuar; si falla un instalador o cualquier paso posterior restaura catalogos, `gameState` y `lifexp_save`; una instalacion correcta es idempotente.
-6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice.
+6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice. Las recompensas pasan por `LifeXPInventory.deliverReward()`, que resuelve IDs, confirma insercion real y conserva entregas `pending` o `rejected` para recuperacion.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
 11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
+12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. La integracion de consumidores y la UI de recuperacion se completaran en fases posteriores de `fix/rewards-contract`.
 
 ---
 
@@ -388,11 +390,13 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - Un estado canonico de quests completo conserva prioridad; los estados parciales no se aceptan por el mero hecho de haber recibido arrays por defaults y conservan el raw save exacto si la reparacion no es segura.
 - `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo.
 - Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
-- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
+- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, rollback, reintento e idempotencia).
 - `.github/workflows/ci.yml` ejecuta en cada push y pull request `node --check` sobre los scripts de produccion y las suites `tests/save_migrations.test.js` y `tests/update2_transaction.test.js`, usando Node.js `22.14.0`.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
+
+| 2026-08-19 | `fix/rewards-contract` (Fase 1A) | Introduce el contrato durable de recompensas sin tocar contenido: `pendingLoot` pasa a `{ version: 1, entries: [] }` con normalizacion compatible con `null`, arrays y formatos legacy; `rewardLedger` registra `claimId` y estados; `LifeXPInventory.deliverReward()` resuelve IDs canonicos, comprueba la insercion real y devuelve `granted`, `pending` o `rejected`, conservando pendientes y referencias recuperables. La rama parte de `main` en `dcc567034ff3319595770fb29206d14f3e98258a`; quedan pendientes de esta misma tarea la conexion de consumidores y la UI visible de recuperacion. |
 
 | 2026-08-18 | `chore/dt15-project-map-sync` | Sincroniza este mapa con el estado real del repositorio: solo ramas existentes, ausencia verificada de tags de backup, deuda tecnica con PRs de cierre y owner/siguiente accion para abiertos, inventario con tamanos en bytes y guia de contenido declarativo Fase 3. Documentacion solamente. |
 | Fecha | PR / Rama | Cambios |
