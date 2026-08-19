@@ -492,6 +492,11 @@ function abandonQuest(questId) {
   saveGame();
 }
 
+// Stable UI aliases preserve one canonical implementation when the UI layer
+// defines presentation handlers with the same user-facing names.
+window.acceptQuestCanonical = acceptQuest;
+window.abandonQuestCanonical = abandonQuest;
+
 function completeQuest(questId) {
   initQuestState();
   const quest = QUESTS[questId];
