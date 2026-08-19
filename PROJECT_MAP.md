@@ -12,9 +12,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-19 (`fix/rewards-contract` -- conexion de recompensas de tareas, side quests y combate) |
+| Ultima actualizacion | 2026-08-19 (`fix/quest-ui-modal-wrappers` -- aliases canonicos y cierre correcto del modal de quests) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract`, `fix/quest-ui-modal-wrappers` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
 | Commit de `main` verificado | `dcc567034ff3319595770fb29206d14f3e98258a` |
@@ -68,7 +68,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | `ui_tasks.js` | 11643 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategoryTask`, `completeTask`, `renderTaskScreen`, `showPostTaskFeedback` |
 | `ui_combat.js` | 11288 | UI de combate, encuentros y feedback estructurado de recompensas | `renderCombatScreen`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
-| `ui_quests.js` | 10640 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `completeQuest` |
+| `ui_quests.js` | 9575 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `acceptQuest`, `abandonQuest` |
 | `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
 
 ### 2c. Ficheros de datos (contenido)
@@ -78,7 +78,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | `classes.js` | 21975 | 6 clases y arbol de progresion de 102 nodos | `CLASS_TREE` |
 | `items.js` | 28242 | 87 items base, rarezas, tipos y tablas de drops | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
 | `enemies.js` | 20920 | 85 enemigos base y tablas tematicas | `ENEMIES`, `THEME_ENEMIES` |
-| `quests.js` | 17440 | 33 quests base | `QUESTS` |
+| `quests.js` | 27978 | 33 quests base + aliases canonicos de UI | `QUESTS`, `acceptQuestCanonical`, `abandonQuestCanonical` |
 | `data_tasks.js` | 20277 | 41 tareas base | `DEFAULT_TASKS` |
 | `item_flavor.js` | 44397 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
 
@@ -395,6 +395,8 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
+
+| 2026-08-19 | `fix/quest-ui-modal-wrappers` | Expone aliases estables hacia `acceptQuest` y `abandonQuest` de `quests.js` para que la UI no dependa de redefiniciones, y corrige el cierre del modal de aceptación para cerrar el modal que realmente se abre. No toca contenido jugable, saves ni `main`. |
 
 | 2026-08-19 | `fix/rewards-contract` (Fase 1C) | Conecta combate con la frontera canonica: el paquete de recompensas y su claim ID se crean una sola vez por combate; XP y oro se aplican una sola vez; cada drop usa un claim independiente y conserva los estados `granted`, `pending` o `rejected` para reintento sin reroll. La UI muestra el resultado estructurado de cada drop. No toca contenido jugable; quests siguen pendientes. |
 
