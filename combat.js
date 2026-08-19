@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 let combatState = null;
+let combatRewardSequence = 0;
 
 // ============================================================================
 // LifeXP Block 1 - status effects and equipment effects
@@ -229,11 +230,23 @@ function initCombat(enemy, isTactical = false) {
     },
     
     log: [],
-    rewards: null
+    rewards: null,
+    rewardClaimId: createCombatRewardClaimId(enemy),
+    rewardApplication: {
+      xpApplied: false,
+      goldApplied: false,
+      drops: {}
+    }
   };
   
   addCombatLog(`¡Encuentro con ${enemy.name}!`);
   return combatState;
+}
+
+function createCombatRewardClaimId(enemy) {
+  combatRewardSequence += 1;
+  const enemyId = enemy?.id || enemy?.name || 'encounter';
+  return `combat:${enemyId}:${Date.now()}:${combatRewardSequence}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -663,6 +676,7 @@ function resolveAutoCombat(enemy) {
 
 function calculateCombatRewards() {
   if (!combatState || combatState.phase !== 'victory') return null;
+  if (combatState.rewards) return combatState.rewards;
   
   const e = combatState.enemy;
   
@@ -693,33 +707,60 @@ function calculateCombatRewards() {
 }
 
 function applyCombatRewards() {
-  if (!combatState?.rewards) return;
+  if (!combatState?.rewards) return null;
   
   const r = combatState.rewards;
+  const application = combatState.rewardApplication || { xpApplied: false, goldApplied: false, drops: {} };
+  const rewardClaimId = combatState.rewardClaimId || (combatState.rewardClaimId = createCombatRewardClaimId(combatState.enemy));
   
-  // Apply XP
-  if (typeof addXp === 'function') {
-    addXp(r.xp);
-  } else {
-    gameState.xp = (gameState.xp || 0) + r.xp;
-  }
-  
-  // Apply gold
-  gameState.gold = (gameState.gold || 0) + r.gold;
-  
-  // Apply drops
-  for (const itemId of r.drops) {
-    if (typeof addToInventory === 'function') {
-      addToInventory(itemId, 1);
+  // Apply XP and gold once per victory package.
+  if (!application.xpApplied) {
+    if (typeof addXp === 'function') {
+      addXp(r.xp);
     } else {
-      gameState.inventory.push({ id: itemId, qty: 1, obtainedAt: todayStr() });
+      gameState.xp = (gameState.xp || 0) + r.xp;
     }
+    application.xpApplied = true;
   }
   
-  // Save
-  if (typeof saveGame === 'function') {
-    saveGame();
+  if (!application.goldApplied) {
+    gameState.gold = (gameState.gold || 0) + r.gold;
+    application.goldApplied = true;
   }
+  
+  // Every drop is an independent durable claim. Pending drops can be retried
+  // later without replaying XP, gold, or already granted drops.
+  const dropResults = r.drops.map((itemId, index) => {
+    const claimId = `${rewardClaimId}:drop:${index}`;
+    const result = typeof LifeXPInventory !== 'undefined' && typeof LifeXPInventory.deliverReward === 'function'
+      ? LifeXPInventory.deliverReward({
+          itemId,
+          quantity: 1,
+          claimId,
+          source: 'combat'
+        }, {
+          claimId,
+          source: 'combat',
+          metadata: {
+            combatId: rewardClaimId,
+            enemyId: combatState.enemy?.id || combatState.enemy?.name || null,
+            dropIndex: index
+          }
+        })
+      : { status: 'rejected', rejected: true, pending: false, reason: 'reward_boundary_unavailable', recoverable: false, claimId, itemId, quantity: 1 };
+    application.drops[index] = {
+      claimId,
+      itemId,
+      status: result.status,
+      reason: result.reason || null,
+      updatedAt: new Date().toISOString()
+    };
+    return result;
+  });
+  
+  combatState.rewardApplication = application;
+  if (typeof saveGame === 'function') saveGame();
+  return { ...r, dropResults };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -796,3 +837,4 @@ function getEncounterType(playerLevel) {
   if (roll < 0.95) return 'elite';
   return 'boss';
 }
+
