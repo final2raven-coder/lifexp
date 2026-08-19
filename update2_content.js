@@ -260,12 +260,12 @@
 
     try {
       assertExpansionLoadOrder();
-      if (typeof installExpansionItems === 'function') installExpansionItems();
+      installExpansionItems();
       restoreAshbrand();
-      if (typeof installExpansionEnemies === 'function') installExpansionEnemies();
-      if (typeof installExpansionQuests === 'function') installExpansionQuests();
+      installExpansionEnemies();
+      installExpansionQuests();
       patchQuests();
-      if (typeof installExpansionTasks === 'function') installExpansionTasks();
+      installExpansionTasks();
       assertExpansionInstalled();
       assertRewardReferences();
       restoreAshbrand();
