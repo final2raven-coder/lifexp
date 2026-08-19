@@ -202,21 +202,37 @@ function finalizeCompletion(sideQuestCompleted) {
   // Show drop if any
   if (dropResult) {
     document.getElementById('complete-drop').classList.remove('hidden');
-    
-    if (dropResult.itemId && typeof ITEMS !== 'undefined' && ITEMS[dropResult.itemId]) {
-      const item = ITEMS[dropResult.itemId];
-      const rarity = RARITY[dropResult.rarity || item.rarity];
-      document.getElementById('complete-drop-item').innerHTML = 
-        `<span style="color: ${rarity.color};">${item.icon} ${item.name}</span>`;
-      // Add to inventory using items.js system
-      if (typeof addToInventory === 'function') {
-        addLootSafely(dropResult.itemId, 1);
-      } else {
-        gameState.inventory.push({ id: dropResult.itemId, qty: 1, obtainedAt: todayStr() });
-      }
+    const rewardInput = normalizeTaskRewardDrop(dropResult);
+    const claimId = `task:${task.id}:${todayStr()}:${sideQuestCompleted ? 'side' : 'base'}`;
+    const reward = typeof LifeXPInventory !== 'undefined' && typeof LifeXPInventory.deliverReward === 'function'
+      ? LifeXPInventory.deliverReward({
+          itemId: rewardInput.itemId,
+          requestedItem: rewardInput.requestedItem,
+          name: rewardInput.displayName,
+          quantity: 1,
+          claimId,
+          source: sideQuestCompleted ? 'side_quest' : 'task'
+        }, {
+          claimId,
+          source: sideQuestCompleted ? 'side_quest' : 'task',
+          metadata: { taskId: task.id, sideQuest: Boolean(sideQuestCompleted), date: todayStr() }
+        })
+      : { status: 'rejected', rejected: true, reason: 'reward_boundary_unavailable', recoverable: false };
+
+    if (rewardInput.itemId && typeof ITEMS !== 'undefined' && ITEMS[rewardInput.itemId]) {
+      const item = ITEMS[rewardInput.itemId];
+      const rarity = RARITY[rewardInput.rarity || item.rarity];
+      const itemLabel = reward.status === 'pending'
+        ? `${item.name} (pendiente: libera espacio para recuperarlo)`
+        : reward.status === 'rejected'
+          ? `${item.name} (no entregado: revisa recuperación)`
+          : item.name;
+      document.getElementById('complete-drop-item').innerHTML =
+        `<span style="color: ${rarity.color};">${item.icon} ${itemLabel}</span>`;
     } else {
-      document.getElementById('complete-drop-item').textContent = dropResult.name || dropResult;
-      gameState.inventory.push({ name: dropResult.name || dropResult, type: 'item', obtainedAt: todayStr() });
+      document.getElementById('complete-drop-item').textContent = reward.status === 'pending'
+        ? 'Recompensa pendiente: libera espacio para recuperarla'
+        : 'Recompensa no resoluble: conservada para recuperación';
     }
   }
   
@@ -280,6 +296,35 @@ function finalizeCompletion(sideQuestCompleted) {
   if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
 }
 
+// Normalizes current and legacy drop shapes at the reward boundary.
+function normalizeTaskRewardDrop(value) {
+  const visited = new Set();
+  let candidate = value;
+  let rarity = null;
+  while (candidate && typeof candidate === 'object' && !visited.has(candidate)) {
+    visited.add(candidate);
+    if (typeof candidate.rarity === 'string' && !rarity) rarity = candidate.rarity;
+    const itemId = candidate.itemId || candidate.id || candidate.itemKey || candidate.key;
+    if (typeof itemId === 'string' && itemId) {
+      return {
+        itemId,
+        requestedItem: candidate.requestedItem || itemId,
+        displayName: candidate.displayName || candidate.name || itemId,
+        rarity
+      };
+    }
+    if (candidate.name !== undefined) {
+      candidate = candidate.name;
+    } else if (candidate.item !== undefined) {
+      candidate = candidate.item;
+    } else {
+      break;
+    }
+  }
+  const displayName = typeof candidate === 'string' ? candidate : null;
+  return { itemId: displayName, requestedItem: displayName, displayName, rarity };
+}
+
 // === Drop system ============================================================
 // rollDropFromTheme: calls rollDropByTheme() from items.js.
 // Note: items.js uses rollDropByTheme (not rollDrop) to avoid collision with
@@ -337,4 +382,3 @@ function dismissComplete() {
     showScreen('hub');
   }
 }
-
