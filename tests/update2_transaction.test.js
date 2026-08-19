@@ -41,14 +41,29 @@ function createContext(options = {}) {
     ITEMS: { base_item: { id: 'base_item' } },
     ENEMIES: { base_enemy: { id: 'base_enemy' } },
     QUESTS: { daily_any_3: { name: 'Original quest' } },
-    DEFAULT_TASKS: [{ id: 'base_task' }],
+    DEFAULT_TASKS: [{
+      id: 'base_task',
+      drops: { theme: 'base_theme', items: ['base_item'] },
+      sideQuest: { drops: ['base_item'] }
+    }],
     DROP_TABLES: { base_theme: ['base_item'] },
     THEME_ENEMIES: { base_theme: ['base_enemy'] },
     EXPANSION_ITEMS_V1: { update_item: { id: 'update_item' } },
     EXPANSION_DROP_TABLES_V1: { update_theme: ['update_item'] },
-    EXPANSION_ENEMIES_V1: { update_enemy: { id: 'update_enemy' } },
-    EXPANSION_QUESTS_V1: { update_quest: { id: 'update_quest', name: 'Update quest' } },
-    EXPANSION_TASKS_V1: [{ id: 'update_task' }],
+    EXPANSION_ENEMIES_V1: { update_enemy: { id: 'update_enemy', drops: [{ itemId: 'update_item' }] } },
+    EXPANSION_QUESTS_V1: {
+      update_quest: {
+        id: 'update_quest',
+        name: 'Update quest',
+        reward: { items: ['update_item'] },
+        chapters: [{ id: 'chapter_one', rewards: { items: ['base_item'] } }]
+      }
+    },
+    EXPANSION_TASKS_V1: [{
+      id: 'update_task',
+      drops: { theme: 'update_theme', items: ['update_item'] },
+      sideQuest: { drops: { theme: 'base_theme', items: ['base_item'] } }
+    }],
     gameState: {
       inventory: [{ id: 'existing_item', qty: 2 }],
       stash: [],
@@ -80,41 +95,29 @@ function createContext(options = {}) {
     if (options.failAfterInstall === 'quests') throw new Error('synthetic quest render failure');
   };
   context.renderInventory = () => {};
+
   if (options.invalidRewardReference === 'task') {
-    context.EXPANSION_TASKS_V1 = [{
-      id: 'update_task',
-      drops: { theme: 'update_theme', items: ['missing_item'] }
-    }];
+    context.EXPANSION_TASKS_V1[0].drops.items = ['missing_item'];
   }
   if (options.invalidRewardReference === 'sideQuestArray') {
-    context.DEFAULT_TASKS[0].sideQuest = { drops: ['missing_item'] };
+    context.DEFAULT_TASKS[0].sideQuest.drops = ['missing_item'];
   }
   if (options.invalidRewardReference === 'sideQuestObject') {
-    context.EXPANSION_TASKS_V1 = [{
-      id: 'update_task',
-      sideQuest: { drops: { theme: 'base_theme', items: ['missing_item'] } }
-    }];
+    context.EXPANSION_TASKS_V1[0].sideQuest.drops.items = ['missing_item'];
   }
   if (options.invalidRewardReference === 'enemy') {
-    context.EXPANSION_ENEMIES_V1 = { update_enemy: { id: 'update_enemy', drops: [{ itemId: 'missing_item' }] } };
+    context.EXPANSION_ENEMIES_V1.update_enemy.drops = [{ itemId: 'missing_item' }];
   }
   if (options.invalidRewardReference === 'dropTable') {
-    context.EXPANSION_DROP_TABLES_V1 = { update_theme: ['missing_item'] };
+    context.EXPANSION_DROP_TABLES_V1.update_theme = ['missing_item'];
   }
   if (options.invalidRewardReference === 'questReward') {
-    context.EXPANSION_QUESTS_V1 = {
-      update_quest: { id: 'update_quest', name: 'Update quest', reward: { items: ['missing_item'] } }
-    };
+    context.EXPANSION_QUESTS_V1.update_quest.reward.items = ['missing_item'];
   }
   if (options.invalidRewardReference === 'chapterReward') {
-    context.EXPANSION_QUESTS_V1 = {
-      update_quest: {
-        id: 'update_quest',
-        name: 'Update quest',
-        chapters: [{ id: 'chapter_one', rewards: { items: ['missing_item'] } }]
-      }
-    };
+    context.EXPANSION_QUESTS_V1.update_quest.chapters[0].rewards.items = ['missing_item'];
   }
+
   vm.createContext(context);
   return { context, storage, errors, saveCalls };
 }
@@ -171,7 +174,7 @@ function testSuccessfulInstallationAndIdempotence() {
   assert.equal(harness.context.ITEMS.update_item.id, 'update_item');
   assert.equal(harness.context.ITEMS.cuchilla_llameante.id, 'cuchilla_llameante');
   assert.equal(harness.context.ENEMIES.update_enemy.id, 'update_enemy');
-  assert.equal(harness.context.QUESTS.update_quest.setting, 'The frontier changes whenever a keeper chooses to move.');
+  assert.equal(harness.context.QUESTS.daily_any_3.setting, 'The refuge keeps one ember alive for every path you tend.');
   assert.equal(harness.context.DEFAULT_TASKS.filter(task => task.id === 'update_task').length, 1);
   assert.equal(harness.saveCalls.length, 1);
   assert.equal(firstSave, JSON.stringify(harness.context.gameState));
@@ -218,6 +221,7 @@ function testPostInstallFailureRollsBack() {
   assert.equal(harness.errors.length, 1);
   assert.match(harness.errors[0], /synthetic quest render failure/);
 }
+
 
 function testRewardReferenceValidationRollsBackEveryDropShape() {
   const cases = [
