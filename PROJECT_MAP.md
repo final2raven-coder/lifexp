@@ -12,7 +12,7 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-18 (`chore/dt15-project-map-sync` -- sincronizacion documental con el estado real del repositorio) |
+| Ultima actualizacion | 2026-08-19 (`fix/rewards-contract` -- conexion de recompensas de tareas y side quests) |
 | Branch de produccion | `main` |
 | Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
@@ -65,11 +65,11 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Pantalla / zona | Funciones clave |
 |---|---:|---|---|
 | `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
-| `ui_tasks.js` | 11643 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategoryTask`, `completeTask`, `renderTaskScreen`, `showPostTaskFeedback` |
+| `ui_tasks.js` | 13561 | Pantalla de tarea, completado, drops, encuentros y entrega durable de recompensas | `openRandomTask`, `openCategoryTask`, `completeTask`, `finalizeCompletion`, `normalizeTaskRewardDrop`, `renderTaskScreen`, `showPostTaskFeedback` |
 | `ui_combat.js` | 10864 | UI de combate, encuentros y feedback de post-tarea | `renderCombat`, `startCombatFromTask`, `showCombatResult` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
-| `ui_quests.js` | 10640 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `completeQuest` |
 | `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
+| `ui_quests.js` | 10640 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `completeQuest` |
 
 ### 2c. Ficheros de datos (contenido)
 
@@ -286,7 +286,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
 20. ui_feedback.js     -- Toasts y feedback visual
 21. ui_quests.js       -- UI de quests
-22. item_system.js      -- Sistema de items (attunement, rituales, modales)
+22. item_system.js     -- Sistema de items (attunement, rituales, modales)
 23. main.js             -- Punto de entrada (event listeners, SW)
 ```
 
@@ -330,7 +330,7 @@ El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
 11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
-12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. La integracion de consumidores y la UI de recuperacion se completaran en fases posteriores de `fix/rewards-contract`.
+12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` ya conecta tareas y side quests a `LifeXPInventory.deliverReward()`; combate y quests quedan para fases posteriores de `fix/rewards-contract`.
 
 ---
 
@@ -397,6 +397,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ## 8. Changelog del mapa
 
 | 2026-08-19 | `fix/rewards-contract` (Fase 1A) | Introduce el contrato durable de recompensas sin tocar contenido: `pendingLoot` pasa a `{ version: 1, entries: [] }` con normalizacion compatible con `null`, arrays y formatos legacy; `rewardLedger` registra `claimId` y estados; `LifeXPInventory.deliverReward()` resuelve IDs canonicos, comprueba la insercion real y devuelve `granted`, `pending` o `rejected`, conservando pendientes y referencias recuperables. La rama parte de `main` en `dcc567034ff3319595770fb29206d14f3e98258a`; quedan pendientes de esta misma tarea la conexion de consumidores y la UI visible de recuperacion. |
+| 2026-08-19 | `fix/rewards-contract` (Fase 1B) | `ui_tasks.js` conecta drops de tareas y side quests con `LifeXPInventory.deliverReward()` usando `claimId` estable por tarea, fecha y variante; elimina inserciones directas y normaliza descriptores actuales y legacy antes de entregar. Los estados `pending` y `rejected` se muestran como recuperables sin alterar el XP, oro, historial ni reglas de drop. Combate y quests no se tocan en esta fase. |
 
 | 2026-08-18 | `chore/dt15-project-map-sync` | Sincroniza este mapa con el estado real del repositorio: solo ramas existentes, ausencia verificada de tags de backup, deuda tecnica con PRs de cierre y owner/siguiente accion para abiertos, inventario con tamanos en bytes y guia de contenido declarativo Fase 3. Documentacion solamente. |
 | Fecha | PR / Rama | Cambios |
@@ -433,7 +434,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ### Items
 
 | Fuente | Cantidad | Notas |
-|---|---|---|
+|---|---:|---|
 | `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en base |
@@ -444,7 +445,7 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 ### Enemigos
 
 | Fuente | Cantidad | Niveles |
-|---|---|---|
+|---|---:|---|
 | `enemies.js` (base) | 85 | 1-40+ (niveles: 1,2,3,4,5,6,7,8,12,14,15,16,18,20,22,25,30,35,40) |
 | `expansion_enemies.js` | 18 | |
 | **Total** | **103** | |
@@ -452,7 +453,7 @@ Raridades base: uncommon: 35, rare: 27, common: 20, epic: 5 (sin legendarios bas
 ### Quests
 
 | Fuente | Cantidad | Tipos principales |
-|---|---|---|
+|---|---:|---|
 | `quests.js` (base) | 33 | complete_tasks: 11, daily: 3, simple: 3, bounty: 2, defeat_enemy: 2, defeat_boss: 2, story: 1, class_quest: 1 |
 | `expansion_quests.js` | 20 | |
 | `update2_content.js` | 2 patches narrativos | Parchea `daily_any_3` y `daily_casa_2` con nombre/desc/lore |
