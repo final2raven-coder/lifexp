@@ -66,6 +66,11 @@
 
   function restoreMutableTarget(snapshot) {
     const target = snapshot.target;
+    if (Array.isArray(target)) {
+      target.length = 0;
+      target.push(...cloneValue(snapshot.value));
+      return;
+    }
     for (const key of Object.keys(target)) delete target[key];
     Object.assign(target, cloneValue(snapshot.value));
   }
@@ -269,9 +274,9 @@
       assertExpansionInstalled();
       assertRewardReferences();
       restoreAshbrand();
-      commitSave();
       if (typeof renderQuests === 'function') renderQuests();
       if (typeof renderInventory === 'function') renderInventory();
+      commitSave();
     } catch (error) {
       restoreTransactionSnapshot(transaction);
       reportInstallFailure(error);
