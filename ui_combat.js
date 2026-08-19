@@ -183,12 +183,10 @@ function executeCombatAction(actionId) {
 }
 
 function showCombatVictory() {
-  // Apply rewards
-  if (typeof applyCombatRewards === 'function') {
-    applyCombatRewards();
-  }
-  
+  // Apply the victory package idempotently; repeated rendering must not replay it.
+  const application = typeof applyCombatRewards === 'function' ? applyCombatRewards() : null;
   const rewards = combatState?.rewards;
+  const dropResults = application?.dropResults || [];
   
   // Show victory overlay
   document.getElementById('combat-result-icon').textContent = '\uD83C\uDFC6';
@@ -202,10 +200,16 @@ function showCombatVictory() {
       <div class="complete-reward">+${rewards.gold} \uD83E\uDE99</div>
     `;
     if (rewards.drops && rewards.drops.length > 0) {
-      for (const drop of rewards.drops) {
+      rewards.drops.forEach((drop, index) => {
         const item = typeof ITEMS !== 'undefined' ? ITEMS[drop] : null;
-        rewardsHtml += `<div class="complete-reward" style="color: var(--purple);">\uD83C\uDF81 ${item?.name || drop}</div>`;
-      }
+        const result = dropResults[index];
+        const statusLabel = result?.status === 'pending'
+          ? ' (pendiente: libera espacio para recuperarlo)'
+          : result?.status === 'rejected'
+            ? ' (no entregado: revisa recuperación)'
+            : '';
+        rewardsHtml += `<div class="complete-reward" style="color: var(--purple);">\uD83C\uDF81 ${item?.name || drop}${statusLabel}</div>`;
+      });
     }
   }
   document.getElementById('combat-result-rewards').innerHTML = rewardsHtml;
