@@ -285,6 +285,182 @@ function getAvailableQuests() {
   });
 }
 
+let questRewardSequence = 0;
+
+function createQuestInstanceId(questId) {
+  questRewardSequence += 1;
+  return `quest:${questId}:${Date.now()}:${questRewardSequence}`;
+}
+
+function ensureQuestRewardState(questId, questState) {
+  if (!questState || typeof questState !== 'object') return null;
+  if (!questState.instanceId) {
+    const legacyDate = typeof questState.startedAt === 'string' && questState.startedAt
+      ? questState.startedAt
+      : 'legacy';
+    questState.instanceId = `quest:${questId}:${legacyDate}`;
+  }
+  if (!questState.rewardApplication || typeof questState.rewardApplication !== 'object') {
+    questState.rewardApplication = { final: null, chapters: {} };
+  }
+  if (!questState.rewardApplication.chapters || typeof questState.rewardApplication.chapters !== 'object') {
+    questState.rewardApplication.chapters = {};
+  }
+  return questState.rewardApplication;
+}
+
+function cloneQuestRewardPackage(rewards) {
+  return rewards && typeof rewards === 'object' ? JSON.parse(JSON.stringify(rewards)) : {};
+}
+
+function getQuestRewardSlot(questId, questState, rewardKey, claimId, rewards) {
+  const application = ensureQuestRewardState(questId, questState);
+  if (!application) return null;
+  const isFinal = rewardKey === 'final';
+  const collection = isFinal ? application : application.chapters;
+  const key = isFinal ? 'final' : String(rewardKey);
+  if (!collection[key] || typeof collection[key] !== 'object') {
+    collection[key] = {
+      claimId,
+      rewardPackage: cloneQuestRewardPackage(rewards),
+      status: 'pending',
+      xp: null,
+      gold: null,
+      items: [],
+      unlockClass: null
+    };
+  } else {
+    if (!collection[key].claimId) collection[key].claimId = claimId;
+    if (!collection[key].rewardPackage) collection[key].rewardPackage = cloneQuestRewardPackage(rewards);
+    if (!Array.isArray(collection[key].items)) collection[key].items = [];
+  }
+  return collection[key];
+}
+
+function getQuestRewardResult(status, details = {}) {
+  return {
+    status,
+    granted: status === 'granted',
+    pending: status === 'pending',
+    rejected: status === 'rejected',
+    ...details
+  };
+}
+
+function applyQuestScalarReward(kind, amount, claimId, source, options = {}) {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return getQuestRewardResult('granted', { claimId, kind, amount: 0, skipped: true });
+  }
+  if (!gameState.rewardLedger || typeof gameState.rewardLedger !== 'object' || Array.isArray(gameState.rewardLedger)) {
+    gameState.rewardLedger = {};
+  }
+  const previous = gameState.rewardLedger[claimId];
+  if (previous?.status === 'granted') {
+    return getQuestRewardResult('granted', { claimId, kind, amount: previous.amount || numericAmount, duplicate: true });
+  }
+  if (previous?.status === 'rejected' && options.retryRejected !== true) {
+    return getQuestRewardResult('rejected', {
+      claimId,
+      kind,
+      amount: previous.amount || numericAmount,
+      reason: previous.reason,
+      recoverable: true,
+      duplicate: true
+    });
+  }
+
+  if (kind === 'xp') {
+    if (typeof addXp !== 'function') {
+      gameState.rewardLedger[claimId] = { status: 'rejected', kind, amount: numericAmount, source, reason: 'xp_api_unavailable', updatedAt: new Date().toISOString() };
+      return getQuestRewardResult('rejected', { claimId, kind, amount: numericAmount, reason: 'xp_api_unavailable', recoverable: true });
+    }
+    addXp(numericAmount);
+  } else if (kind === 'gold') {
+    if (typeof gameState.gold !== 'number' || !Number.isFinite(gameState.gold)) {
+      gameState.rewardLedger[claimId] = { status: 'rejected', kind, amount: numericAmount, source, reason: 'gold_state_unavailable', updatedAt: new Date().toISOString() };
+      return getQuestRewardResult('rejected', { claimId, kind, amount: numericAmount, reason: 'gold_state_unavailable', recoverable: true });
+    }
+    gameState.gold += numericAmount;
+  } else {
+    gameState.rewardLedger[claimId] = { status: 'rejected', kind, amount: numericAmount, source, reason: 'unsupported_scalar_reward', updatedAt: new Date().toISOString() };
+    return getQuestRewardResult('rejected', { claimId, kind, amount: numericAmount, reason: 'unsupported_scalar_reward', recoverable: false });
+  }
+
+  gameState.rewardLedger[claimId] = { status: 'granted', kind, amount: numericAmount, source, updatedAt: new Date().toISOString() };
+  return getQuestRewardResult('granted', { claimId, kind, amount: numericAmount, duplicate: false });
+}
+
+function applyQuestUnlockReward(classId, claimId, source, options = {}) {
+  if (!classId) return getQuestRewardResult('granted', { claimId, kind: 'unlockClass', skipped: true });
+  if (!gameState.rewardLedger || typeof gameState.rewardLedger !== 'object' || Array.isArray(gameState.rewardLedger)) {
+    gameState.rewardLedger = {};
+  }
+  const previous = gameState.rewardLedger[claimId];
+  if (previous?.status === 'granted') return getQuestRewardResult('granted', { claimId, kind: 'unlockClass', classId, duplicate: true });
+  if (previous?.status === 'rejected' && options.retryRejected !== true) {
+    return getQuestRewardResult('rejected', { claimId, kind: 'unlockClass', classId, reason: previous.reason, recoverable: true, duplicate: true });
+  }
+  if (!Array.isArray(gameState.unlockedClasses)) gameState.unlockedClasses = [];
+  if (!gameState.unlockedClasses.includes(classId)) gameState.unlockedClasses.push(classId);
+  gameState.rewardLedger[claimId] = { status: 'granted', kind: 'unlockClass', classId, source, updatedAt: new Date().toISOString() };
+  return getQuestRewardResult('granted', { claimId, kind: 'unlockClass', classId, duplicate: false });
+}
+
+function grantQuestRewards(rewards, options = {}) {
+  const questId = options.questId || 'unknown';
+  const questState = options.questState || null;
+  const rewardKey = options.rewardKey || 'final';
+  const claimId = options.claimId || `${questState?.instanceId || `quest:${questId}`}:${rewardKey}`;
+  const source = options.source || (rewardKey === 'final' ? 'quest' : 'quest_chapter');
+  const slot = getQuestRewardSlot(questId, questState, rewardKey, claimId, rewards);
+  const rewardPackage = slot?.rewardPackage || cloneQuestRewardPackage(rewards);
+  if (slot && !slot.rewardPackage) slot.rewardPackage = rewardPackage;
+  const results = [];
+
+  if (rewardPackage.xp) {
+    const result = applyQuestScalarReward('xp', rewardPackage.xp, `${claimId}:xp`, source, options);
+    if (slot) slot.xp = result;
+    results.push(result);
+  }
+  if (rewardPackage.gold) {
+    const result = applyQuestScalarReward('gold', rewardPackage.gold, `${claimId}:gold`, source, options);
+    if (slot) slot.gold = result;
+    results.push(result);
+  }
+  if (Array.isArray(rewardPackage.items)) {
+    rewardPackage.items.forEach((itemId, index) => {
+      const itemClaimId = `${claimId}:item:${index}`;
+      const result = typeof LifeXPInventory !== 'undefined' && typeof LifeXPInventory.deliverReward === 'function'
+        ? LifeXPInventory.deliverReward({ itemId, quantity: 1, claimId: itemClaimId, source }, {
+            claimId: itemClaimId,
+            source,
+            retryRejected: options.retryRejected === true,
+            metadata: { questId, rewardKey, itemIndex: index }
+          })
+        : getQuestRewardResult('rejected', { claimId: itemClaimId, itemId, reason: 'reward_boundary_unavailable', recoverable: false });
+      if (slot) slot.items[index] = result;
+      results.push(result);
+    });
+  }
+  if (rewardPackage.unlockClass) {
+    const result = applyQuestUnlockReward(rewardPackage.unlockClass, `${claimId}:unlock_class`, source, options);
+    if (slot) slot.unlockClass = result;
+    results.push(result);
+  }
+
+  const status = results.some(result => result.status === 'pending')
+    ? 'pending'
+    : results.some(result => result.status === 'rejected')
+      ? 'rejected'
+      : 'granted';
+  if (slot) {
+    slot.status = status;
+    slot.updatedAt = new Date().toISOString();
+  }
+  return { status, claimId, results, rewardPackage };
+}
+
 function acceptQuest(questId) {
   initQuestState();
   const quest = QUESTS[questId];
@@ -299,8 +475,10 @@ function acceptQuest(questId) {
   gameState.quests.active.push(questId);
   gameState.quests[questId] = {
     startedAt: todayStr(),
+    instanceId: createQuestInstanceId(questId),
     objectives: quest.objectives ? quest.objectives.map(o => ({ ...o, progress: 0 })) : [],
-    currentChapter: 0
+    currentChapter: 0,
+    rewardApplication: { final: null, chapters: {} }
   };
   
   saveGame();
@@ -317,7 +495,18 @@ function abandonQuest(questId) {
 function completeQuest(questId) {
   initQuestState();
   const quest = QUESTS[questId];
-  if (!quest) return;
+  if (!quest) return null;
+  const wasActive = gameState.quests.active.includes(questId);
+  if (!wasActive && gameState.quests.completed.includes(questId)) {
+    return getQuestRewardStatus(questId);
+  }
+  const questState = gameState.quests[questId] || {
+    startedAt: todayStr(),
+    instanceId: createQuestInstanceId(questId),
+    rewardApplication: { final: null, chapters: {} }
+  };
+  gameState.quests[questId] = questState;
+  ensureQuestRewardState(questId, questState);
   
   // Move from active to completed
   gameState.quests.active = gameState.quests.active.filter(id => id !== questId);
@@ -325,28 +514,65 @@ function completeQuest(questId) {
     gameState.quests.completed.push(questId);
   }
   
-  // Grant rewards
-  if (quest.rewards) {
-    grantQuestRewards(quest.rewards);
-  }
-  
+  const result = quest.rewards
+    ? grantQuestRewards(quest.rewards, {
+        questId,
+        questState,
+        rewardKey: 'final',
+        claimId: `${questState.instanceId}:final`,
+        source: 'quest'
+      })
+    : { status: 'granted', claimId: `${questState.instanceId}:final`, results: [], rewardPackage: {} };
   saveGame();
+  return result;
 }
 
-function grantQuestRewards(rewards) {
-  if (rewards.xp) gainXP(rewards.xp);
-  if (rewards.gold) gameState.gold = (gameState.gold || 0) + rewards.gold;
-  if (rewards.items) {
-    rewards.items.forEach(itemId => {
-      addToInventory(itemId, 1);
-    });
+function getQuestRewardStatus(questId) {
+  initQuestState();
+  const questState = gameState.quests[questId];
+  if (!questState?.rewardApplication) return null;
+  const final = questState.rewardApplication.final;
+  return {
+    questId,
+    final: final ? { ...final, items: Array.isArray(final.items) ? [...final.items] : [] } : null,
+    chapters: Object.entries(questState.rewardApplication.chapters || {}).map(([rewardKey, chapter]) => ({
+      rewardKey,
+      ...chapter,
+      items: Array.isArray(chapter.items) ? [...chapter.items] : []
+    }))
+  };
+}
+
+function retryQuestRewards(questId) {
+  initQuestState();
+  const quest = QUESTS[questId];
+  const questState = gameState.quests[questId];
+  if (!quest || !questState?.rewardApplication) return null;
+  const application = ensureQuestRewardState(questId, questState);
+  const retries = [];
+  if (application.final?.status !== 'granted' && application.final?.rewardPackage) {
+    retries.push(grantQuestRewards(application.final.rewardPackage, {
+      questId,
+      questState,
+      rewardKey: 'final',
+      claimId: application.final.claimId,
+      source: 'quest',
+      retryRejected: true
+    }));
   }
-  if (rewards.unlockClass) {
-    gameState.unlockedClasses = gameState.unlockedClasses || [];
-    if (!gameState.unlockedClasses.includes(rewards.unlockClass)) {
-      gameState.unlockedClasses.push(rewards.unlockClass);
-    }
+  for (const [chapterId, chapterApplication] of Object.entries(application.chapters)) {
+    if (chapterApplication.status === 'granted' || !chapterApplication.rewardPackage) continue;
+    retries.push(grantQuestRewards(chapterApplication.rewardPackage, {
+      questId,
+      questState,
+      rewardKey: chapterId,
+      claimId: chapterApplication.claimId,
+      source: 'quest_chapter',
+      retryRejected: true
+    }));
   }
+  if (retries.length) saveGame();
+  return retries;
 }
 
 // ===========================================================================
@@ -445,9 +671,17 @@ function updateQuestProgress(eventType, data) {
             completeQuest(questId);
           } else {
             questState.currentChapter = nextChapter;
-            // Grant chapter rewards
+            // Grant the completed chapter package with a stable claim.
             const chapter = quest.chapters[nextChapter - 1];
-            if (chapter?.rewards) grantQuestRewards(chapter.rewards);
+            if (chapter?.rewards) {
+              grantQuestRewards(chapter.rewards, {
+                questId,
+                questState,
+                rewardKey: chapter.id,
+                claimId: `${questState.instanceId}:chapter:${chapter.id}`,
+                source: 'quest_chapter'
+              });
+            }
           }
         } else {
           completeQuest(questId);
