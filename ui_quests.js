@@ -116,7 +116,7 @@ function acceptQuest(questId) {
     if (typeof showToast === 'function') showToast(result.message, 'error');
     return;
   }
-  closeModal('modal-tasks');
+  closeModal('modal-item');
   renderQuests();
 }
 
