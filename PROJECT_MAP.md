@@ -12,12 +12,12 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-19 (`fix/quest-ui-modal-wrappers` -- aliases canonicos y cierre correcto del modal de quests) |
+| Ultima actualizacion | 2026-08-19 (`fix/rewards-recoverable` -- validacion transaccional de referencias de recompensas, Fase A1) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract`, `fix/quest-ui-modal-wrappers` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract`, `fix/quest-ui-modal-wrappers`, `fix/rewards-recoverable` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `dcc567034ff3319595770fb29206d14f3e98258a` |
+| Commit de `main` verificado | `9fcaf2d9a8e649f62d0ff65f813f8f78dd3cb728` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -90,7 +90,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | `expansion_enemies.js` | 3699 | Expansion declarativa de enemigos | `Object.assign(ENEMIES, EXPANSION_ENEMIES_V1)` |
 | `expansion_quests.js` | 3089 | Expansion declarativa de quests | `Object.assign(QUESTS, EXPANSION_QUESTS_V1)` |
 | `expansion_tasks.js` | 7425 | Expansion declarativa de tareas | `DEFAULT_TASKS.push(...)` |
-| `update2_content.js` | 15192 | Instalacion transaccional de Update 2: patches narrativos y contenido adicional | IIFE idempotente con rollback |
+| `update2_content.js` | 19649 | Instalacion transaccional de Update 2, validacion de referencias de recompensas y rollback | IIFE idempotente con backup y commit verificable |
 
 ### 2e. Ficheros de soporte / PWA
 
@@ -108,7 +108,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|
 | `validate_content.js` | 18409 | Validador de integridad de contenido, solo lectura |
 | `tests/save_migrations.test.js` | 11790 | Fixtures y pruebas de migraciones de save |
-| `tests/update2_transaction.test.js` | 7424 | Pruebas de instalacion transaccional de Update 2 |
+| `tests/update2_transaction.test.js` | 10166 | Pruebas transaccionales de Update 2 y referencias de recompensas |
 | `.github/workflows/ci.yml` | 1427 | CI de sintaxis JS y suites runtime |
 | `docs/DROP_MAPPING.md` | 22020 | Inventario y trazabilidad de referencias de drops |
 | `docs/SAVE_MIGRATION.md` | 9117 | Contrato y procedimiento de migracion/recuperacion de saves |
@@ -276,7 +276,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 9.  expansion_items.js  -- EXPANSION_ITEMS_V1 -> Object.assign(ITEMS, ...)
 10. expansion_enemies.js-- EXPANSION_ENEMIES_V1 -> Object.assign(ENEMIES, ...)
 11. expansion_quests.js -- EXPANSION_QUESTS_V1 -> Object.assign(QUESTS, ...)
-12. expansion_tasks.js  -- DEFAULT_TASKS.push(...)
+12. expansion_tasks.js  -- EXPANSION_TASKS_V1 -> DEFAULT_TASKS.push(...)
 13. update2_content.js  -- IIFE: patches narrativos + instala Ashbrand si falta; rollback transaccional si falla
 14. inventory_system.js -- LifeXPInventory, repair() al arrancar
 15. ui_hub.js           -- UI del hub, inventario, equipamiento
@@ -323,14 +323,14 @@ El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos
 2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y anade un bloque en `loadGame`.
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
-5. **`update2_content.js` es una IIFE transaccional.** Se auto-ejecuta al cargarse; comprueba si ya se aplico antes de actuar; si falla un instalador o cualquier paso posterior restaura catalogos, `gameState` y `lifexp_save`; una instalacion correcta es idempotente.
+5. **`update2_content.js` es una IIFE transaccional.** Se auto-ejecuta al cargarse; comprueba si ya se aplico antes de actuar; si falla un instalador o cualquier paso posterior restaura catalogos, `gameState` y `lifexp_save`; una instalacion correcta es idempotente. La validacion bloqueante recorre tablas de drops, enemigos, tareas, side quests, recompensas de quests y capitulos antes de guardar.
 6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice. Las recompensas pasan por `LifeXPInventory.deliverReward()`, que resuelve IDs, confirma insercion real y conserva entregas `pending` o `rejected` para recuperacion.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
 11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
-12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; quests y la UI general de recuperacion quedan para fases posteriores de `fix/rewards-contract`.
+12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; la instalacion transaccional bloquea referencias de drops no canonicas o ausentes antes del commit.
 
 ---
 
@@ -363,7 +363,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | ~~`DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente~~ | -- | **RESUELTO en `DROP_TABLES` y drops de tareas** (la trazabilidad historica de las sustituciones queda separada de las 77 definiciones nuevas aprobadas) |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
-| DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, gremio, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
+| DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
 | DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
 | DT-06 | ~~`ashbrand_hotfix.js` existe en el repo pero no se carga en `index.html`; es un fichero huerfano que debe eliminarse o integrarse~~ | -- | **RESUELTO** (verificado 2026-08-11: el fichero ya no existe en `main`; fue eliminado en el saneamiento previo. No hay referencias en `index.html` ni en `sw.js`.) |
 | DT-07 | `expansion_*.js` usan `Object.assign` sin guard de duplicados; si un ID de expansion colisiona con uno base, el base se sobreescribe silenciosamente | Media | Abierto |
@@ -388,13 +388,16 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - La migracion de quests conserva progreso por ID, registra objetivos que se reinician y no borra quests cuyo catalogo no esta disponible.
 - La validez del contenedor canonico se decide sobre el save original, antes de aplicar defaults; un save parcial usa `activeQuests` legacy o aborta con rollback visible si no puede reconstruirse de forma segura.
 - Un estado canonico de quests completo conserva prioridad; los estados parciales no se aceptan por el mero hecho de haber recibido arrays por defaults y conservan el raw save exacto si la reparacion no es segura.
-- `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo.
+- `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo. Tambien valida que las referencias de inventario sean IDs canonicos existentes en `ITEMS`.
 - Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
 - Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
 - `.github/workflows/ci.yml` ejecuta en cada push y pull request `node --check` sobre los scripts de produccion y las suites `tests/save_migrations.test.js` y `tests/update2_transaction.test.js`, usando Node.js `22.14.0`.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
+
+- **2026-08-19 - `fix/rewards-recoverable` (Fase A1):** la instalacion transaccional valida de forma general las referencias de recompensas antes de guardar. Se cubren tablas de drops, drops de enemigos, drops de tareas y side quests en array u objeto, recompensas de quests y recompensas de capitulos. Una referencia no canonica o ausente provoca rollback determinista y conserva el save anterior. La cobertura vive en `tests/update2_transaction.test.js`, que prueba siete formas de referencia rota.
+
 
 | 2026-08-19 | `fix/quest-ui-modal-wrappers` | Expone aliases estables hacia `acceptQuest` y `abandonQuest` de `quests.js` para que la UI no dependa de redefiniciones, y corrige el cierre del modal de aceptación para cerrar el modal que realmente se abre. No toca contenido jugable, saves ni `main`. |
 
@@ -433,7 +436,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ### Tareas
 
 | Fuente | Cantidad | Categorias |
-|---|---:|---|
+|---|---|---|
 | `data_tasks.js` (base) | 41 | casa: 15, personal: 9, cuerpo: 7, gestiones: 5, social: 5 |
 | `expansion_tasks.js` | 14 | casa: 3, cuerpo: 3, gestiones: 3, personal: 3, social: 2 |
 | **Total** | **55** | |
@@ -441,7 +444,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ### Items
 
 | Fuente | Cantidad | Notas |
-|---|---:|---|
+|---|---|---|
 | `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en base |
