@@ -426,7 +426,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 | 2026-08-11 | `fix/dt13-dt02-drop-ids` | DT-13 y DT-02 resueltos: 110 strings de display en `data_tasks.js` reemplazados por IDs canonicos snake_case; 77 items nuevos con nombres de fantasia en ingles anadidos a `expansion_items.js` (total 88 items, 25 drop tables tematicas); `validate_content.js` check 6 endurecido para validar todos los formatos de drop de tareas; inventario inicial `docs/DROP_MAPPING.md` generado. |
 | 2026-08-11 | `fix/dt14-dt06-quickwins` | DT-06 y DT-14 confirmados resueltos tras verificacion exhaustiva: `ashbrand_hotfix.js` ya no existe en `main` (eliminado en saneamiento previo, sin referencias en `index.html` ni `sw.js`); `THEME_ENEMIES["refugio"]` ya usa IDs canonicos `rata_gigante` y `poltergeist` (corregido como DT-19 en PR anterior). Eliminada entrada de `ashbrand_hotfix.js` de seccion 2e. |
 | 2026-08-12 | `fix/dt13-dt02-drop-ids` | Inventario `docs/DROP_MAPPING.md` regenerado después de cambios de código: 110 referencias en `data_tasks.js`, 39 en `expansion_tasks.js` y 120 en `DROP_TABLES`; no se aplican sustituciones en esa regeneración. Se documenta el bloqueo sintáctico que existía entonces en `expansion_items.js`. |
-| 2026-08-12 | `fix/expansion-items-syntax` | Reparados exclusivamente errores estructurales de `expansion_items.js`: apóstrofos internos escapados, cierres prematuros eliminados y propiedades duplicadas que impedían parsear la expansión. No cambian nombres visibles, IDs, drops, stats, valores, tablas ni balance. `node --check` pasa; la ejecución completa registrada en ese PR carga 175 items y conserva 3 errores y 26 avisos preexistentes ajenos a ese PR. |
+| 2026-08-12 | `fix/expansion-items-syntax` | Reparados exclusivamente errores estructurales de `expansion_items.js`: apóstrofes internos escapados, cierres prematuros eliminados y propiedades duplicadas que impedían parsear la expansión. No cambian nombres visibles, IDs, drops, stats, valores, tablas ni balance. `node --check` pasa; la ejecución completa registrada en ese PR carga 175 items y conserva 3 errores y 26 avisos preexistentes ajenos a ese PR. |
 | 2026-08-12 | `fix/drop-integrity-traceability` | Reconstruida la trazabilidad de `docs/DROP_MAPPING.md`: se separan el inventario inicial (20 `EXACT`, 8 `FUZZY`, 82 `NONE`), la regeneración posterior de 269 ocurrencias y las 77 definiciones nuevas aprobadas como contenido. Se actualizan ramas y deuda técnica sin modificar datos jugables. |
 
 ---
@@ -444,7 +444,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ### Items
 
 | Fuente | Cantidad | Notas |
-|---|---|---|
+|---|---:|---|
 | `items.js` (base) | 87 | recuento ejecutable verificado con `validate_content.js` |
 | `expansion_items.js` | 88 | 77 items nuevos con nombres de fantasia en ingles (DT-13/DT-02) |
 | `update2_content.js` | 1 (Ashbrand) | Solo si no existe ya en base |
