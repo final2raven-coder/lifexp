@@ -329,24 +329,6 @@ function getTaskAvailability(task, referenceDate = todayStr()) {
   }
   if (definition.limit === null) return { ...base, status: 'available', available: true };
 
-  // A one-per-interval task uses the latest completion as its cooldown anchor.
-  // A manual catalog completion can therefore restart the interval from today.
-  if (definition.limit === 1) {
-    const latestCompletion = getLatestTaskCompletionDate(task);
-    if (!latestCompletion) return { ...base, status: 'available', available: true };
-    const nextAvailableDate = addDaysToDate(latestCompletion, definition.intervalDays);
-    const daysSinceLatest = daysBetween(latestCompletion, referenceDate);
-    if (daysSinceLatest < definition.intervalDays) {
-      return {
-        ...base,
-        status: 'cooldown',
-        available: false,
-        nextAvailableDate
-      };
-    }
-    return { ...base, status: 'available', available: true, nextAvailableDate };
-  }
-
   const recent = history.filter(entry => {
     if (!isValidTaskDate(entry.date)) return false;
     const age = daysBetween(entry.date, referenceDate);
