@@ -150,23 +150,37 @@ function ensureCategoryTaskScreen() {
 function renderCategoryTaskList(catId) {
   const screen = ensureCategoryTaskScreen();
   const cat = CATEGORIES[catId];
+  const list = screen.querySelector('#category-task-list');
+  const heading = screen.querySelector('#category-task-heading');
+  const summary = screen.querySelector('#category-task-summary');
+  const randomButton = screen.querySelector('#category-task-random');
+  if (!cat || !list || !heading || !summary || !randomButton) return;
+
   const tasks = gameState.tasks
     .filter(task => !isTaskArchived(task) && task.cat === catId);
-  const randomPool = getAvailableTasks(catId);
-  const availableCount = randomPool.tasks.length;
+  const availableCount = tasks.filter(task => {
+    const availability = getTaskAvailability(task);
+    return canCompleteTaskFromCatalog(availability);
+  }).length;
+  const pendingCount = tasks.filter(task => {
+    const availability = getTaskAvailability(task);
+    return availability.status === 'available';
+  }).length;
 
-  document.getElementById('category-task-heading').innerHTML = `<strong>${escapeTaskCatalogText(cat?.icon || '')} ${escapeTaskCatalogText(cat?.name || catId)}</strong>`;
-  document.getElementById('category-task-summary').innerHTML = `<div class="section-title" style="margin-top: 0;">Lista completa</div><div style="color: var(--text-muted); font-size: 12px;">${tasks.length} tarea${tasks.length === 1 ? '' : 's'} · ${availableCount} disponible${availableCount === 1 ? '' : 's'} para el aleatorio</div>`;
-  const randomButton = document.getElementById('category-task-random');
+  heading.textContent = `${cat.icon} ${cat.name}`;
+  summary.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Tareas en esta categoría</div>
+      <div class="stat-value">${tasks.length}</div>
+      <div class="stat-label">${availableCount} con acción disponible · ${pendingCount} listas ahora</div>
+    </div>
+  `;
   randomButton.disabled = availableCount === 0;
-  randomButton.title = randomPool.tasks.length === 0
-    ? 'No hay tareas disponibles para el aleatorio en esta categoría.'
-    : 'Elegir solo entre las tareas disponibles de esta categoría';
+  randomButton.title = availableCount === 0 ? 'No hay tareas disponibles en esta categoría.' : '';
 
-  const list = document.getElementById('category-task-list');
   if (tasks.length === 0) {
     list.innerHTML = '<div class="empty-state">No hay tareas en esta categoría.</div>';
-    return screen;
+    return;
   }
 
   list.innerHTML = tasks.map(task => {
@@ -174,46 +188,39 @@ function renderCategoryTaskList(catId) {
     const status = getTaskCatalogStatus(task, availability);
     const history = getTaskCatalogHistory(task, availability);
     const canComplete = canCompleteTaskFromCatalog(availability);
-    const nextDate = availability.status === 'cooldown' ? formatTaskCatalogDate(availability.nextAvailableDate) : null;
-    const action = canComplete
-      ? `<button class="btn btn-primary btn-small" type="button" data-category-action="complete" data-task-id="${escapeTaskCatalogText(task.id)}">Completar</button>`
-      : '';
+    const safeId = escapeTaskCatalogText(task.id);
+    const safeName = escapeTaskCatalogText(task.name);
+    const safeDesc = escapeTaskCatalogText(task.desc);
+    const actionLabel = availability.status === 'cooldown' ? 'Completar igualmente' : 'Completar tarea';
     return `
-      <article style="background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid ${escapeTaskCatalogText(cat?.color || 'var(--border)')}; border-radius: var(--radius); padding: 16px; margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-          <div style="min-width: 0; flex: 1;">
-            <h3 style="font-size: 16px; line-height: 1.3; margin-bottom: 6px;">${escapeTaskCatalogText(task.name)}</h3>
-            <div style="font-size: 12px; color: var(--text-muted); line-height: 1.45;">${escapeTaskCatalogText(task.desc || 'Sin descripción')}</div>
-          </div>
-          ${action}
+      <article class="task-catalog-card" data-task-id="${safeId}">
+        <div class="task-catalog-main">
+          <div class="task-catalog-name">${safeName}</div>
+          <div class="task-catalog-desc">${safeDesc}</div>
+          <div class="task-catalog-meta">${escapeTaskCatalogText(status)}</div>
+          <div class="task-catalog-history">${escapeTaskCatalogText(history)}</div>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; font-size: 12px;">
-          <span style="color: ${availability.status === 'cooldown' ? 'var(--orange)' : availability.status === 'available' ? 'var(--green)' : 'var(--text-muted)'};">${escapeTaskCatalogText(status)}</span>
-          ${nextDate ? `<span style="color: var(--text-muted);">Vuelve: ${escapeTaskCatalogText(nextDate)}</span>` : ''}
-        </div>
-        <div style="margin-top: 8px; color: var(--text-muted); font-size: 11px;">${escapeTaskCatalogText(history)}</div>
+        <button class="btn btn-secondary btn-small" type="button" data-category-action="complete" data-task-id="${safeId}" ${canComplete ? '' : 'disabled'}>${actionLabel}</button>
       </article>
     `;
   }).join('');
-  return screen;
 }
 
 function completeTaskFromCategory(taskId) {
   const task = gameState.tasks.find(candidate => candidate.id === taskId);
-  if (!task) {
-    showToast('No se ha encontrado esa tarea.', 'error');
-    return;
-  }
+  if (!task) return;
   const availability = getTaskAvailability(task);
   if (!canCompleteTaskFromCatalog(availability)) {
-    showToast('Esta tarea no puede completarse manualmente en su estado actual.', 'gold');
+    showToast('Esta tarea no se puede completar ahora.', 'gold');
     return;
   }
   currentTask = task;
   currentCatFilter = task.cat;
-  currentIsOverflow = isTaskOverdue(task);
+  currentIsOverflow = Boolean(availability.isOverflow);
   allowManualCooldownCompletion = availability.status === 'cooldown';
-  completeTask();
+  renderTaskScreen();
+  showScreen('task');
+  resetTimer();
 }
 
 function renderTaskScreen() {
@@ -226,27 +233,34 @@ function renderTaskScreen() {
   
   // Category label
   document.getElementById('task-cat-label').innerHTML = `${cat.icon} ${cat.name}`;
+  document.getElementById('task-cat-badge').textContent = task.freq;
   
-  // Task info
+  // Task name and description
   document.getElementById('task-name').textContent = task.name;
   document.getElementById('task-desc').textContent = task.desc;
   
-  // Rewards
-  const rewardsDiv = document.getElementById('task-rewards');
-  let rewardsHtml = '';
-  
-  for (const [stat, pct] of Object.entries(task.stats)) {
-    const points = Math.max(1, Math.floor(pct / 10));
-    rewardsHtml += `<div class="task-reward stat-${stat}">+${points} ${STATS[stat].abbr}</div>`;
+  // Stats
+  let statsHtml = '';
+  for (const [stat, val] of Object.entries(task.stats)) {
+    statsHtml += `<span class="stat-reward">+${Math.max(1, Math.floor(val / 10))} ${STATS[stat].abbr}</span>`;
   }
-  rewardsHtml += `<div class="task-reward xp">+${task.xp} XP</div>`;
-  rewardsDiv.innerHTML = rewardsHtml;
+  document.getElementById('task-stats-rewards').innerHTML = statsHtml;
+  document.getElementById('task-xp').textContent = task.xp + ' XP';
+  
+  // Overflow indicator
+  const overflowBanner = document.getElementById('overflow-banner');
+  if (currentIsOverflow) {
+    overflowBanner.classList.remove('hidden');
+  } else {
+    overflowBanner.classList.add('hidden');
+  }
   
   // Drops
-  const dropsBox = document.getElementById('task-drops-box');
+  const dropsBox = document.getElementById('task-drops');
   if (task.drops) {
     dropsBox.classList.remove('hidden');
-    document.getElementById('task-drops').textContent = task.drops.items.join(', ');
+    const themeName = task.drops.theme || 'misterioso';
+    document.getElementById('task-drop-theme').textContent = themeName;
   } else {
     dropsBox.classList.add('hidden');
   }
@@ -295,50 +309,49 @@ function hasPendingTaskResult() {
 }
 
 function isTaskResultModalVisible() {
-  return document.getElementById('complete-overlay')?.classList.contains('show') === true;
+  return document.getElementById('complete-overlay')?.classList.contains('show');
 }
 
-function renderTaskResultDrop(drop) {
-  const dropBox = document.getElementById('complete-drop');
-  if (!drop) {
-    dropBox.classList.add('hidden');
-    return;
+function closeTaskResultModalIfOpen() {
+  if (isTaskResultModalVisible() && typeof closeTaskResultModal === 'function') {
+    closeTaskResultModal();
+    return true;
   }
-  dropBox.classList.remove('hidden');
-  const itemName = drop.displayName || drop.name || drop.itemId || 'Recompensa';
-  const statusLabel = drop.status === 'granted' ? 'Conseguido' : drop.status === 'pending' ? 'Pendiente de guardar' : 'No entregado';
-  document.getElementById('complete-drop-item').textContent = `${statusLabel}: ${itemName}`;
+  return false;
 }
 
-function renderTaskResultModal(result, task = null) {
+function presentPendingTaskResult() {
+  const result = getPendingTaskResult();
   if (!result) return false;
-  const overlay = document.getElementById('complete-overlay');
-  const resolvedTask = task || gameState.tasks.find(candidate => candidate.id === result.taskId) || null;
-  const awaitingSideQuest = result.status === 'awaiting_side_quest';
-  const taskName = result.taskName || resolvedTask?.name || 'Tarea';
+  const task = gameState.tasks.find(candidate => candidate.id === result.taskId) || null;
+  if (!task) return false;
+  renderTaskResultModal(result, task);
+  return true;
+}
 
-  overlay.setAttribute('aria-hidden', 'false');
+function renderTaskResultModal(result, task) {
+  const overlay = document.getElementById('complete-overlay');
   overlay.setAttribute('aria-label', 'Resultado de tarea');
   overlay.dataset.resultStatus = result.status;
   overlay.classList.add('show');
 
-  document.getElementById('complete-icon').textContent = awaitingSideQuest
+  document.getElementById('complete-icon').textContent = result.status === 'awaiting_side_quest'
     ? (result.isOverflow ? '⚡' : '\uD83C\uDFC6')
     : (result.leveledUp ? '\uD83C\uDF89' : (result.isOverflow ? '⚡' : '\uD83C\uDFC6'));
-  document.getElementById('complete-title').textContent = awaitingSideQuest
+  document.getElementById('complete-title').textContent = result.status === 'awaiting_side_quest'
     ? (result.isOverflow ? '¡Overflow eliminado!' : '¡Tarea completada!')
     : (result.leveledUp ? '¡Subiste de nivel!' : (result.isOverflow ? '¡Overflow eliminado!' : '¡Tarea completada!'));
-  document.getElementById('complete-subtitle').textContent = taskName;
+  document.getElementById('complete-subtitle').textContent = result.taskName;
 
   let rewardsHtml = '';
-  if (awaitingSideQuest && resolvedTask) {
-    const previewXp = Math.round(resolvedTask.xp * (result.isOverflow ? 1.5 : 1));
+  if (result.status === 'awaiting_side_quest' && task) {
+    const previewXp = Math.round(task.xp * (result.isOverflow ? 1.5 : 1));
     rewardsHtml = `<div class="complete-reward gold">+${previewXp} XP</div>`;
-    for (const [stat, pct] of Object.entries(resolvedTask.stats)) {
+    for (const [stat, pct] of Object.entries(task.stats)) {
       const points = Math.max(1, Math.floor(pct / 10));
       rewardsHtml += `<div class="complete-reward green">+${points} ${STATS[stat].abbr}</div>`;
     }
-  } else if (awaitingSideQuest) {
+  } else if (result.status === 'awaiting_side_quest') {
     rewardsHtml = '<div class="complete-reward gold">Resultado guardado</div>';
   } else {
     rewardsHtml = `<div class="complete-reward gold">+${result.totalXp} XP</div>`;
@@ -346,159 +359,126 @@ function renderTaskResultModal(result, task = null) {
   }
   document.getElementById('complete-rewards').innerHTML = rewardsHtml;
 
-  if (awaitingSideQuest) {
-    document.getElementById('complete-drop').classList.add('hidden');
-    document.getElementById('side-quest-prompt').classList.remove('hidden');
+  const sideQuestPrompt = document.getElementById('side-quest-prompt');
+  const completeDrop = document.getElementById('complete-drop');
+  if (result.status === 'awaiting_side_quest') {
+    completeDrop.classList.add('hidden');
+    sideQuestPrompt.classList.remove('hidden');
     document.getElementById('side-quest-prompt-desc').textContent = result.sideQuestDesc || '¿Has realizado también el objetivo opcional?';
-    document.getElementById('complete-dismiss').textContent = 'Decidir más tarde';
-    document.getElementById('side-quest-yes').onclick = () => finalizeCompletion(true);
-    document.getElementById('side-quest-no').onclick = () => finalizeCompletion(false);
   } else {
-    document.getElementById('side-quest-prompt').classList.add('hidden');
-    document.getElementById('complete-dismiss').textContent = 'Continuar';
-    renderTaskResultDrop(result.drop);
+    sideQuestPrompt.classList.add('hidden');
+    completeDrop.classList.toggle('hidden', !result.drop);
+    const drop = result.drop;
+    if (drop) {
+      const dropName = drop.displayName || drop.name || drop.itemId || 'Objeto';
+      document.getElementById('complete-drop-name').textContent = dropName;
+      document.getElementById('complete-drop-rarity').textContent = drop.rarity || '';
+      document.getElementById('complete-drop-status').textContent = drop.status || '';
+    }
   }
-  return true;
+
+  document.getElementById('complete-close').textContent = result.status === 'awaiting_side_quest' ? 'Resolver después' : 'Continuar';
 }
 
-function closeTaskResultModal() {
-  const overlay = document.getElementById('complete-overlay');
-  overlay.classList.remove('show');
-  overlay.setAttribute('aria-hidden', 'true');
-  overlay.removeAttribute('aria-label');
-  overlay.removeAttribute('data-result-status');
-}
-
-function presentPendingTaskResult() {
-  const result = getPendingTaskResult();
-  if (!result) return false;
-  const task = gameState.tasks.find(candidate => candidate.id === result.taskId) || null;
-  if (task && typeof showScreen === 'function' && document.querySelector('.screen.active')?.id !== 'screen-task') {
-    currentTask = task;
-    currentIsOverflow = Boolean(result.isOverflow);
-    renderTaskScreen();
-    showScreen('task', { replaceHistory: true });
-  }
-  return renderTaskResultModal(result, task);
-}
-
-function showPendingTaskResult() {
-  return presentPendingTaskResult();
+function openTaskResultDecision(sideQuestCompleted) {
+  const current = getPendingTaskResult();
+  if (!current || current.status !== 'awaiting_side_quest') return;
+  finalizeCompletion(Boolean(sideQuestCompleted), current);
 }
 
 function completeTask() {
-  const pending = getPendingTaskResult();
-  if (pending) {
-    if (currentTask && pending.taskId !== currentTask.id) {
-      presentPendingTaskResult();
-      return;
-    }
-    presentPendingTaskResult();
-    return;
-  }
   if (!currentTask) return;
-  const pendingAllowsCooldownCompletion = pending?.allowCooldownCompletion === true;
-  const canCompleteDuringCooldown = allowManualCooldownCompletion || pendingAllowsCooldownCompletion;
-  if (hasTaskCompletionForToday(currentTask) && !canCompleteDuringCooldown) {
-    showToast('Esta tarea ya está completada hoy.', 'gold');
+  const availability = getTaskAvailability(currentTask);
+  const canCompleteDuringCooldown = allowManualCooldownCompletion && availability.status === 'cooldown';
+  if (availability.status !== 'available' && !canCompleteDuringCooldown) {
+    showToast('Esta tarea no está disponible ahora.', 'gold');
     return;
   }
 
-  stopTimer();
-  const task = currentTask;
-  if (task.sideQuest) {
-    const pendingResult = {
+  const pending = getPendingTaskResult();
+  if (pending) {
+    presentPendingTaskResult();
+    return;
+  }
+
+  if (currentTask.sideQuest) {
+    const completionId = createTaskCompletionId(currentTask, todayStr());
+    gameState.pendingTaskResult = {
       version: 1,
       status: 'awaiting_side_quest',
-      taskId: task.id,
-      taskName: task.name,
-      sideQuestDesc: task.sideQuest.desc,
+      taskId: currentTask.id,
+      taskName: currentTask.name,
+      sideQuestDesc: currentTask.sideQuest.desc,
       isOverflow: Boolean(currentIsOverflow),
       date: todayStr(),
       createdAt: new Date().toISOString(),
-      sideQuestCompleted: null,
-      allowCooldownCompletion: Boolean(allowManualCooldownCompletion),
-      claimId: null,
-      totalXp: 0,
-      goldEarned: 0,
-      leveledUp: false,
-      drop: null
+      allowCooldownCompletion: Boolean(canCompleteDuringCooldown),
+      claimId: completionId
     };
-    gameState.pendingTaskResult = pendingResult;
     if (!saveGame()) {
       gameState.pendingTaskResult = null;
-      showToast('No se pudo guardar la decisión pendiente. No se ha mostrado el resultado.', 'error');
+      showToast('No se pudo guardar el resultado. Inténtalo de nuevo.', 'error');
       return;
     }
-    renderTaskResultModal(pendingResult, task);
+    renderTaskResultModal(gameState.pendingTaskResult, currentTask);
     return;
   }
 
-  finalizeCompletion(false);
+  finalizeCompletion(false, {
+    version: 1,
+    status: 'awaiting_side_quest',
+    taskId: currentTask.id,
+    taskName: currentTask.name,
+    isOverflow: Boolean(currentIsOverflow),
+    date: todayStr(),
+    allowCooldownCompletion: Boolean(canCompleteDuringCooldown),
+    claimId: createTaskCompletionId(currentTask, todayStr())
+  });
 }
 
-function finalizeCompletion(sideQuestCompleted) {
-  const task = currentTask;
-  if (!task) {
-    presentPendingTaskResult();
-    return;
-  }
-  const pending = getPendingTaskResult();
-  if (pending?.status === 'ready') {
-    presentPendingTaskResult();
-    return;
-  }
-  if (pending && pending.taskId !== task.id) {
-    presentPendingTaskResult();
+function finalizeCompletion(sideQuestCompleted, pendingResult) {
+  const task = gameState.tasks.find(candidate => candidate.id === pendingResult.taskId) || currentTask;
+  if (!task) return;
+  const availability = getTaskAvailability(task);
+  const canCompleteDuringCooldown = Boolean(pendingResult.allowCooldownCompletion) && availability.status === 'cooldown';
+  if (availability.status !== 'available' && !canCompleteDuringCooldown) {
+    showToast('Esta tarea ya no está disponible ahora.', 'gold');
     return;
   }
 
-  const stateBeforeCompletion = typeof cloneSaveState === 'function' ? cloneSaveState(gameState) : null;
+  const stateBeforeCompletion = typeof cloneSaveState === 'function' ? cloneSaveState(gameState) : JSON.parse(JSON.stringify(gameState));
   const pendingEncounterBeforeCompletion = pendingEncounter;
-  const today = todayStr();
-  const pendingAllowsCooldownCompletion = pending?.allowCooldownCompletion === true;
-  const canCompleteDuringCooldown = allowManualCooldownCompletion || pendingAllowsCooldownCompletion;
-  if (hasTaskCompletionForToday(task) && !canCompleteDuringCooldown) {
-    gameState.pendingTaskResult = null;
-    showToast('Esta tarea ya está completada hoy.', 'gold');
-    return;
-  }
-  const xpMultiplier = currentIsOverflow ? 1.5 : 1;
-  
-  // Calculate XP
-  let totalXp = Math.round(task.xp * xpMultiplier);
-  if (sideQuestCompleted && task.sideQuest) {
-    totalXp += task.sideQuest.xp;
-  }
-  
-  // Add XP and check level up
-  const leveledUp = addXp(totalXp);
-  
-  // Add stats
-  addStats(task.stats);
-  if (sideQuestCompleted && task.sideQuest) {
-    addStats(task.sideQuest.stats);
-  }
-  
-  // Add gold (simplified)
-  const goldEarned = Math.floor(task.xp / 5);
-  gameState.gold += goldEarned;
-  
-  // Roll for drops using items.js system
+  const today = pendingResult.date || todayStr();
   const completionSequence = gameState.taskHistory.filter(entry => entry && entry.taskId === task.id).length;
-  const completionId = `task:${task.id}:${today}:${sideQuestCompleted ? 'side' : 'base'}:${completionSequence}`;
-  let dropResult = null;
-  const bonusChance = sideQuestCompleted && task.sideQuest?.dropBonus ? task.sideQuest.dropBonus / 100 : 0;
-  
-  if (task.drops?.theme && typeof rollDropFromTheme === 'function') {
-    dropResult = rollDropFromTheme(task.drops.theme, bonusChance);
-  } else if (task.drops?.items) {
-    // Fallback to old system for tasks without theme
-    const drop = rollDrop(task, sideQuestCompleted);
-    if (drop) dropResult = { itemId: null, name: drop };
+  const completionId = pendingResult.claimId || createTaskCompletionId(task, today, completionSequence);
+  const baseXp = task.xp * (currentIsOverflow ? 1.5 : 1);
+  const sideXp = sideQuestCompleted && task.sideQuest ? task.sideQuest.xp : 0;
+  const totalXp = Math.round(baseXp + sideXp);
+  const goldEarned = Math.max(1, Math.floor(totalXp / 4));
+
+  addXp(totalXp);
+  gameState.gold += goldEarned;
+  let leveledUp = false;
+  while (gameState.xp >= getXpForNextLevel()) {
+    gameState.xp -= getXpForNextLevel();
+    gameState.level++;
+    leveledUp = true;
   }
-  
-  // Side quest bonus drop
+
+  for (const [stat, pct] of Object.entries(task.stats)) {
+    const points = Math.max(1, Math.floor(pct / 10));
+    if (!gameState.stats[stat]) gameState.stats[stat] = 10;
+    gameState.stats[stat] += points;
+  }
+  if (sideQuestCompleted && task.sideQuest) {
+    for (const [stat, pct] of Object.entries(task.sideQuest.stats)) {
+      const points = Math.max(1, Math.floor(pct / 10));
+      if (!gameState.stats[stat]) gameState.stats[stat] = 10;
+      gameState.stats[stat] += points;
+    }
+  }
+
+  const dropResult = rollDrop(task, sideQuestCompleted);
   if (sideQuestCompleted && task.sideQuest?.drops && !dropResult) {
     const sqDrop = rollSideQuestDrop(task);
     if (sqDrop) dropResult = { itemId: null, name: sqDrop };
@@ -538,7 +518,7 @@ function finalizeCompletion(sideQuestCompleted) {
   }
   
   // Remove from saved if it was there
-  gameState.savedTasks = gameState.savedTasks.filter(t => t.id !== task.id);
+  gameState.savedTasks = gameState.savedTasks.filter(taskId => taskId !== task.id);
   
   // Add to history. The sequence keeps same-day manual completions distinct,
   // so each intentional completion can receive its own durable reward claim.
