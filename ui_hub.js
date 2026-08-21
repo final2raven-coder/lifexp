@@ -49,7 +49,7 @@ function renderHub() {
     const overflowCount = getOverflowCount(catId);
     
     catGrid.innerHTML += `
-      <div class="cat-card" data-cat="${catId}" onclick="openCategory('${catId}')">
+      <div class="cat-card" data-cat="${catId}" role="button" tabindex="0" aria-label="Abrir categoría ${cat.name}" onclick="openCategory('${catId}')" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCategory('${catId}'); }">
         <div class="cat-icon">${cat.icon}</div>
         <div class="cat-name">${cat.name}</div>
         <div class="cat-pending">${pending} pendiente${pending !== 1 ? 's' : ''}</div>
@@ -81,333 +81,162 @@ function renderCharacter() {
   const classChangeSection = document.getElementById('class-change-section');
   if (availableChanges.length > 0) {
     classChangeSection.classList.remove('hidden');
+    const classChangeList = document.getElementById('class-change-list');
+    classChangeList.innerHTML = availableChanges.map(c => `
+      <button class="class-option" onclick="selectClass('${c.id}')">
+        <span class="class-option-icon">${c.icon}</span>
+        <span class="class-option-name">${c.name}</span>
+        <span class="class-option-desc">${c.desc}</span>
+      </button>
+    `).join('');
   } else {
     classChangeSection.classList.add('hidden');
   }
   
-  // Stats with class bonuses
-  const baseStats = gameState.stats;
-  const derivedStats = calculateDerivedStats(baseStats, classId === 'novato' ? null : classId);
-  
-  const statsGrid = document.getElementById('char-stats-grid');
-  statsGrid.innerHTML = '';
-  
-  const maxStat = Math.max(...Object.values(derivedStats));
-  
+  // Stats
   for (const [statId, stat] of Object.entries(STATS)) {
-    const baseValue = baseStats[statId] || 0;
-    const totalValue = derivedStats[statId] || 0;
-    const bonus = totalValue - baseValue;
-    const pct = Math.round((totalValue / maxStat) * 100);
-    
-    statsGrid.innerHTML += `
-      <div class="stat-item" data-stat="${statId}">
-        <div class="stat-header">
-          <div class="stat-name">${stat.abbr}</div>
-          <div class="stat-value">${totalValue}${bonus > 0 ? ` <span style="color: var(--green); font-size: 11px;">(+${bonus})</span>` : ''}</div>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-fill" style="width: ${pct}%"></div>
-        </div>
-      </div>
-    `;
+    const value = gameState.stats[statId];
+    const el = document.getElementById(`stat-${statId}`);
+    el.textContent = value;
+    el.style.width = Math.min(100, value) + '%';
   }
   
-  // Combat resources
-  const resources = calculateResources(derivedStats);
-  document.getElementById('char-resources').innerHTML = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--red);">❤️ ${resources.hp}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">HP</div>
+  // Class skills
+  const skillsDiv = document.getElementById('char-skills');
+  if (cls && cls.skills) {
+    skillsDiv.innerHTML = cls.skills.map(skill => `
+      <div class="skill-card ${skill.unlockedAt <= level ? 'unlocked' : 'locked'}">
+        <span class="skill-icon">${skill.icon}</span>
+        <div class="skill-info">
+          <div class="skill-name">${skill.name}</div>
+          <div class="skill-desc">${skill.desc}</div>
+          <div class="skill-level">Nivel ${skill.unlockedAt}</div>
+        </div>
       </div>
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--blue);">\uD83D\uDCA7 ${resources.mp}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">MP</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--green);">⚡ ${resources.sp}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">SP</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--purple);">\uD83C\uDFAF ${resources.focusMax}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">Focus Max</div>
-      </div>
-    </div>
-  `;
-  
-  // Class path
-  const classPath = document.getElementById('char-class-path');
-  if (classId && classId !== 'novato') {
-    const chain = getClassChain(classId);
-    classPath.innerHTML = chain.map((cId, i) => {
-      const c = CLASS_TREE[cId];
-      return `<span style="color: var(--gold);">${c.icon} ${c.name}</span>`;
-    }).join(' → ');
+    `).join('');
   } else {
-    classPath.innerHTML = '<span style="color: var(--text-muted);">Aún no has elegido una clase. Alcanza nivel 10 para desbloquear la primera.</span>';
+    skillsDiv.innerHTML = '<div class="empty-state">Elige una clase para desbloquear habilidades.</div>';
   }
-}
-
-let currentInventoryTab = 'inventory';
-let selectedItemId = null;
-
-function switchInventoryTab(tab) {
-  currentInventoryTab = tab;
-  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`.inv-tab[data-tab="${tab}"]`)?.classList.add('active');
-  document.getElementById('inv-tab-inventory')?.classList.toggle('hidden', tab !== 'inventory');
-  document.getElementById('inv-tab-stash')?.classList.toggle('hidden', tab !== 'stash');
-  document.getElementById('inv-tab-equipment')?.classList.toggle('hidden', tab !== 'equipment');
-  renderInventory();
 }
 
 function renderInventory() {
-  const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;
-  const count = gameState.inventory.reduce((sum, i) => sum + (i.qty || 1), 0);
-  document.getElementById('inv-count').textContent = `${count}/${capacity}`;
-  const stashCount = (gameState.stash || []).reduce((sum, i) => sum + (i.qty || 1), 0);
-  const stashLabel = document.getElementById('stash-count');
-  if (stashLabel) stashLabel.textContent = `${stashCount}/${gameState.stashCapacity || 30}`;
+  // Header stats
+  document.getElementById('inv-gold').textContent = gameState.gold;
   
-  if (currentInventoryTab === 'stash') {
-    renderStashGrid();
-  } else if (currentInventoryTab === 'equipment') {
-    renderEquipment();
-  } else {
-    renderInventoryGrid();
-  }
+  const inventory = gameState.inventory || [];
+  const stash = gameState.stash || [];
+  const capacity = getInventoryCapacity();
+  const stashCapacity = gameState.stashCapacity || 30;
+  
+  document.getElementById('inv-count').textContent = inventory.length;
+  document.getElementById('inv-capacity').textContent = capacity;
+  document.getElementById('stash-count').textContent = stash.length;
+  document.getElementById('stash-capacity').textContent = stashCapacity;
+  
+  // Tabs
+  document.querySelectorAll('.inv-tab').forEach(tab => {
+    tab.onclick = () => switchInventoryTab(tab.dataset.tab);
+  });
+  
+  renderInventoryTab('inventory');
 }
 
-
-
-function showStashItemModal(itemId) {
-  showItemModal(itemId, 'stash');
-}
-
-function moveItemToStash(itemId) {
-  if (!moveBetweenContainers(itemId, 'inventory', 'stash')) {
-    showToast('Stash is full.', 'error');
-    return;
-  }
-  saveGame(); closeModal('modal-item'); renderInventory();
-}
-
-function moveItemToInventory(itemId) {
-  if (!moveBetweenContainers(itemId, 'stash', 'inventory')) {
-    showToast('No room in inventory.', 'error');
-    return;
-  }
-  saveGame(); closeModal('modal-item'); renderInventory();
-}
-
-function renderEquipment() {
-  const slots = document.getElementById('equipment-slots');
-  const statsDiv = document.getElementById('equipment-stats');
-  if (!slots) return;
+function renderInventoryTab(tab) {
+  const content = document.getElementById('inventory-content');
   
-  const slotConfig = [
-    { key: 'weapon', name: 'Weapon', icon: '⚔️' },
-    { key: 'armor', name: 'Armor', icon: '\uD83D\uDEE1️' },
-    { key: 'accessory1', name: 'Accessory 1', icon: '\uD83D\uDC8D' },
-    { key: 'accessory2', name: 'Accessory 2', icon: '\uD83D\uDC8D' },
-    { key: 'artifact', name: 'Artifact', icon: '\uD83D\uDD2E' }
-  ];
-  
-  slots.innerHTML = '';
-  
-  for (const cfg of slotConfig) {
-    const itemId = gameState.equipment[cfg.key];
-    const item = itemId && typeof ITEMS !== 'undefined' ? ITEMS[itemId] : null;
-    const rarity = item && typeof RARITY !== 'undefined' ? RARITY[item.rarity] : null;
-    
-    slots.innerHTML += `
-      <div class="equip-slot" onclick="${item ? `showEquippedItemModal('${cfg.key}')` : ''}"
-           style="background: var(--bg-surface); border: 2px solid ${rarity ? rarity.color : 'var(--border)'}; 
-                  border-radius: 8px; padding: 12px; text-align: center; cursor: ${item ? 'pointer' : 'default'};">
-        <div style="font-size: 28px;">${item ? item.icon : cfg.icon}</div>
-        <div style="font-size: 11px; color: ${item ? rarity.color : 'var(--text-muted)'}; margin-top: 4px;">
-          ${item ? item.name : cfg.name}
+  if (tab === 'inventory') {
+    const inventory = gameState.inventory || [];
+    if (inventory.length === 0) {
+      content.innerHTML = '<div class="empty-state">Tu inventario está vacío.</div>';
+      return;
+    }
+    content.innerHTML = inventory.map(itemId => {
+      const item = ITEMS[itemId];
+      if (!item) return '';
+      const rarity = RARITY[item.rarity];
+      return `
+        <div class="inv-item" onclick="showItemDetail('${itemId}')">
+          <span class="inv-item-icon">${item.icon}</span>
+          <div class="inv-item-info">
+            <div class="inv-item-name" style="color: ${rarity.color};">${item.name}</div>
+            <div class="inv-item-type">${ITEM_TYPE[item.type].icon} ${ITEM_TYPE[item.type].name}</div>
+          </div>
         </div>
-      </div>
-    `;
-  }
-  
-  // Equipment stats
-  if (typeof getEquipmentStats === 'function' && statsDiv) {
-    const eqStats = getEquipmentStats();
-    const hasStats = Object.values(eqStats).some(v => v > 0);
-    
-    if (hasStats) {
-      statsDiv.innerHTML = Object.entries(eqStats)
-        .filter(([_, v]) => v > 0)
-        .map(([stat, val]) => `<span style="color: var(--stat-${stat}); margin-right: 12px;">${STATS[stat].abbr} +${val}</span>`)
-        .join('');
-    } else {
-      statsDiv.innerHTML = '<span style="color: var(--text-muted);">No equipment</span>';
-    }
-  }
-}
-
-
-function showLegacyItemModal(slotIndex) {
-  const slot = gameState.inventory?.[slotIndex];
-  if (!slot) return;
-  const oldName = slot.name || slot.legacyName || 'Unidentified reward';
-  const used = Boolean(slot.recoveryUsed);
-  document.getElementById('modal-item-content').innerHTML = `
-    <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:48px;">❔</div>
-      <div style="font-size:18px;font-weight:700;color:var(--orange);">Unreadable reward</div>
-      <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
-    </div>
-    <div style="font-size:13px;color:var(--text);line-height:1.5;">This reward comes from an older version and has no valid identifier. You can rebuild or reroll it once without losing progress.</div>
-    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">Emergency reroll is a data-recovery tool, not a normal mechanic.</div>
-  `;
-  const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = used ? 'Recovery already used' : '\uD83D\uDD04 Rebuild reward';
-  actionBtn.disabled = used;
-  actionBtn.onclick = () => {
-    if (used || typeof emergencyRerollLegacyItem !== 'function') return;
-    const result = emergencyRerollLegacyItem(slotIndex);
-    if (!result.success) { showToast('The reward could not be recovered.', 'error'); return; }
-    closeModal('modal-item');
-    renderInventory();
-    showToast(result.method === 'name' ? 'Reward rebuilt.' : 'Reward rerolled.', 'gold');
-  };
-  openModal('modal-item');
-}
-
-
-function equipItemFromInventory(itemId) {
-  initializeItemSystem();
-  if (!gameState.itemSystem.equipAttempts) gameState.itemSystem.equipAttempts = {};
-  var prevAttempts = gameState.itemSystem.equipAttempts[itemId] || 0;
-
-  if (equipItem(itemId)) {
-    // Track first successful equip
-    if (!gameState.itemSystem.firstEquipped) gameState.itemSystem.firstEquipped = {};
-    var isFirst = !gameState.itemSystem.firstEquipped[itemId];
-    gameState.itemSystem.firstEquipped[itemId] = true;
-    saveGame();
-    closeModal('modal-item');
-    renderInventory();
-    renderCharacter();
-    // Show equip_success flavor on first equip
-    if (isFirst && typeof showToast === 'function') {
-      var successText = getItemFlavorText(itemId, 'equip_success');
-      showFlavorDialog(successText, 'success');
-    }
+      `;
+    }).join('');
   } else {
-    // Record the attempt
-    gameState.itemSystem.equipAttempts[itemId] = prevAttempts + 1;
-    saveGame();
-
-    // Show flavor toast — evocative, not a stat sheet
-    var situation = prevAttempts === 0 ? 'equip_fail_1' : 'equip_fail_n';
-    var requirementStatus = getItemRequirementStatus(itemId);
-    var flavor = requirementStatus.missingRequirements?.length
-      ? getItemRequirementNarrative(itemId, requirementStatus)
-      : getItemFlavorText(itemId, situation);
-    showFlavorDialog(flavor, 'error');
-
-    // Refresh modal so the hint appears
-    showItemModal(itemId, 'inventory');
+    const stash = gameState.stash || [];
+    if (stash.length === 0) {
+      content.innerHTML = '<div class="empty-state">Tu baúl está vacío.</div>';
+      return;
+    }
+    content.innerHTML = stash.map(itemId => {
+      const item = ITEMS[itemId];
+      if (!item) return '';
+      const rarity = RARITY[item.rarity];
+      return `
+        <div class="inv-item" onclick="showItemDetail('${itemId}')">
+          <span class="inv-item-icon">${item.icon}</span>
+          <div class="inv-item-info">
+            <div class="inv-item-name" style="color: ${rarity.color};">${item.name}</div>
+            <div class="inv-item-type">${ITEM_TYPE[item.type].icon} ${ITEM_TYPE[item.type].name}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 }
 
-
-// == ATTUNEMENT FLAVOR TRIGGER =================================================
-function showAttunementFlavor(itemId, newStage) {
-  var text = getItemFlavorText(itemId, 'attune_' + newStage);
-  showFlavorDialog(text, 'success');
+function switchInventoryTab(tab) {
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderInventoryTab(tab);
 }
 
-// == RITUAL FLAVOR TRIGGER =====================================================
-function showRitualFlavor(itemId) {
-  var text = getItemFlavorText(itemId, 'ritual');
-  showFlavorDialog(text, 'success');
+function getInventoryCapacity() {
+  return 20 + (gameState.inventoryCapacityBonus || 0);
 }
 
-// == LEGACY SHIM ===============================================================
-function _getEquipFlavorText(itemId) {
-  var attempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
-  return getItemFlavorText(itemId, attempts <= 1 ? 'equip_fail_1' : 'equip_fail_n');
-}
-
-
-function unequipItemToInventory(slot) {
-  if (unequipItem(slot)) {
-    saveGame();
-    closeModal('modal-item');
-    renderInventory();
-    renderCharacter();
-  } else {
-    alert('Inventory full.');
-  }
-}
-
-function sellItemFromInventory(itemId) {
+function showItemDetail(itemId) {
   const item = ITEMS[itemId];
   if (!item) return;
+  const modal = document.getElementById('item-modal');
+  const rarity = RARITY[item.rarity];
+  document.getElementById('item-modal-icon').textContent = item.icon;
+  document.getElementById('item-modal-name').textContent = item.name;
+  document.getElementById('item-modal-name').style.color = rarity.color;
+  document.getElementById('item-modal-rarity').textContent = rarity.name;
+  document.getElementById('item-modal-type').textContent = ITEM_TYPE[item.type].name;
+  document.getElementById('item-modal-desc').textContent = item.desc;
   
-  const gold = sellItem(itemId, 1);
-  if (gold > 0) {
-    saveGame();
-    closeModal('modal-item');
-    renderInventory();
-    renderHub();
-    alert('Sold for ' + gold + ' gold.');
-  }
-}
-
-function useConsumable(itemId) {
-  alert('Consumables are available in combat (Block 4).');
-  closeModal('modal-item');
-}
-
-// renderQuests() definido al final del archivo en sección QUESTS RENDERING
-
-
-function forceAppUpdate() {
-  const current = typeof LIFE_XP_BUILD !== 'undefined' ? LIFE_XP_BUILD : 'unknown';
-  const url = `${location.pathname}?lifexp_update=${encodeURIComponent(current)}_${Date.now()}`;
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(reg => reg.update()))).finally(() => location.replace(url));
+  // Stats
+  const statsDiv = document.getElementById('item-modal-stats');
+  if (item.stats) {
+    statsDiv.innerHTML = Object.entries(item.stats).map(([stat, val]) =>
+      `<span class="item-stat">+${val} ${STATS[stat].abbr}</span>`
+    ).join('');
   } else {
-    location.replace(url);
+    statsDiv.innerHTML = '';
   }
+  
+  modal.classList.add('show');
 }
 
-function renderSettings() {
-  const content = document.getElementById('settings-content');
-  content.innerHTML = `
-    <div class="section-title">Datos</div>
-    <div class="card">
-      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Actualizar versión</button>
-      <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Exportar save</button>
-      <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Importar save</button>
-      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Resetear progreso</button>
-    </div>
-    
-    <div class="section-title">Content Planning</div>
-    <div class="card">
-      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-        Exporta un snapshot con métricas de uso y sugerencias para planificar actualizaciones de contenido con tu agente de Langdock.
-      </p>
-      <button class="btn btn-gold" onclick="exportSnapshot()">\uD83D\uDCCA Exportar Snapshot para Agente</button>
-    </div>
-    
-    <div class="section-title">Info</div>
-    <div class="card">
-      <p style="font-size: 13px; color: var(--text-muted);">
-        LifeXP RPG v1.0 · Build ${LIFE_XP_BUILD}<br>
-        Tareas: ${gameState.tasks.length}<br>
-        Nivel: ${gameState.level}<br>
-        XP Total: ${gameState.taskHistory.reduce((a, h) => a + h.xp, 0)}
-      </p>
-    </div>
-  `;
+function showOverflowTasks() {
+  const overflow = getOverflowTasks();
+  if (overflow.length === 0) return;
+  currentTask = overflow[0];
+  currentIsOverflow = true;
+  renderTaskScreen();
+  showScreen('task');
+  resetTimer();
 }
 
-// ===========================================================================
+function showSavedTasks() {
+  const saved = gameState.tasks.filter(t => gameState.savedTasks.includes(t.id));
+  if (saved.length === 0) return;
+  currentTask = saved[0];
+  currentIsOverflow = false;
+  renderTaskScreen();
+  showScreen('task');
+  resetTimer();
+}
