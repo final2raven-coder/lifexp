@@ -78,108 +78,88 @@ function renderCharacter() {
   
   // Class change button
   const availableChanges = getAvailableClassChanges(classId === 'novato' ? null : classId, level);
-  const classChangeSection = document.getElementById('class-change-section');
+  const classBtn = document.getElementById('class-change-btn');
   if (availableChanges.length > 0) {
-    classChangeSection.classList.remove('hidden');
+    classBtn.classList.remove('hidden');
   } else {
-    classChangeSection.classList.add('hidden');
+    classBtn.classList.add('hidden');
   }
   
-  // Stats with class bonuses
-  const baseStats = gameState.stats;
-  const derivedStats = calculateDerivedStats(baseStats, classId === 'novato' ? null : classId);
-  
-  const statsGrid = document.getElementById('char-stats-grid');
-  statsGrid.innerHTML = '';
-  
-  const maxStat = Math.max(...Object.values(derivedStats));
-  
+  // Stats
+  const statsDiv = document.getElementById('char-stats');
+  statsDiv.innerHTML = '';
   for (const [statId, stat] of Object.entries(STATS)) {
-    const baseValue = baseStats[statId] || 0;
-    const totalValue = derivedStats[statId] || 0;
-    const bonus = totalValue - baseValue;
-    const pct = Math.round((totalValue / maxStat) * 100);
-    
-    statsGrid.innerHTML += `
-      <div class="stat-item" data-stat="${statId}">
-        <div class="stat-header">
-          <div class="stat-name">${stat.abbr}</div>
-          <div class="stat-value">${totalValue}${bonus > 0 ? ` <span style="color: var(--green); font-size: 11px;">(+${bonus})</span>` : ''}</div>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-fill" style="width: ${pct}%"></div>
-        </div>
+    const val = gameState.stats[statId] || 10;
+    statsDiv.innerHTML += `
+      <div class="stat-row">
+        <span class="stat-icon">${stat.icon}</span>
+        <span class="stat-name">${stat.name}</span>
+        <span class="stat-val">${val}</span>
       </div>
     `;
   }
   
-  // Combat resources
-  const resources = calculateResources(derivedStats);
-  document.getElementById('char-resources').innerHTML = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--red);">❤️ ${resources.hp}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">HP</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--blue);">\uD83D\uDCA7 ${resources.mp}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">MP</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--green);">⚡ ${resources.sp}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">SP</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--purple);">\uD83C\uDFAF ${resources.focusMax}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">Focus Max</div>
-      </div>
-    </div>
-  `;
-  
-  // Class path
-  const classPath = document.getElementById('char-class-path');
-  if (classId && classId !== 'novato') {
-    const chain = getClassChain(classId);
-    classPath.innerHTML = chain.map((cId, i) => {
-      const c = CLASS_TREE[cId];
-      return `<span style="color: var(--gold);">${c.icon} ${c.name}</span>`;
-    }).join(' → ');
+  // Buffs
+  const buffsDiv = document.getElementById('char-buffs');
+  buffsDiv.innerHTML = '';
+  if (gameState.buffs.length === 0) {
+    buffsDiv.innerHTML = '<p class="empty-text">Sin buffs activos</p>';
   } else {
-    classPath.innerHTML = '<span style="color: var(--text-muted);">Aún no has elegido una clase. Alcanza nivel 10 para desbloquear la primera.</span>';
+    for (const buff of gameState.buffs) {
+      buffsDiv.innerHTML += `<div class="buff-item">${buff.icon} ${buff.name} <small>${buff.desc}</small></div>`;
+    }
   }
-}
-
-let currentInventoryTab = 'inventory';
-let selectedItemId = null;
-
-function switchInventoryTab(tab) {
-  currentInventoryTab = tab;
-  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`.inv-tab[data-tab="${tab}"]`)?.classList.add('active');
-  document.getElementById('inv-tab-inventory')?.classList.toggle('hidden', tab !== 'inventory');
-  document.getElementById('inv-tab-stash')?.classList.toggle('hidden', tab !== 'stash');
-  document.getElementById('inv-tab-equipment')?.classList.toggle('hidden', tab !== 'equipment');
-  renderInventory();
+  
+  // Class progress
+  const classProgress = document.getElementById('class-progress');
+  if (cls) {
+    classProgress.classList.remove('hidden');
+    document.getElementById('class-progress-name').textContent = cls.name;
+    document.getElementById('class-progress-bar').style.width = `${getClassProgress(cls)}%`;
+    document.getElementById('class-progress-text').textContent = `${getClassProgress(cls)}%`;
+  } else {
+    classProgress.classList.add('hidden');
+  }
 }
 
 function renderInventory() {
-  const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;
-  const count = gameState.inventory.reduce((sum, i) => sum + (i.qty || 1), 0);
-  document.getElementById('inv-count').textContent = `${count}/${capacity}`;
-  const stashCount = (gameState.stash || []).reduce((sum, i) => sum + (i.qty || 1), 0);
-  const stashLabel = document.getElementById('stash-count');
-  if (stashLabel) stashLabel.textContent = `${stashCount}/${gameState.stashCapacity || 30}`;
+  const grid = document.getElementById('inventory-grid');
+  const empty = document.getElementById('inventory-empty');
+  if (!grid) return;
   
-  if (currentInventoryTab === 'stash') {
-    renderStashGrid();
-  } else if (currentInventoryTab === 'equipment') {
-    renderEquipment();
-  } else {
-    renderInventoryGrid();
+  grid.innerHTML = '';
+  const inventory = getInventoryItems();
+  
+  if (inventory.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  
+  for (const entry of inventory) {
+    const itemId = entry.id;
+    const item = ITEMS[itemId];
+    if (!item) continue;
+    const rarity = RARITY[item.rarity];
+    const displayName = item.name || itemId;
+    const equipped = isItemEquipped(itemId);
+    const count = entry.qty || 1;
+    
+    grid.innerHTML += `
+      <div class="inv-item" onclick="showInventoryItemModal('${itemId}')" style="border-color: ${rarity.color};">
+        <div class="inv-icon">${item.icon}</div>
+        <div class="inv-name">${displayName}</div>
+        <div class="inv-rarity" style="color: ${rarity.color};">${rarity.name}</div>
+        ${equipped ? '<div class="inv-equipped">EQUIPPED</div>' : ''}
+        ${count > 1 ? `<div class="inv-count">x${count}</div>` : ''}
+      </div>
+    `;
   }
 }
 
-
+function showInventoryItemModal(itemId) {
+  showItemModal(itemId, 'inventory');
+}
 
 function showStashItemModal(itemId) {
   showItemModal(itemId, 'stash');
@@ -226,78 +206,67 @@ function renderEquipment() {
            style="background: var(--bg-surface); border: 2px solid ${rarity ? rarity.color : 'var(--border)'}; 
                   border-radius: 8px; padding: 12px; text-align: center; cursor: ${item ? 'pointer' : 'default'};">
         <div style="font-size: 28px;">${item ? item.icon : cfg.icon}</div>
-        <div style="font-size: 11px; color: ${item ? rarity.color : 'var(--text-muted)'}; margin-top: 4px;">
-          ${item ? item.name : cfg.name}
-        </div>
+        <div style="font-size: 11px; color: ${item ? rarity.color : 'var(--text-muted)'};">${item ? item.name : cfg.name}</div>
       </div>
     `;
   }
   
-  // Equipment stats
-  if (typeof getEquipmentStats === 'function' && statsDiv) {
-    const eqStats = getEquipmentStats();
-    const hasStats = Object.values(eqStats).some(v => v > 0);
-    
-    if (hasStats) {
-      statsDiv.innerHTML = Object.entries(eqStats)
-        .filter(([_, v]) => v > 0)
-        .map(([stat, val]) => `<span style="color: var(--stat-${stat}); margin-right: 12px;">${STATS[stat].abbr} +${val}</span>`)
-        .join('');
-    } else {
-      statsDiv.innerHTML = '<span style="color: var(--text-muted);">No equipment</span>';
-    }
+  if (statsDiv) {
+    const stats = getEquipmentStats();
+    statsDiv.innerHTML = `<div style="font-size: 12px; color: var(--text-muted); margin-top: 12px;">${stats.text || 'No bonuses'}</div>`;
   }
 }
 
-
-function showLegacyItemModal(slotIndex) {
-  const slot = gameState.inventory?.[slotIndex];
-  if (!slot) return;
-  const oldName = slot.name || slot.legacyName || 'Unidentified reward';
-  const used = Boolean(slot.recoveryUsed);
-  document.getElementById('modal-item-content').innerHTML = `
-    <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:48px;">❔</div>
-      <div style="font-size:18px;font-weight:700;color:var(--orange);">Unreadable reward</div>
-      <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
-    </div>
-    <div style="font-size:13px;color:var(--text);line-height:1.5;">This reward comes from an older version and has no valid identifier. You can rebuild or reroll it once without losing progress.</div>
-    <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">Emergency reroll is a data-recovery tool, not a normal mechanic.</div>
-  `;
-  const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = used ? 'Recovery already used' : '\uD83D\uDD04 Rebuild reward';
-  actionBtn.disabled = used;
-  actionBtn.onclick = () => {
-    if (used || typeof emergencyRerollLegacyItem !== 'function') return;
-    const result = emergencyRerollLegacyItem(slotIndex);
-    if (!result.success) { showToast('The reward could not be recovered.', 'error'); return; }
-    closeModal('modal-item');
-    renderInventory();
-    showToast(result.method === 'name' ? 'Reward rebuilt.' : 'Reward rerolled.', 'gold');
-  };
-  openModal('modal-item');
+function showEquippedItemModal(slot) {
+  const itemId = gameState.equipment[slot];
+  if (itemId) showItemModal(itemId, 'equipment');
 }
 
+function renderStash() {
+  const grid = document.getElementById('stash-grid');
+  const empty = document.getElementById('stash-empty');
+  if (!grid) return;
+  
+  grid.innerHTML = '';
+  const stash = getStashItems();
+  
+  if (stash.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  
+  for (const entry of stash) {
+    const itemId = entry.id;
+    const item = ITEMS[itemId];
+    if (!item) continue;
+    const rarity = RARITY[item.rarity];
+    const displayName = item.name || itemId;
+    
+    grid.innerHTML += `
+      <div class="inv-item" onclick="showStashItemModal('${itemId}')" style="border-color: ${rarity.color};">
+        <div class="inv-icon">${item.icon}</div>
+        <div class="inv-name">${displayName}</div>
+        <div class="inv-rarity" style="color: ${rarity.color};">${rarity.name}</div>
+        <div class="inv-count">x${entry.qty || 1}</div>
+      </div>
+    `;
+  }
+}
 
-function equipItemFromInventory(itemId) {
-  initializeItemSystem();
-  if (!gameState.itemSystem.equipAttempts) gameState.itemSystem.equipAttempts = {};
-  var prevAttempts = gameState.itemSystem.equipAttempts[itemId] || 0;
-
-  if (equipItem(itemId)) {
-    // Track first successful equip
-    if (!gameState.itemSystem.firstEquipped) gameState.itemSystem.firstEquipped = {};
-    var isFirst = !gameState.itemSystem.firstEquipped[itemId];
-    gameState.itemSystem.firstEquipped[itemId] = true;
+function equipItem(itemId) {
+  const item = ITEMS[itemId];
+  if (!item) return;
+  
+  const prevAttempts = (gameState.itemSystem && gameState.itemSystem.equipAttempts && gameState.itemSystem.equipAttempts[itemId]) || 0;
+  const result = tryEquip(itemId);
+  if (result.success) {
     saveGame();
     closeModal('modal-item');
     renderInventory();
+    renderEquipment();
     renderCharacter();
-    // Show equip_success flavor on first equip
-    if (isFirst && typeof showToast === 'function') {
-      var successText = getItemFlavorText(itemId, 'equip_success');
-      showFlavorDialog(successText, 'success');
-    }
+    showFlavorDialog(result.flavor || getItemFlavorText(itemId, 'equip_success'), 'success');
   } else {
     // Record the attempt
     gameState.itemSystem.equipAttempts[itemId] = prevAttempts + 1;
