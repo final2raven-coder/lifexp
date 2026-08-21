@@ -73,14 +73,14 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 
 ### 2c. Ficheros de datos (contenido)
 
-| Fichero | Bytes | Contenido | Global principal |
-|---|---:|---|---|
-| `classes.js` | 21975 | 6 clases y arbol de progresion de 102 nodos | `CLASS_TREE` |
-| `items.js` | 28242 | 87 items base, rarezas, tipos y tablas de drops | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
-| `enemies.js` | 20920 | 85 enemigos base y tablas tematicas | `ENEMIES`, `THEME_ENEMIES` |
-| `quests.js` | 27978 | 33 quests base + aliases canonicos de UI | `QUESTS`, `acceptQuestCanonical`, `abandonQuestCanonical` |
-| `data_tasks.js` | 21090 | 41 tareas base y definiciones de frecuencia/disponibilidad declarativas | `DEFAULT_TASKS`, `FREQ` |
-| `item_flavor.js` | 44397 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
+| Fichero | Cantidad | Notas |
+|---|---:|---|
+| `classes.js` | 6 clases y arbol de progresion de 102 nodos | `CLASS_TREE` |
+| `items.js` | 87 items base, rarezas, tipos y tablas de drops | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
+| `enemies.js` | 85 enemigos base y tablas tematicas | `ENEMIES`, `THEME_ENEMIES` |
+| `quests.js` | 33 quests base + aliases canonicos de UI | `QUESTS`, `acceptQuestCanonical`, `abandonQuestCanonical` |
+| `data_tasks.js` | 41 tareas base y definiciones de frecuencia/disponibilidad declarativas | `DEFAULT_TASKS`, `FREQ` |
+| `item_flavor.js` | 87 entradas de flavor text narrativo de items | `ITEM_FLAVOR` |
 
 ### 2d. Ficheros de expansion y actualizaciones
 
@@ -303,7 +303,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 17. ui_combat.js        -- UI de combate, encuentros y feedback de post-tarea
 18. ui_misc.js          -- UI miscelanea (mapa, gremio, lore, clase, quests rapidas)
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
-20. ui_feedback.js      -- Toasts y feedback visual
+20. ui_feedback.js      -- UI de feedback visual de recompensas, drops y progresion
 21. ui_quests.js        -- UI de quests
 22. item_system.js      -- Sistema de items (attunement, rituales, modales)
 23. main.js             -- Punto de entrada (event listeners, SW)
@@ -351,7 +351,7 @@ El resultado `ready` conserva los valores mostrables y el resumen de drop; `dism
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
 5. **`update2_content.js` es una IIFE transaccional.** Se auto-ejecuta al cargarse; comprueba si ya se aplico antes de actuar; si falla un instalador o cualquier paso posterior restaura catalogos, `gameState` y `lifexp_save`; una instalacion correcta es idempotente. La validacion bloqueante recorre tablas de drops, enemigos, tareas, side quests, recompensas de quests y capitulos antes de guardar.
-6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice. Las recompensas pasan por `LifeXPInventory.deliverReward()`, que resuelve IDs, confirma insercion real y conserva entregas `pending` o `rejected` para recuperacion.
+6. **`inventory_system.js` hace repair() al arrancar.** Normaliza items legacy del save antes de que la UI los renderice. Las recompensas pasan por `LifeXPInventory.deliverReward()`, que resuelve IDs, confirma la insercion real y conserva entregas `pending` o `rejected` para recuperacion.
 7. **`main` siempre desplegable.** Nunca se comitea directamente a `main`. Todo cambio va por rama + PR.
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
@@ -428,7 +428,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene 96 errores baseline de referencias de items en drops legacy de tareas; resolver esa deuda es una tarea de contenido separada y no se maquilla en esta fase.
 
 ## 8. Changelog del mapa
-- **2026-08-21 - `feat/category-task-completion` (Fase 3B):** `ui_tasks.js` mantiene el aleatorio global y añade catalogo completo por categoria con estado, proxima fecha, historial basico, completado manual durante enfriamiento y aleatorio restringido mediante el resolver comun. `engine.js` ancla las politicas periodicas con limite uno en la ultima finalizacion y no devuelve tareas en enfriamiento como piscina aleatoria. `ui_hub.js` hace las tarjetas de categoria accesibles con teclado. No se modifica contenido, recompensas ni el esquema de saves; el resultado pendiente conserva la intencion de completado manual para sobrevivir a una recarga.
+- **2026-08-21 - `feat/category-task-completion` (Fase 3B):** `ui_tasks.js` mantiene el aleatorio global y añade catalogo completo por categoria con estado, proxima fecha, historial basico, completado manual durante enfriamiento y aleatorio restringido mediante el resolver comun. `engine.js` ancla las politicas periodicas con limite uno en la ultima finalizacion y no devuelve tareas en enfriamiento como piscina aleatoria. `ui_hub.js` conserva las tarjetas de categoria como elementos interactivos tactiles mediante su `onclick`; no anade navegacion ni activacion por teclado. No se modifica contenido, recompensas ni el esquema de saves; el resultado pendiente conserva la intencion de completado manual para sobrevivir a una recarga.
 
 - **2026-08-21 - `fix/task-history-availability` (Fase 3A):** `engine.js` pasa a `saveVersion: 4`, conserva todo `taskHistory`, anade snapshots de programacion por realizacion, evalua disponibilidad periodica con limites, soporta tareas de una sola vez, conserva tareas archivadas y marca como `needs_review` las tareas legacy sin frecuencia o con politica invalida. Se anaden `FREQ` declarativas, migracion `v3->v4`, pruebas de compatibilidad v0-v4, idempotencia, rollback y disponibilidad. `ui_tasks.js` no se modifica: la integracion del flujo visible queda en DT-21. La validacion de contenido detecta 96 referencias legacy rotas fuera del alcance; se registran en DT-22 sin alterar catalogos.
 
@@ -587,4 +587,4 @@ La ejecucion completa anterior registro 3 errores y 26 avisos en el estado de en
 
 La validacion se ejecuto sobre la combinacion de catalogos actual y los cambios de Fase 3A. Cargo 87 items, 30 enemigos, 10 quests, 0 clases y 41 tareas en el sandbox del validador. El resultado fue `96` errores, todos referencias de items inexistentes desde drops legacy de tareas (`DEFAULT_TASKS[*].drops.items` y `DEFAULT_TASKS[*].sideQuest.drops`). No se modificaron catalogos ni se crearon items ficticios: el problema es una deuda de integridad de contenido independiente del modelo de tareas y queda registrada en DT-22.
 
-La suite `tests/save_migrations.test.js` pasa con cobertura v0-v4, conservacion de historial, disponibilidad periodica, limites, repeticion, tareas archivadas, revision de tareas legacy, idempotencia, corrupcion, snapshots y assertion de carga de expansion. `node --check` pasa para los tres ficheros modificados. `validate_content.js` permanece fuera del gate de CI de este PR por los 96 errores baseline descritos arriba.
+La suite `tests/save_migrations.test.js` pasa con cobertura v0-v4, conservacion de historial, disponibilidad periodica, limites, tareas archivadas, revision de tareas legacy, idempotencia, corrupcion, snapshots y assertion de carga de expansion. `node --check` pasa para los tres ficheros modificados. `validate_content.js` permanece fuera del gate de CI de este PR por los 96 errores baseline descritos arriba.
