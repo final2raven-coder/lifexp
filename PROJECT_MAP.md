@@ -12,12 +12,12 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-19 (`fix/rewards-recoverable` -- validacion transaccional de referencias de recompensas, Fase A1) |
+| Ultima actualizacion | 2026-08-21 (`fix/task-result-navigation-clean` -- resultados persistentes y navegacion segura, Fase 2A) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract`, `fix/quest-ui-modal-wrappers`, `fix/rewards-recoverable` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract`, `fix/quest-ui-modal-wrappers`, `fix/rewards-recoverable`, `fix/task-result-navigation-clean` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `9fcaf2d9a8e649f62d0ff65f813f8f78dd3cb728` |
+| Commit de `main` verificado | `123681c2f326074fe3d3a170961bac7917caef3b` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -53,19 +53,19 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
-| `engine.js` | 30403 | `gameState`, schema canonico, contrato durable de recompensas, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState` |
+| `engine.js` | 30792 | `gameState`, schema canonico, contrato durable de recompensas, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
 | `combat.js` | 30528 | Logica de combate, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
-| `main.js` | 3262 | Punto de entrada: event listeners + registro del Service Worker | -- |
+| `main.js` | 7560 | Punto de entrada: event listeners, registro del Service Worker y sincronizacion History API de pantallas/modales | `initializeLifeXPHistory`, `syncLifeXPScreenHistory`, `pushTaskResultHistory`, `closeTaskResultModal`, `handleLifeXPBackNavigation` |
 
 ### 2b. Ficheros de UI (pantallas)
 
 | Fichero | Bytes | Pantalla / zona | Funciones clave |
 |---|---:|---|---|
 | `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
-| `ui_tasks.js` | 11643 | Pantalla de tarea, completado, drops, encuentros | `openRandomTask`, `openCategoryTask`, `completeTask`, `renderTaskScreen`, `showPostTaskFeedback` |
+| `ui_tasks.js` | 20380 | Pantalla de tarea, completado, drops, encuentros y persistencia/recuperacion de `pendingTaskResult` | `openRandomTask`, `openCategory`, `completeTask`, `finalizeCompletion`, `presentPendingTaskResult`, `restorePendingTaskResult`, `dismissComplete` |
 | `ui_combat.js` | 11288 | UI de combate, encuentros y feedback estructurado de recompensas | `renderCombatScreen`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
 | `ui_quests.js` | 9575 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `acceptQuest`, `abandonQuest` |
@@ -317,6 +317,14 @@ El contenido nuevo debe formar una red pequena y coherente entre tareas, objetos
 
 > **Nota historica:** los IDs `DT-*` se reutilizaron en distintas fases del saneamiento; cuando un mismo ID tiene mas de un significado, este registro conserva ambos PRs y lo indica expresamente.
 
+## 5d. Resultado de tarea y navegacion segura (Fase 2A)
+
+`gameState.pendingTaskResult` es el registro durable del resultado que aun debe mostrarse o confirmarse. `ui_tasks.js` no muestra el resultado antes de persistirlo: una decision de side quest se guarda como `awaiting_side_quest` y una finalizacion completa como `ready`.
+
+El resultado `ready` conserva los valores mostrables y el resumen de drop; `dismissComplete()` solo lo elimina despues de guardar de nuevo el estado. Si ese guardado falla, el resultado permanece protegido y el jugador puede reintentarlo. `finalizeCompletion()` toma un snapshot en memoria y restaura el estado si no puede persistir los cambios.
+
+`main.js` mantiene una entrada de History API para la pantalla y otra para el modal de resultado. El boton atras, `Escape` y el cierre por fondo cierran primero el modal; la navegacion no puede descartar silenciosamente un resultado pendiente. El foco inicial y el tabulado quedan contenidos en el dialogo mientras esta abierto.
+
 ## 6. Invariantes criticos
 
 1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
@@ -395,6 +403,8 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
+- **2026-08-21 - `fix/task-result-navigation-clean` (Fase 2A):** `engine.js` añade el registro durable `pendingTaskResult` y hace que `saveGame()` comunique exito o fallo; `ui_tasks.js` persiste antes de mostrar, conserva el resultado hasta confirmacion, recupera resultados pendientes tras recarga y revierte el estado en memoria si falla el guardado final; `main.js` mantiene historial de pantalla/modal, cierre seguro con atras/Escape/fondo y foco accesible. La rama limpia se usa como base para evitar el parche destructivo de la rama v2 divergente.
+
 
 - **2026-08-19 - `fix/rewards-recoverable` (Fase A1):** la instalacion transaccional valida de forma general las referencias de recompensas antes de guardar. Se cubren tablas de drops, drops de enemigos, drops de tareas y side quests en array u objeto, recompensas de quests y recompensas de capitulos. Una referencia no canonica o ausente provoca rollback determinista y conserva el save anterior. La cobertura vive en `tests/update2_transaction.test.js`, que prueba siete formas de referencia rota.
 

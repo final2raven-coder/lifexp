@@ -47,6 +47,7 @@ const DEFAULT_GAME_STATE = {
   inventoryCapacityBonus: 0,
   pendingLoot: { version: 1, entries: [] },
   rewardLedger: {},
+  pendingTaskResult: null,
   saveVersion: 3, // v3 is the current canonical version (migration in loadGame handles v<3 saves)
   
   // Class (placeholder for next block)
@@ -359,6 +360,8 @@ function applySchemaDefaults(input, warnings = []) {
   }
   if (!isPlainObject(state.rewardLedger)) { state.rewardLedger = {}; recordSchemaDefault(warnings, 'rewardLedger'); }
 
+  if (!hasOwn('pendingTaskResult') || (state.pendingTaskResult !== null && !isPlainObject(state.pendingTaskResult))) { state.pendingTaskResult = null; recordSchemaDefault(warnings, 'pendingTaskResult'); }
+
   if (!hasOwn('classId') || typeof state.classId !== 'string') { state.classId = defaults.classId; recordSchemaDefault(warnings, 'classId'); }
   if (!isFiniteNumber(state.classLevel) || state.classLevel < 1) { state.classLevel = defaults.classLevel; recordSchemaDefault(warnings, 'classLevel'); }
   if (!Array.isArray(state.activeQuests)) { state.activeQuests = []; recordSchemaDefault(warnings, 'activeQuests'); }
@@ -614,8 +617,10 @@ function runMigrations(parsed, from, warnings) {
 function saveGame() {
   try {
     localStorage.setItem('lifexp_save', JSON.stringify(gameState));
+    return true;
   } catch (e) {
     console.warn('Could not save game:', e);
+    return false;
   }
 }
 
@@ -698,7 +703,7 @@ function updateStreak() {
 // UI RENDERING
 // ===========================================================================
 
-function showScreen(screenId) {
+function showScreen(screenId, options = {}) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${screenId}`).classList.add('active');
   
@@ -712,4 +717,8 @@ function showScreen(screenId) {
   else if (screenId === 'quests') renderQuests();
   else if (screenId === 'guild') renderGuild();
   else if (screenId === 'settings') renderSettings();
+
+  if (typeof syncLifeXPScreenHistory === 'function') {
+    syncLifeXPScreenHistory(screenId, options);
+  }
 }
