@@ -178,7 +178,7 @@ const TASK_THEMES_V2 = {
   personal_exp_03: ['destino', 'estrategia', 'inteligencia', 'voluntad', 'tiempo']
 };
 
-const RETIRED_TASK_IDS_V2 = new Set(['casa_2', 'casa_6', 'cuerpo_6']);
+const RETIRED_TASK_IDS_V2 = new Set(['casa_6']);
 
 const NEW_HOME_TASKS_V2 = [
   { id: 'casa_16', cat: 'casa', name: 'Ordenar el bano', freq: 'weekly', desc: 'Dejar en su sitio los productos, objetos y superficies del bano.', stats: { vol: 60, int: 40 }, xp: 25, themes: ['orden', 'agua', 'curacion', 'santuario'], drops: null, sideQuest: null },
@@ -189,8 +189,8 @@ const NEW_HOME_TASKS_V2 = [
   { id: 'casa_21', cat: 'casa', name: 'Ordenar el lavadero', freq: 'weekly', desc: 'Colocar productos, ropa y objetos del lavadero para dejarlo despejado.', stats: { vol: 60, int: 40 }, xp: 25, themes: ['orden', 'agua', 'purificacion', 'santuario'], drops: null, sideQuest: null },
   { id: 'casa_22', cat: 'casa', name: 'Limpiar terraza inferior', freq: 'weekly', desc: 'Limpiar el suelo, las superficies y los elementos accesibles de la terraza inferior.', stats: { vit: 55, vol: 45 }, xp: 30, themes: ['purificacion', 'viento', 'luz', 'naturaleza', 'santuario'], drops: null, sideQuest: null },
   { id: 'casa_23', cat: 'casa', name: 'Ordenar dormitorio', freq: 'weekly', desc: 'Dejar en su sitio la ropa, los objetos y las superficies del dormitorio.', stats: { vol: 60, int: 20, vit: 20 }, xp: 25, themes: ['orden', 'regeneracion', 'sueno', 'santuario'], drops: null, sideQuest: null },
-  { id: 'casa_24', cat: 'casa', name: 'Cocinar la cena y la comida del dia siguiente', freq: 'daily', desc: 'Cocinar la cena y dejar preparada la comida del dia siguiente.', stats: { vit: 30, int: 35, vol: 35 }, xp: 30, themes: ['fuego', 'comida', 'consumibles', 'curacion'], drops: null, sideQuest: null },
-  { id: 'casa_25', cat: 'casa', name: 'Ordenar la nevera', freq: 'biweekly', desc: 'Revisar y colocar los alimentos de la nevera para que todo quede visible y ordenado.', stats: { vol: 60, int: 40 }, xp: 25, themes: ['hielo', 'comida', 'consumibles', 'orden'], drops: null, sideQuest: null },
+  { id: 'casa_24', cat: 'casa', name: 'Cocinar la cena y la comida del dia siguiente', freq: 'weekly', desc: 'Cocinar la cena y dejar preparada la comida del dia siguiente.', stats: { vit: 30, int: 35, vol: 35 }, xp: 30, themes: ['fuego', 'comida', 'consumibles', 'curacion'], drops: null, sideQuest: null },
+  { id: 'casa_25', cat: 'casa', name: 'Ordenar la nevera', freq: 'weekly', desc: 'Revisar y colocar los alimentos de la nevera para que todo quede visible y ordenado.', stats: { vol: 60, int: 40 }, xp: 25, themes: ['hielo', 'comida', 'consumibles', 'orden'], drops: null, sideQuest: null },
   { id: 'casa_26', cat: 'casa', name: 'Ordenar escritorio', freq: 'weekly', desc: 'Dejar el escritorio despejado y colocar cada objeto en su sitio.', stats: { vol: 50, int: 50 }, xp: 25, themes: ['orden', 'conocimiento', 'creacion', 'memoria'], drops: null, sideQuest: null },
   { id: 'casa_27', cat: 'casa', name: 'Limpiar escritorio', freq: 'weekly', desc: 'Limpiar la superficie y las zonas accesibles del escritorio.', stats: { vit: 40, vol: 40, int: 20 }, xp: 20, themes: ['purificacion', 'conocimiento', 'creacion', 'orden'], drops: null, sideQuest: null },
   { id: 'casa_28', cat: 'casa', name: 'Barrer pasillos', freq: 'weekly', desc: 'Barrer todos los pasillos de la casa.', stats: { vit: 60, vol: 40 }, xp: 20, themes: ['purificacion', 'santuario', 'viento', 'exploracion'], drops: null, sideQuest: null }
@@ -198,6 +198,90 @@ const NEW_HOME_TASKS_V2 = [
 
 function cloneTaskCatalogV2(task) {
   return JSON.parse(JSON.stringify(task));
+}
+
+const TASK_MIGRATIONS_V2 = {
+  casa_2: { mode: 'retire' },
+  casa_6: { mode: 'merge', replacementId: 'casa_5' },
+  cuerpo_6: { mode: 'retire' }
+};
+
+function getLatestTaskDateV2(...tasks) {
+  return tasks
+    .map(task => task && typeof task.lastDone === 'string' ? task.lastDone : null)
+    .filter(Boolean)
+    .sort()
+    .pop() || null;
+}
+
+function archiveRetiredTaskV2(task, migration) {
+  if (!task || typeof gameState === 'undefined') return;
+  if (!Array.isArray(gameState.retiredTasks)) gameState.retiredTasks = [];
+  if (gameState.retiredTasks.some(entry => entry.task?.id === task.id)) return;
+  gameState.retiredTasks.push({
+    task: cloneTaskCatalogV2(task),
+    retiredAt: new Date().toISOString(),
+    replacementId: migration.replacementId || null,
+    reason: 'catalog_update_v2'
+  });
+}
+
+function getCatalogPatchesV2() {
+  const patches = {};
+  for (const [id, themes] of Object.entries(TASK_THEMES_V2)) patches[id] = { themes };
+  const merge = (id, patch) => { patches[id] = { ...(patches[id] || {}), ...patch }; };
+  merge('casa_5', { name: 'Poner la lavadora y tender la ropa despues', desc: 'Recoger la ropa sucia, poner una lavadora y tenderla cuando termine.', stats: { vit: 60, vol: 40 }, xp: 30 });
+  merge('casa_11', { name: 'Planificar recetas para los proximos 3 dias y hacer la lista de la compra', freq: 'every3days', desc: 'Planificar las comidas de los proximos tres dias y dejar preparada la lista de la compra.', stats: { int: 50, vol: 50 }, xp: 30 });
+  merge('casa_12', { freq: 'every3days', desc: 'Hacer la compra usando la lista preparada para los proximos tres dias.' });
+  merge('casa_13', { name: 'Limpiar dormitorio, incluyendo barrer', desc: 'Hacer la cama a fondo, quitar polvo, barrer y ordenar las mesitas.' });
+  merge('casa_exp_02', { name: 'Limpiar todas las ventanas', desc: 'Limpia los cristales y marcos de todas las ventanas de la casa.' });
+  return patches;
+}
+
+function applyCatalogPatchesV2(tasks, patches) {
+  const byId = new Map(tasks.map(task => [task.id, task]));
+  for (const [id, patch] of Object.entries(patches)) {
+    const task = byId.get(id);
+    if (!task) continue;
+    patchTaskCatalogV2(task, patch);
+  }
+}
+
+function migrateTaskStateV2() {
+  if (typeof gameState === 'undefined' || !Array.isArray(gameState.tasks)) return;
+  const currentTasks = [...gameState.tasks];
+  const byId = new Map(currentTasks.map(task => [task.id, task]));
+  const oldLaundry = byId.get('casa_6');
+  const currentLaundry = byId.get('casa_5');
+  if (oldLaundry) {
+    if (currentLaundry) {
+      const latest = getLatestTaskDateV2(currentLaundry, oldLaundry);
+      if (latest) currentLaundry.lastDone = latest;
+      archiveRetiredTaskV2(oldLaundry, TASK_MIGRATIONS_V2.casa_6);
+    } else {
+      const catalogLaundry = DEFAULT_TASKS.find(task => task.id === 'casa_5');
+      if (catalogLaundry) {
+        const migratedLaundry = cloneTaskCatalogV2(catalogLaundry);
+        if (oldLaundry.lastDone) migratedLaundry.lastDone = oldLaundry.lastDone;
+        gameState.tasks.push(migratedLaundry);
+      }
+      archiveRetiredTaskV2(oldLaundry, TASK_MIGRATIONS_V2.casa_6);
+    }
+  }
+  for (const [id, migration] of Object.entries(TASK_MIGRATIONS_V2)) {
+    const task = gameState.tasks.find(entry => entry.id === id);
+    if (task) archiveRetiredTaskV2(task, migration);
+  }
+  gameState.tasks = gameState.tasks.filter(task => !Object.prototype.hasOwnProperty.call(TASK_MIGRATIONS_V2, task.id));
+  if (Array.isArray(gameState.savedTasks)) {
+    const migratedSaved = [];
+    for (const id of gameState.savedTasks) {
+      const migration = TASK_MIGRATIONS_V2[id];
+      const replacement = migration?.replacementId || (!migration ? id : null);
+      if (replacement && !migratedSaved.includes(replacement)) migratedSaved.push(replacement);
+    }
+    gameState.savedTasks = migratedSaved;
+  }
 }
 
 function patchTaskCatalogV2(task, patch) {
@@ -212,21 +296,8 @@ installExpansionTasks = function installExpansionTasksV2() {
   if (typeof FREQ !== 'undefined' && !FREQ.every3days) FREQ.every3days = { name: 'Cada 3 dias', days: 3 };
   installExpansionTasksBaseV2();
 
-  const defaultById = new Map(DEFAULT_TASKS.map(task => [task.id, task]));
-  for (const [id, themes] of Object.entries(TASK_THEMES_V2)) {
-    const task = defaultById.get(id);
-    if (task) patchTaskCatalogV2(task, { themes });
-  }
-
-  const casa11 = defaultById.get('casa_11');
-  if (casa11) patchTaskCatalogV2(casa11, { name: 'Planificar recetas para los proximos 3 dias y hacer la lista de la compra', freq: 'every3days', desc: 'Planificar las comidas de los proximos tres dias y dejar preparada la lista de la compra.', stats: { int: 50, vol: 50 }, xp: 30 });
-  const casa12 = defaultById.get('casa_12');
-  if (casa12) patchTaskCatalogV2(casa12, { freq: 'every3days', desc: 'Hacer la compra usando la lista preparada para los proximos tres dias.' });
-  const casa13 = defaultById.get('casa_13');
-  if (casa13) patchTaskCatalogV2(casa13, { name: 'Limpiar dormitorio, incluyendo barrer', desc: 'Hacer la cama a fondo, quitar polvo, barrer y ordenar las mesitas.' });
-  const casaExp02 = defaultById.get('casa_exp_02');
-  if (casaExp02) patchTaskCatalogV2(casaExp02, { name: 'Limpiar todas las ventanas', desc: 'Limpia los cristales y marcos de todas las ventanas de la casa.' });
-
+  const catalogPatches = getCatalogPatchesV2();
+  applyCatalogPatchesV2(DEFAULT_TASKS, catalogPatches);
   for (const id of RETIRED_TASK_IDS_V2) {
     const index = DEFAULT_TASKS.findIndex(task => task.id === id);
     if (index !== -1) DEFAULT_TASKS.splice(index, 1);
@@ -242,22 +313,10 @@ installExpansionTasks = function installExpansionTasksV2() {
   }
 
   if (typeof gameState !== 'undefined' && Array.isArray(gameState.tasks) && gameState.tasks.length > 0) {
-    const activeById = new Map(gameState.tasks.map(task => [task.id, task]));
-    for (const [id, themes] of Object.entries(TASK_THEMES_V2)) {
-      const task = activeById.get(id);
-      if (task) patchTaskCatalogV2(task, { themes });
-    }
-    for (const [id, patch] of Object.entries({
-      casa_11: { name: 'Planificar recetas para los proximos 3 dias y hacer la lista de la compra', freq: 'every3days', desc: 'Planificar las comidas de los proximos tres dias y dejar preparada la lista de la compra.', stats: { int: 50, vol: 50 }, xp: 30 },
-      casa_12: { freq: 'every3days', desc: 'Hacer la compra usando la lista preparada para los proximos tres dias.' },
-      casa_13: { name: 'Limpiar dormitorio, incluyendo barrer', desc: 'Hacer la cama a fondo, quitar polvo, barrer y ordenar las mesitas.' },
-      casa_exp_02: { name: 'Limpiar todas las ventanas', desc: 'Limpia los cristales y marcos de todas las ventanas de la casa.' }
-    })) {
-      const task = activeById.get(id);
-      if (task) patchTaskCatalogV2(task, patch);
-    }
+    applyCatalogPatchesV2(gameState.tasks, catalogPatches);
     for (const task of additions) {
-      if (!activeById.has(task.id)) gameState.tasks.push(cloneTaskCatalogV2(task));
+      if (!gameState.tasks.some(existingTask => existingTask.id === task.id)) gameState.tasks.push(cloneTaskCatalogV2(task));
     }
+    migrateTaskStateV2();
   }
 };
