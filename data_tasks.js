@@ -28,13 +28,46 @@ const STATS = {
 };
 
 const FREQ = {
-  daily: { name: 'Diaria', days: 1 },
-  weekly: { name: 'Semanal', days: 7 },
-  biweekly: { name: 'Quincenal', days: 14 },
-  monthly: { name: 'Mensual', days: 30 },
-  quarterly: { name: 'Trimestral', days: 90 },
-  biannual: { name: 'Semestral', days: 180 },
-  annual: { name: 'Anual', days: 365 }
+  daily: {
+    name: 'Diaria',
+    days: 1,
+    availability: { type: 'periodic', intervalDays: 1, limit: 1, repeatable: true }
+  },
+  weekly: {
+    name: 'Semanal',
+    days: 7,
+    availability: { type: 'periodic', intervalDays: 7, limit: 1, repeatable: true }
+  },
+  biweekly: {
+    name: 'Quincenal',
+    days: 14,
+    availability: { type: 'periodic', intervalDays: 14, limit: 1, repeatable: true }
+  },
+  monthly: {
+    name: 'Mensual',
+    days: 30,
+    availability: { type: 'periodic', intervalDays: 30, limit: 1, repeatable: true }
+  },
+  quarterly: {
+    name: 'Trimestral',
+    days: 90,
+    availability: { type: 'periodic', intervalDays: 90, limit: 1, repeatable: true }
+  },
+  biannual: {
+    name: 'Semestral',
+    days: 180,
+    availability: { type: 'periodic', intervalDays: 180, limit: 1, repeatable: true }
+  },
+  annual: {
+    name: 'Anual',
+    days: 365,
+    availability: { type: 'periodic', intervalDays: 365, limit: 1, repeatable: true }
+  },
+  once: {
+    name: 'Una sola vez',
+    days: null,
+    availability: { type: 'once', intervalDays: null, limit: 1, repeatable: false }
+  }
 };
 
 // ===========================================================================

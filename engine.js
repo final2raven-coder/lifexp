@@ -31,7 +31,8 @@ const DEFAULT_GAME_STATE = {
   // Tasks
   tasks: [],
   savedTasks: [], // IDs of saved for later
-  taskHistory: [], // { taskId, date, xp, sideQuest }
+  taskHistory: [], // append-only: { taskId, date, xp, sideQuest, completionId, schedule snapshot }
+  taskModelVersion: 1,
   
   // Inventory (placeholder for next block)
   inventory: [],
@@ -48,7 +49,7 @@ const DEFAULT_GAME_STATE = {
   pendingLoot: { version: 1, entries: [] },
   rewardLedger: {},
   pendingTaskResult: null,
-  saveVersion: 3, // v3 is the current canonical version (migration in loadGame handles v<3 saves)
+  saveVersion: 4, // v4 is the current canonical version (migration in loadGame handles v<4 saves)
   
   // Class (placeholder for next block)
   classId: 'novato',
@@ -161,16 +162,226 @@ function getTaskById(id) {
   return gameState.tasks.find(t => t.id === id);
 }
 
-function isTaskDue(task) {
-  if (!task.lastDone) return true;
-  const daysSince = daysBetween(task.lastDone, todayStr());
-  return daysSince >= FREQ[task.freq].days;
+function isTaskArchived(task) {
+  return Boolean(task && (task.archived === true || task.status === 'archived'));
 }
 
-function isTaskOverdue(task) {
-  if (!task.lastDone) return false;
-  const daysSince = daysBetween(task.lastDone, todayStr());
-  return daysSince > FREQ[task.freq].days * 1.5;
+function normalizeTaskLimit(value, fallback = 1) {
+  if (value === null) return null;
+  if (Number.isInteger(value) && value >= 1) return value;
+  return fallback;
+}
+
+function getTaskAvailabilityDefinition(task) {
+  if (!task || typeof task !== 'object') {
+    return {
+      type: 'needs_review',
+      frequency: null,
+      intervalDays: null,
+      limit: null,
+      repeatable: null,
+      reason: 'task_definition_unavailable'
+    };
+  }
+  if (task.reviewStatus === 'needs_review') {
+    return {
+      type: 'needs_review',
+      frequency: typeof task.freq === 'string' ? task.freq : null,
+      intervalDays: null,
+      limit: null,
+      repeatable: null,
+      reason: 'task_marked_for_review'
+    };
+  }
+
+  const declared = isPlainObject(task.availability) ? task.availability : null;
+  if (declared) {
+    const type = declared.type === 'once' || declared.type === 'periodic' ? declared.type : null;
+    const intervalDays = type === 'once'
+      ? null
+      : Number(declared.intervalDays ?? declared.days);
+    const intervalIsValid = type === 'once' || (Number.isFinite(intervalDays) && intervalDays > 0);
+    const repeatable = type === 'once' ? false : declared.repeatable === true;
+    const limit = type === 'once' ? 1 : normalizeTaskLimit(declared.limit, 1);
+    if (type && intervalIsValid && (type === 'once' || typeof declared.repeatable === 'boolean')) {
+      return {
+        type,
+        frequency: typeof task.freq === 'string' ? task.freq : null,
+        intervalDays,
+        limit,
+        repeatable,
+        reason: null
+      };
+    }
+    return {
+      type: 'needs_review',
+      frequency: typeof task.freq === 'string' ? task.freq : null,
+      intervalDays: null,
+      limit: null,
+      repeatable: null,
+      reason: 'invalid_task_availability'
+    };
+  }
+
+  const frequency = typeof task.freq === 'string' ? task.freq : null;
+  const definition = typeof FREQ !== 'undefined' && frequency ? FREQ[frequency] : null;
+  if (!definition || !isPlainObject(definition.availability)) {
+    return {
+      type: 'needs_review',
+      frequency,
+      intervalDays: null,
+      limit: null,
+      repeatable: null,
+      reason: 'missing_or_unknown_frequency'
+    };
+  }
+  const availability = definition.availability;
+  const type = availability.type === 'once' ? 'once' : availability.type === 'periodic' ? 'periodic' : null;
+  const intervalDays = type === 'once' ? null : Number(availability.intervalDays ?? definition.days);
+  if (!type || (type !== 'once' && (!Number.isFinite(intervalDays) || intervalDays <= 0))) {
+    return {
+      type: 'needs_review',
+      frequency,
+      intervalDays: null,
+      limit: null,
+      repeatable: null,
+      reason: 'invalid_frequency_definition'
+    };
+  }
+  return {
+    type,
+    frequency,
+    intervalDays,
+    limit: type === 'once' ? 1 : normalizeTaskLimit(availability.limit, 1),
+    repeatable: type === 'once' ? false : availability.repeatable === true,
+    reason: null
+  };
+}
+
+function isValidTaskDate(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
+}
+
+function addDaysToDate(dateValue, days) {
+  if (!isValidTaskDate(dateValue) || !Number.isFinite(days)) return null;
+  const result = new Date(`${dateValue}T00:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
+}
+
+function getTaskHistoryEntries(task) {
+  if (!task || typeof task.id !== 'string') return [];
+  const entries = Array.isArray(gameState.taskHistory)
+    ? gameState.taskHistory.filter(entry => entry && entry.taskId === task.id)
+    : [];
+  if (isValidTaskDate(task.lastDone) && !entries.some(entry => entry.date === task.lastDone)) {
+    entries.push({
+      taskId: task.id,
+      date: task.lastDone,
+      completionId: `legacy-last-done:${task.id}:${task.lastDone}`,
+      legacyLastDone: true
+    });
+  }
+  return entries;
+}
+
+function getLatestTaskCompletionDate(task) {
+  const dates = getTaskHistoryEntries(task)
+    .map(entry => entry.date)
+    .filter(isValidTaskDate)
+    .sort();
+  return dates.length > 0 ? dates[dates.length - 1] : null;
+}
+
+function getTaskAvailability(task, referenceDate = todayStr()) {
+  const definition = getTaskAvailabilityDefinition(task);
+  const history = getTaskHistoryEntries(task);
+  const base = {
+    taskId: task?.id || null,
+    frequency: definition.frequency,
+    availability: definition.type,
+    intervalDays: definition.intervalDays,
+    limit: definition.limit,
+    repeatable: definition.repeatable,
+    completionCount: history.length,
+    nextAvailableDate: null
+  };
+
+  if (isTaskArchived(task)) return { ...base, status: 'archived', available: false };
+  if (definition.type === 'needs_review') {
+    return {
+      ...base,
+      status: 'needs_review',
+      available: !isValidTaskDate(task?.lastDone),
+      reason: definition.reason
+    };
+  }
+  if (definition.type === 'once' || definition.repeatable === false) {
+    return {
+      ...base,
+      status: history.length > 0 ? 'completed' : 'available',
+      available: history.length === 0,
+      nextAvailableDate: null
+    };
+  }
+  if (!isValidTaskDate(referenceDate)) {
+    return { ...base, status: 'needs_review', available: false, reason: 'invalid_reference_date' };
+  }
+  if (definition.limit === null) return { ...base, status: 'available', available: true };
+
+  const recent = history.filter(entry => {
+    if (!isValidTaskDate(entry.date)) return false;
+    const age = daysBetween(entry.date, referenceDate);
+    return age >= 0 && age < definition.intervalDays;
+  });
+  if (recent.length >= definition.limit) {
+    const oldestRecent = recent
+      .map(entry => entry.date)
+      .sort()[0];
+    return {
+      ...base,
+      status: 'cooldown',
+      available: false,
+      nextAvailableDate: addDaysToDate(oldestRecent, definition.intervalDays)
+    };
+  }
+  return { ...base, status: 'available', available: true };
+}
+
+function createTaskHistoryEntry(task, values = {}) {
+  const definition = getTaskAvailabilityDefinition(task);
+  const date = isValidTaskDate(values.date) ? values.date : todayStr();
+  const sideQuest = Boolean(values.sideQuest);
+  const sequence = Number.isInteger(values.sequence) && values.sequence >= 0
+    ? values.sequence
+    : getTaskHistoryEntries(task).filter(entry => entry.date === date).length;
+  const taskId = task?.id || null;
+  return {
+    taskId,
+    date,
+    xp: isFiniteNumber(values.xp) ? values.xp : 0,
+    sideQuest,
+    completionId: typeof values.completionId === 'string' && values.completionId
+      ? values.completionId
+      : `task:${taskId}:${date}:${sideQuest ? 'side' : 'base'}:${sequence}`,
+    frequency: definition.frequency,
+    availability: definition.type,
+    intervalDays: definition.intervalDays,
+    limit: definition.limit,
+    repeatable: definition.repeatable
+  };
+}
+
+function isTaskDue(task, referenceDate = todayStr()) {
+  return getTaskAvailability(task, referenceDate).available;
+}
+
+function isTaskOverdue(task, referenceDate = todayStr()) {
+  const definition = getTaskAvailabilityDefinition(task);
+  const lastDone = getLatestTaskCompletionDate(task);
+  if (isTaskArchived(task) || definition.type !== 'periodic' || !lastDone || !isValidTaskDate(referenceDate)) return false;
+  const daysSince = daysBetween(lastDone, referenceDate);
+  return daysSince > definition.intervalDays * 1.5;
 }
 
 function getOverflowTasks() {
@@ -178,7 +389,7 @@ function getOverflowTasks() {
 }
 
 function getAvailableTasks(cat = null) {
-  let tasks = gameState.tasks;
+  let tasks = gameState.tasks.filter(task => !isTaskArchived(task));
   if (cat) tasks = tasks.filter(t => t.cat === cat);
   
   const overflow = tasks.filter(t => isTaskOverdue(t));
@@ -214,7 +425,7 @@ function getOverflowCount(cat) {
 // SAVE/LOAD
 // ===========================================================================
 
-const CURRENT_SAVE_VERSION = 3;
+const CURRENT_SAVE_VERSION = 4;
 const PREMIGRATION_SNAPSHOT_PREFIX = 'lifexp_premigration_';
 const MAX_PREMIGRATION_SNAPSHOTS = 3;
 
@@ -337,6 +548,7 @@ function applySchemaDefaults(input, warnings = []) {
   if (!Array.isArray(state.tasks)) { state.tasks = []; recordSchemaDefault(warnings, 'tasks'); }
   if (!Array.isArray(state.savedTasks)) { state.savedTasks = []; recordSchemaDefault(warnings, 'savedTasks'); }
   if (!Array.isArray(state.taskHistory)) { state.taskHistory = []; recordSchemaDefault(warnings, 'taskHistory'); }
+  if (!isFiniteNumber(state.taskModelVersion) || state.taskModelVersion < 1) { state.taskModelVersion = 1; recordSchemaDefault(warnings, 'taskModelVersion'); }
   if (!Array.isArray(state.inventory)) { state.inventory = []; recordSchemaDefault(warnings, 'inventory'); }
   state.equipment = isPlainObject(state.equipment) ? { ...defaults.equipment, ...state.equipment } : { ...defaults.equipment };
   for (const slot of Object.keys(defaults.equipment)) {
@@ -560,6 +772,46 @@ function migrateV1ToV2(state) {
   return state;
 }
 
+function normalizeTaskDefinition(task) {
+  if (!isPlainObject(task)) return task;
+  const normalized = { ...task };
+  const definition = getTaskAvailabilityDefinition(normalized);
+  if (definition.type === 'needs_review' && normalized.reviewStatus !== 'needs_review') {
+    normalized.reviewStatus = 'needs_review';
+  }
+  return normalized;
+}
+
+function normalizeTaskHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history.map((entry, index) => {
+    const normalized = isPlainObject(entry)
+      ? { ...entry }
+      : { rawEntry: entry === undefined ? null : cloneSaveState(entry) };
+    const taskId = typeof normalized.taskId === 'string' && normalized.taskId ? normalized.taskId : null;
+    const date = isValidTaskDate(normalized.date) ? normalized.date : null;
+    const sideQuest = Boolean(normalized.sideQuest);
+    if (!Object.prototype.hasOwnProperty.call(normalized, 'taskId')) normalized.taskId = taskId;
+    if (!Object.prototype.hasOwnProperty.call(normalized, 'date')) normalized.date = date;
+    if (!Object.prototype.hasOwnProperty.call(normalized, 'sideQuest')) normalized.sideQuest = sideQuest;
+    if (!Object.prototype.hasOwnProperty.call(normalized, 'xp')) normalized.xp = 0;
+    if (typeof normalized.completionId !== 'string' || !normalized.completionId) {
+      normalized.completionId = taskId && date
+        ? `task:${taskId}:${date}:${sideQuest ? 'side' : 'base'}:${index}`
+        : `legacy-task-history-${index}`;
+    }
+    if (!taskId || !date) normalized.historyStatus = 'needs_review';
+    return normalized;
+  });
+}
+
+function migrateV3ToV4(state) {
+  state.tasks = Array.isArray(state.tasks) ? state.tasks.map(normalizeTaskDefinition) : [];
+  state.taskHistory = normalizeTaskHistory(state.taskHistory);
+  state.taskModelVersion = 1;
+  return state;
+}
+
 function migrateV2ToV3(state, context = {}) {
   if (context.hasPartialCanonicalQuestState && !context.hasUsableLegacyQuestState) {
     throw new Error('Partial canonical quest state cannot be reconstructed safely without usable legacy activeQuests.');
@@ -578,7 +830,8 @@ function migrateV2ToV3(state, context = {}) {
 const MIGRATIONS = [
   { from: 0, to: 1, fn: migrateV0ToV1 },
   { from: 1, to: 2, fn: migrateV1ToV2 },
-  { from: 2, to: 3, fn: migrateV2ToV3 }
+  { from: 2, to: 3, fn: migrateV2ToV3 },
+  { from: 3, to: 4, fn: migrateV3ToV4 }
 ];
 
 function runMigrations(parsed, from, warnings) {
@@ -638,7 +891,7 @@ function finalizeLoadedState() {
   const existingTaskIds = new Set((gameState.tasks || []).map(task => task.id));
   for (const officialTask of DEFAULT_TASKS) {
     if (!existingTaskIds.has(officialTask.id)) {
-      gameState.tasks.push(JSON.parse(JSON.stringify(officialTask)));
+      gameState.tasks.push(normalizeTaskDefinition(JSON.parse(JSON.stringify(officialTask))));
     }
   }
 
