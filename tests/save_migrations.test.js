@@ -423,7 +423,7 @@ function testLegacyTaskWithoutFrequencyNeedsReview() {
 function testHistoryEntryCapturesScheduleSnapshot() {
   const loaded = loadTaskAvailabilityFixture({ id: 'snapshot', freq: 'weekly' });
   const entry = loaded.api.createTaskHistoryEntry(loaded.state.tasks[0], { date: '2026-08-21', xp: 12, sequence: 0 });
-  assert.deepEqual(entry, {
+  assert.deepEqual(JSON.parse(JSON.stringify(entry)), {
     taskId: 'snapshot',
     date: '2026-08-21',
     xp: 12,
