@@ -12,12 +12,12 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-21 (`fix/update-verifiable-recovery` -- actualizacion PWA verificable, Fase 2B) |
+| Ultima actualizacion | 2026-08-21 (`fix/task-history-availability` -- Fase 3A, modelo de historial y disponibilidad de tareas) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `fix/update-verifiable`, `fix/update-verifiable-recovery` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `fix/update-verifiable`, `fix/update-verifiable-recovery`, `fix/task-history-availability` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `82539d3bfe9fd22966019614177f5fa8c9fbd475` |
+| Commit de `main` verificado | `8660448bd94d8762078f98acca97dd1546cd5abd` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` (declaracion efectiva auditada en `data_tasks.js`; el valor `v13.6-inventory-language-boundary` anterior del mapa era incorrecto) |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -31,7 +31,7 @@
 
 LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
 `index.html` contiene todo el CSS y el HTML; los scripts se cargan en orden al final del `<body>`.
-El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`; el loader actual migra saves versionados de forma secuencial hasta `saveVersion: 3`.
+El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`; el loader actual migra saves versionados de forma secuencial hasta `saveVersion: 4`.
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
 Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_content.js` valida su orden de carga, los ejecuta explicitamente, comprueba la instalacion completa antes de marcar la actualizacion y revierte catalogos, estado en memoria y save si falla cualquier paso.
 `inventory_system.js` define el subsistema canonico de inventario, expone `normalizeItemText` y `emergencyRerollLegacyItem`, hace repair() al arrancar y concentra la entrega estructurada de recompensas mediante `LifeXPInventory.deliverReward()`.
@@ -53,7 +53,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
-| `engine.js` | 30792 | `gameState`, schema canonico, contrato durable de recompensas, migraciones transaccionales v0->v3, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
+| `engine.js` | 40111 | `gameState`, schema canonico, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
 | `combat.js` | 30528 | Logica de combate, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
@@ -79,7 +79,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | `items.js` | 28242 | 87 items base, rarezas, tipos y tablas de drops | `ITEMS`, `RARITY`, `ITEM_TYPE`, `DROP_TABLES` |
 | `enemies.js` | 20920 | 85 enemigos base y tablas tematicas | `ENEMIES`, `THEME_ENEMIES` |
 | `quests.js` | 27978 | 33 quests base + aliases canonicos de UI | `QUESTS`, `acceptQuestCanonical`, `abandonQuestCanonical` |
-| `data_tasks.js` | 20277 | 41 tareas base | `DEFAULT_TASKS` |
+| `data_tasks.js` | 21090 | 41 tareas base y definiciones de frecuencia/disponibilidad declarativas | `DEFAULT_TASKS`, `FREQ` |
 | `item_flavor.js` | 44397 | Flavor text narrativo de 87 items (lore + attunement stages) | `ITEM_FLAVOR` |
 
 ### 2d. Ficheros de expansion y actualizaciones
@@ -107,7 +107,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Responsabilidad |
 |---|---:|---|
 | `validate_content.js` | 18409 | Validador de integridad de contenido, solo lectura |
-| `tests/save_migrations.test.js` | 11790 | Fixtures y pruebas de migraciones de save |
+| `tests/save_migrations.test.js` | 18544 | Fixtures y pruebas de migraciones de save, historial completo, disponibilidad periodica, archivado, revision legacy e idempotencia |
 | `tests/update2_transaction.test.js` | 10166 | Pruebas transaccionales de Update 2 y referencias de recompensas |
 | `.github/workflows/ci.yml` | 1427 | CI de sintaxis JS y suites runtime |
 | `docs/DROP_MAPPING.md` | 22020 | Inventario y trazabilidad de referencias de drops |
@@ -115,7 +115,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 
 ## 3. Modelo de datos: `gameState`
 
-Definido en `engine.js`. Persistido en `localStorage` clave `lifexp_save`. Version actual: `saveVersion: 3`.
+Definido en `engine.js`. Persistido en `localStorage` clave `lifexp_save`. Version actual: `saveVersion: 4`.
 
 ```
 gameState {
@@ -133,7 +133,7 @@ gameState {
   // Tareas
   tasks: Task[]           // pool activo
   savedTasks: string[]    // IDs guardados para despues
-  taskHistory: { taskId, date, xp, sideQuest }[]
+  taskHistory: { taskId, date, xp, sideQuest, completionId, schedule snapshot }[]  // append-only
 
   // Inventario
   inventory: ItemInstance[]
@@ -170,7 +170,8 @@ gameState {
   // Lore / aclimatacion / rituales (campos adicionales del save)
   loreUnlocked: string[]
   acclimation: { [key]: number }
-  saveVersion: number     // 3 = version canonica actual
+  taskModelVersion: number  // version del modelo de tareas
+  saveVersion: number       // 4 = version canonica actual
 }
 ```
 
@@ -181,8 +182,9 @@ gameState {
 | < 1 | 1 | Inicializa campos de inventario |
 | 1 | 2 | Inicializa `itemSystem` |
 | 2 | 3 | Inicializa `guildId`, `guildName`, `guildMembers`, `pendingReceipts`, `receivedReceipts` |
+| 3 | 4 | Normaliza tareas, historial append-only, frecuencia, disponibilidad, limite, repeticion, archivado y revision de tareas legacy |
 
-Logica de migracion en `engine.js` -> funcion `migrateQuestState()` y bloque de migracion en `loadGame()`.
+Logica de migracion en `engine.js` -> `migrateQuestState()`, `migrateV3ToV4()` y la cadena secuencial de `loadGame()`.
 
 ---
 
@@ -203,6 +205,23 @@ Logica de migracion en `engine.js` -> funcion `migrateQuestState()` y bloque de 
   sideQuest?: { desc, stats, xp, drops, dropBonus }
 }
 ```
+
+### Task availability and history (Fase 3A)
+
+Las tareas conservan el historial completo en `gameState.taskHistory`; cada entrada nueva incluye `completionId` y una instantanea de `frequency`, `availability`, `intervalDays`, `limit` y `repeatable`. La disponibilidad se evalua desde el historial y la politica declarativa, no solo desde `lastDone`.
+
+```
+availability?: {
+  type: 'once' | 'periodic'
+  intervalDays?: number
+  limit?: number | null
+  repeatable: boolean
+}
+archived?: boolean
+reviewStatus?: 'needs_review'
+```
+
+Las frecuencias conocidas de `FREQ` declaran una politica periodica con limite por intervalo. Una tarea sin frecuencia o con una politica invalida queda marcada como `needs_review`; una tarea archivada se conserva en el save pero no aparece como disponible. La migracion `v3->v4` es determinista e idempotente y conserva campos desconocidos, historial legacy y snapshots de pre-migracion.
 
 ### Item (definicion en ITEMS)
 
@@ -328,7 +347,7 @@ El resultado `ready` conserva los valores mostrables y el resumen de drop; `dism
 ## 6. Invariantes criticos
 
 1. **`gameState` es el unico estado mutable.** Ningun fichero de datos (ITEMS, ENEMIES, QUESTS, etc.) se modifica en runtime salvo por las expansiones al arrancar (antes de `loadGame`).
-2. **`saveVersion: 3` es la version canonica.** Cualquier migracion futura incrementa este numero y anade un bloque en `loadGame`.
+2. **`saveVersion: 4` es la version canonica.** Cualquier migracion futura incrementa este numero y anade un bloque en `loadGame()`. El modelo de tareas usa `taskModelVersion: 1`.
 3. **Los IDs son unicos y estables.** Un ID de item, enemigo, quest o tarea nunca cambia una vez publicado. Cambiar un ID rompe saves existentes.
 4. **Las expansiones son aditivas e idempotentes.** `Object.assign` y `push` no sobreescriben entradas existentes con el mismo ID (las expansiones usan IDs nuevos).
 5. **`update2_content.js` es una IIFE transaccional.** Se auto-ejecuta al cargarse; comprueba si ya se aplico antes de actuar; si falla un instalador o cualquier paso posterior restaura catalogos, `gameState` y `lifexp_save`; una instalacion correcta es idempotente. La validacion bloqueante recorre tablas de drops, enemigos, tareas, side quests, recompensas de quests y capitulos antes de guardar.
@@ -340,6 +359,7 @@ El resultado `ready` conserva los valores mostrables y el resumen de drop; `dism
 11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v22` -> `lifexp-v23`, etc.) para forzar actualizacion en clientes existentes.
 12. **Actualizacion verificable.** `main.js` distingue comprobacion de la interfaz, refresco de la caché y activacion de un Service Worker; compara `LIFE_XP_BUILD` ejecutada con la declarada por una lectura sin caché de `data_tasks.js`, consulta el estado de la caché por MessageChannel y nunca muestra una actualización aplicada si alguno de esos pasos no puede confirmarse.
 13. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; la instalacion transaccional bloquea referencias de drops no canonicas o ausentes antes del commit.
+14. **Historial y disponibilidad de tareas.** `taskHistory` es append-only y no se usa `lastDone` como unica fuente de verdad. `getTaskAvailability()` aplica la politica declarativa de cada tarea; `getTaskAvailabilityDefinition()` marca como `needs_review` las definiciones incompletas o invalidas; las tareas archivadas se conservan y no se ofrecen para completar. La migracion `3->4` no elimina historial ni contenido legacy.
 
 ---
 
@@ -368,6 +388,8 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 | DT-18 | `PROJECT_MAP.md` desactualizado frente al repositorio. | -- | **CERRADO** | Este PR: ramas, deuda, tamanos, responsabilidades y guia Fase 3 sincronizados. |
 | DT-19 | Referencias heredadas no ASCII en `enemies.js`: `seda_araña` y `araña_domestica`. | Alta | **ABIERTO** | Owner: mantenedor. Siguiente accion: preparar un cambio de datos separado que migre esas referencias a IDs canonicos y regenere la trazabilidad. |
 | DT-20 | La PWA no distinguia recarga de interfaz, actualización de caché y build ejecutada; los errores de registro del Service Worker se ignoraban. | Alta | **CERRADO** | `fix/update-verifiable-recovery` (Fase 2B): comprobacion de fuente, estado del Service Worker y estados no confirmados visibles; no toca saves ni contenido. |
+| DT-21 | El flujo de `ui_tasks.js` todavia registra finalizaciones con el contrato anterior y no consume de extremo a extremo la nueva politica de disponibilidad/historial. | Alta | **ABIERTO** | Owner: mantenedor. Siguiente accion: PR separado de integracion de consumidores; no mezclarlo con esta migracion. |
+| DT-22 | Persisten 96 referencias a items inexistentes en `DEFAULT_TASKS[*].drops.items` y `sideQuest.drops`, detectadas por `validate_content.js` el 2026-08-21. | Alta | **ABIERTO** | Owner: mantenedor. Siguiente accion: cambio de contenido separado con trazabilidad y validacion; no crear items falsos ni modificar drops en este PR. |
 
 ---|---|---|---|
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
@@ -391,7 +413,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 
 ## 3b. Contrato de persistencia y recuperacion
 
-- `engine.js` define `CURRENT_SAVE_VERSION = 3` y una cadena explicita de migraciones `0->1->2->3`.
+- `engine.js` define `CURRENT_SAVE_VERSION = 4` y una cadena explicita de migraciones `0->1->2->3->4`; `migrateV3ToV4()` normaliza las tareas y el historial sin perder entradas.
 - `loadGame()` crea una copia exacta previa bajo `lifexp_premigration_v<version>_<timestamp>` y conserva las tres mas recientes.
 - Las migraciones trabajan sobre un candidato; el save original y el estado en memoria se restauran si falla parseo, esquema, migracion o finalizacion.
 - Los campos conocidos reciben defaults declarativos; los campos desconocidos se conservan.
@@ -400,12 +422,14 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - Un estado canonico de quests completo conserva prioridad; los estados parciales no se aceptan por el mero hecho de haber recibido arrays por defaults y conservan el raw save exacto si la reparacion no es segura.
 - `update2_content.js` valida catalogs, instaladores y entradas de expansion antes de marcar la actualizacion; su transaccion restaura snapshots profundos de `ITEMS`, `ENEMIES`, `QUESTS`, `DEFAULT_TASKS`, `DROP_TABLES`, `THEME_ENEMIES`, `gameState` y `lifexp_save` ante cualquier fallo. Tambien valida que las referencias de inventario sean IDs canonicos existentes en `ITEMS`.
 - Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
-- Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
+- Fixtures de regresion: `tests/save_migrations.test.js` (v0-v4, quest recovery, historial completo, snapshots de programacion, disponibilidad periodica, limites, tareas repetibles/no repetibles, archivado, revision legacy, idempotencia y rollback) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
 - `.github/workflows/ci.yml` ejecuta en cada push y pull request `node --check` sobre los scripts de produccion y las suites `tests/save_migrations.test.js` y `tests/update2_transaction.test.js`, usando Node.js `22.14.0`.
 - La verificacion de actualizacion en `main.js` consulta la fuente declarada con una URL de comprobacion sin cache, pregunta al Service Worker activo por `CACHE_NAME` mediante MessageChannel y comunica estados no confirmados sin exito falso. La activacion de una nueva caché no recarga automaticamente la pagina: informa de que la página actual sigue ejecutando su build hasta que el jugador recarga.
-- `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
+- `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene 96 errores baseline de referencias de items en drops legacy de tareas; resolver esa deuda es una tarea de contenido separada y no se maquilla en esta fase.
 
 ## 8. Changelog del mapa
+- **2026-08-21 - `fix/task-history-availability` (Fase 3A):** `engine.js` pasa a `saveVersion: 4`, conserva todo `taskHistory`, anade snapshots de programacion por realizacion, evalua disponibilidad periodica con limites, soporta tareas de una sola vez, conserva tareas archivadas y marca como `needs_review` las tareas legacy sin frecuencia o con politica invalida. Se anaden `FREQ` declarativas, migracion `v3->v4`, pruebas de compatibilidad v0-v4, idempotencia, rollback y disponibilidad. `ui_tasks.js` no se modifica: la integracion del flujo visible queda en DT-21. La validacion de contenido detecta 96 referencias legacy rotas fuera del alcance; se registran en DT-22 sin alterar catalogos.
+
 - **2026-08-21 - `fix/update-verifiable-recovery` (Fase 2B):** `main.js` diferencia recarga, comprobacion de caché y activacion de Service Worker; muestra la build efectiva, la compara con la declarada por `data_tasks.js`, consulta el `CACHE_NAME` activo y no informa éxito cuando la actualización no se puede confirmar. `sw.js` sube a `lifexp-v23` y expone un estado mínimo por MessageChannel. Se corrige en el mapa la build documentada a la declaracion efectiva auditada (`v13.4-equip-action-fix`) y se actualizan ramas, commit y responsabilidades. No se tocan contenido, saves ni migraciones.
 
 - **2026-08-21 - `fix/task-result-navigation-manual` (Fase 2A):** `engine.js` añade el registro durable `pendingTaskResult` y hace que `saveGame()` comunique exito o fallo; `ui_tasks.js` persiste antes de mostrar, conserva el resultado hasta confirmacion, recupera resultados pendientes tras recarga y revierte el estado en memoria si falla el guardado final; `main.js` mantiene historial de pantalla/modal, cierre seguro con atras/Escape/fondo y foco accesible. La rama limpia se usa como base para evitar el parche destructivo de la rama v2 divergente.
@@ -555,9 +579,10 @@ Result: 100 error(s), 12 warning(s)
 
 ### Verificacion registrada (2026-08-12)
 
-La ejecucion de `node --check expansion_items.js` pasa correctamente. PR #36 registro una ejecucion completa de `node validate_content.js` con 175 items, 37 enemigos, 15 quests, 102 clases y 55 tareas: 3 errores y 26 avisos. La comprobacion aislada repetida durante esta tarea solo incluyo los ficheros del alcance documental, por lo que produjo avisos adicionales de ficheros ausentes; esos avisos no se usan para cambiar el estado del proyecto.
+La ejecucion completa anterior registro 3 errores y 26 avisos en el estado de entonces. Esos resultados se conservan como antecedente historico.
 
-Errores principales restantes (fuera del alcance de esta tarea):
-- `ENEMIES["araña_domestica"].drops` contiene `seda_araña` como nombre de display.
-- `THEME_ENEMIES["agua_quimicos"]` y `THEME_ENEMIES["hallazgos"]` contienen `araña_domestica` como nombre de display.
-- Persisten 26 avisos `UNOBTAINABLE_ITEM`; requieren un diagnostico separado y no se alteran aqui.
+### Verificacion registrada (2026-08-21, Fase 3A)
+
+La validacion se ejecuto sobre la combinacion de catalogos actual y los cambios de Fase 3A. Cargo 87 items, 30 enemigos, 10 quests, 0 clases y 41 tareas en el sandbox del validador. El resultado fue `96` errores, todos referencias de items inexistentes desde drops legacy de tareas (`DEFAULT_TASKS[*].drops.items` y `DEFAULT_TASKS[*].sideQuest.drops`). No se modificaron catalogos ni se crearon items ficticios: el problema es una deuda de integridad de contenido independiente del modelo de tareas y queda registrada en DT-22.
+
+La suite `tests/save_migrations.test.js` pasa con cobertura v0-v4, conservacion de historial, disponibilidad periodica, limites, repeticion, tareas archivadas, revision de tareas legacy, idempotencia, corrupcion, snapshots y assertion de carga de expansion. `node --check` pasa para los tres ficheros modificados. `validate_content.js` permanece fuera del gate de CI de este PR por los 96 errores baseline descritos arriba.
