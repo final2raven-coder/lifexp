@@ -96,6 +96,127 @@ function handleLifeXPKeydown(event) {
   }
 }
 
+// PWA UPDATE VERIFICATION
+// ===========================================================================
+
+const LIFE_XP_UPDATE_CHECK_TIMEOUT_MS = 2500;
+
+function getLifeXPEffectiveBuild() {
+  return typeof LIFE_XP_BUILD === 'string' && LIFE_XP_BUILD.trim() ? LIFE_XP_BUILD : 'unknown';
+}
+
+function reportLifeXPUpdateStatus(message, level = 'info') {
+  if (typeof showToast === 'function') showToast(message);
+  else if (typeof console !== 'undefined' && console[level]) console[level](`[LifeXP] ${message}`);
+}
+
+function readLifeXPDeclaredSourceBuild() {
+  const sourceUrl = new URL('./data_tasks.js', window.location.href);
+  sourceUrl.searchParams.set('lifexp_build_check', String(Date.now()));
+  return fetch(sourceUrl.href, { cache: 'no-store', credentials: 'same-origin' })
+    .then(response => {
+      if (!response.ok) throw new Error(`Source build request failed with HTTP ${response.status}.`);
+      return response.text();
+    })
+    .then(source => {
+      const match = source.match(/\bconst\s+LIFE_XP_BUILD\s*=\s*['"]([^'"]+)['"]/);
+      if (!match) throw new Error('The source does not declare LIFE_XP_BUILD.');
+      return match[1];
+    });
+}
+
+function requestLifeXPServiceWorkerStatus(registration) {
+  const worker = registration && (registration.waiting || registration.active || registration.installing);
+  if (!worker || typeof MessageChannel === 'undefined') return Promise.reject(new Error('Service Worker status is unavailable.'));
+  return new Promise((resolve, reject) => {
+    const channel = new MessageChannel();
+    const timeout = setTimeout(() => reject(new Error('Service Worker status timed out.')), LIFE_XP_UPDATE_CHECK_TIMEOUT_MS);
+    channel.port1.onmessage = event => {
+      clearTimeout(timeout);
+      if (event.data?.type === 'lifexp-sw-status') resolve(event.data);
+      else reject(new Error('Service Worker returned an invalid status.'));
+    };
+    try { worker.postMessage({ type: 'lifexp-get-status' }, [channel.port2]); }
+    catch (error) { clearTimeout(timeout); reject(error); }
+  });
+}
+
+function observeLifeXPServiceWorkerInstallation(registration, previousController) {
+  return new Promise(resolve => {
+    let settled = false;
+    let updateFound = Boolean(registration.waiting);
+    let observedWorker = null;
+    const finish = status => {
+      if (settled) return;
+      settled = true;
+      registration.removeEventListener('updatefound', handleUpdateFound);
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      resolve(status);
+    };
+    const handleControllerChange = () => finish('activated');
+    const observeWorker = worker => {
+      if (!worker || worker === observedWorker) return;
+      observedWorker = worker;
+      updateFound = true;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'redundant') finish('not-confirmed');
+        else if (worker.state === 'installed' && registration.waiting && navigator.serviceWorker.controller === previousController) {
+          setTimeout(() => finish('pending-reload'), 200);
+        }
+      });
+    };
+    const handleUpdateFound = () => observeWorker(registration.installing);
+    registration.addEventListener('updatefound', handleUpdateFound);
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    observeWorker(registration.installing);
+    setTimeout(() => finish(registration.waiting ? 'pending-reload' : updateFound ? 'not-confirmed' : 'unchanged'), LIFE_XP_UPDATE_CHECK_TIMEOUT_MS);
+  });
+}
+
+async function verifyLifeXPUpdate(registration, installationStatus) {
+  const effectiveBuild = getLifeXPEffectiveBuild();
+  let declaredBuild;
+  let serviceWorkerStatus;
+  try { declaredBuild = await readLifeXPDeclaredSourceBuild(); }
+  catch (error) {
+    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}. No se pudo leer la build declarada de la fuente.`, 'warn');
+    return { confirmed: false, effectiveBuild, installationStatus, error };
+  }
+  if (declaredBuild !== effectiveBuild) {
+    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}; build declarada por la fuente: ${declaredBuild}.`, 'warn');
+    return { confirmed: false, effectiveBuild, declaredBuild, installationStatus };
+  }
+  try { serviceWorkerStatus = await requestLifeXPServiceWorkerStatus(registration); }
+  catch (error) {
+    reportLifeXPUpdateStatus(`Build comprobada: ${effectiveBuild}. No se pudo confirmar el estado de la caché o del Service Worker; no se muestra una actualización como aplicada.`, 'warn');
+    return { confirmed: false, effectiveBuild, declaredBuild, installationStatus, error };
+  }
+  const cacheName = serviceWorkerStatus.cacheName || 'desconocida';
+  if (installationStatus === 'activated') reportLifeXPUpdateStatus(`Caché actualizada: ${cacheName}. La página sigue ejecutando la build ${effectiveBuild}; recarga para ejecutar los assets recién activados.`);
+  else if (installationStatus === 'pending-reload') reportLifeXPUpdateStatus(`Hay una actualización preparada en la caché ${cacheName}. La página sigue ejecutando la build ${effectiveBuild}; recarga para aplicarla.`);
+  else reportLifeXPUpdateStatus(`No se ha confirmado una build nueva. Build en ejecución: ${effectiveBuild}; fuente declarada: ${declaredBuild}; caché activa: ${cacheName}.`);
+  return { confirmed: installationStatus === 'activated' || installationStatus === 'pending-reload', effectiveBuild, declaredBuild, installationStatus, serviceWorkerStatus };
+}
+
+async function registerAndVerifyLifeXPServiceWorker() {
+  const effectiveBuild = getLifeXPEffectiveBuild();
+  if (!('serviceWorker' in navigator)) {
+    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}. Este dispositivo no ofrece Service Worker.`, 'warn');
+    return;
+  }
+  const previousController = navigator.serviceWorker.controller;
+  try {
+    const registration = await navigator.serviceWorker.register('./sw.js');
+    const installationPromise = observeLifeXPServiceWorkerInstallation(registration, previousController);
+    try { await registration.update(); }
+    catch (error) { await verifyLifeXPUpdate(registration, 'not-confirmed'); return; }
+    await verifyLifeXPUpdate(registration, await installationPromise);
+  } catch (error) {
+    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}. No se pudo registrar o comprobar el Service Worker.`, 'warn');
+    if (typeof console !== 'undefined' && console.warn) console.warn('[LifeXP] Service Worker update verification failed:', error);
+  }
+}
+
 // EVENT LISTENERS
 // ===========================================================================
 
@@ -183,9 +304,9 @@ window.addEventListener('pageshow', () => {
   }
 });
 
-// Service Worker registration
+// Service Worker registration and update verification
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    registerAndVerifyLifeXPServiceWorker();
   });
 }

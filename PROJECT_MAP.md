@@ -12,18 +12,18 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-21 (`fix/task-result-navigation-manual` -- resultados persistentes y navegacion segura, Fase 2A) |
+| Ultima actualizacion | 2026-08-21 (`fix/update-verifiable-recovery` -- actualizacion PWA verificable, Fase 2B) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `chore/dt15-project-map-sync`, `fix/rewards-contract`, `fix/quest-ui-modal-wrappers`, `fix/rewards-recoverable`, `fix/task-result-navigation-manual` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `fix/update-verifiable`, `fix/update-verifiable-recovery` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `123681c2f326074fe3d3a170961bac7917caef3b` |
+| Commit de `main` verificado | `82539d3bfe9fd22966019614177f5fa8c9fbd475` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
-| Build string | `LIFE_XP_BUILD = 'v13.6-inventory-language-boundary'` |
+| Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` (declaracion efectiva auditada en `data_tasks.js`; el valor `v13.6-inventory-language-boundary` anterior del mapa era incorrecto) |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
 | Entrada | `index.html` (SPA de una sola pagina) |
-| PWA | `manifest.json` + `sw.js` (cache-first, CACHE_NAME = lifexp-v22, sincronizado con index.html via validador check 10) |
+| PWA | `manifest.json` + `sw.js` (cache-first, CACHE_NAME = lifexp-v23, status verificable desde `main.js`, sincronizado con index.html via validador check 10) |
 
 ---
 
@@ -38,7 +38,7 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 `item_system.js` gestiona attunement, rituales, curses, modales de item, knowledge system y activation panel. Los mensajes del dominio de objetos se muestran en ingles; las tareas y el flujo del mundo real conservan el espanol.
 `item_flavor.js` contiene el lore narrativo de items (flavor text por item y por stage de attunement).
 `guild.js` implementa el sistema cooperativo (receipts, sync, guild state).
-`main.js` es el punto de entrada: registra el Service Worker y conecta los event listeners del DOM.
+`main.js` es el punto de entrada: registra y verifica el Service Worker, compara la build efectiva con la fuente y conecta los event listeners del DOM.
 
 > **NOTA:** `game.js` ya NO existe. El estado global (`gameState`) y las funciones de motor viven en `engine.js` desde el refactor de split (DT-09 resuelto).
 
@@ -58,7 +58,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
-| `main.js` | 7560 | Punto de entrada: event listeners, registro del Service Worker y sincronizacion History API de pantallas/modales | `initializeLifeXPHistory`, `syncLifeXPScreenHistory`, `pushTaskResultHistory`, `closeTaskResultModal`, `handleLifeXPBackNavigation` |
+| `main.js` | 14234 | Punto de entrada: event listeners, registro/verificacion del Service Worker, comparacion de build y sincronizacion History API de pantallas/modales | `initializeLifeXPHistory`, `syncLifeXPScreenHistory`, `pushTaskResultHistory`, `closeTaskResultModal`, `registerAndVerifyLifeXPServiceWorker` |
 
 ### 2b. Ficheros de UI (pantallas)
 
@@ -97,7 +97,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Responsabilidad |
 |---|---:|---|
 | `manifest.json` | 530 | Metadatos PWA e iconos |
-| `sw.js` | 2005 | Service Worker cache-first; `CACHE_NAME = lifexp-v22` |
+| `sw.js` | 2312 | Service Worker cache-first; `CACHE_NAME = lifexp-v23`; responde al estado de caché mediante MessageChannel |
 | `emergency-save.html` | 5646 | Herramienta de recuperacion manual del save |
 | `icon-192.png` | 1447 | Icono PWA 192 px |
 | `icon-512.png` | 3708 | Icono PWA 512 px |
@@ -337,8 +337,9 @@ El resultado `ready` conserva los valores mostrables y el resumen de drop; `dism
 8. **No hay `game.js`.** El fichero fue eliminado en el refactor de split. Cualquier referencia a `game.js` en documentacion antigua es incorrecta.
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
-11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v21` -> `lifexp-v22`, etc.) para forzar actualizacion en clientes existentes.
-12. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; la instalacion transaccional bloquea referencias de drops no canonicas o ausentes antes del commit.
+11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v22` -> `lifexp-v23`, etc.) para forzar actualizacion en clientes existentes.
+12. **Actualizacion verificable.** `main.js` distingue comprobacion de la interfaz, refresco de la caché y activacion de un Service Worker; compara `LIFE_XP_BUILD` ejecutada con la declarada por una lectura sin caché de `data_tasks.js`, consulta el estado de la caché por MessageChannel y nunca muestra una actualización aplicada si alguno de esos pasos no puede confirmarse.
+13. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; la instalacion transaccional bloquea referencias de drops no canonicas o ausentes antes del commit.
 
 ---
 
@@ -366,6 +367,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 | DT-17 | Retirada del stub huerfano `ashbrand_hotfix.js` (ID historico reutilizado despues para save-safety). | -- | **CERRADO** | PR #26 (`fix/dt-17-remove-ashbrand-stub`) retiro el stub; el trabajo de save-safety posterior se documento bajo el mismo ID en PR #38. La rama ya no existe. |
 | DT-18 | `PROJECT_MAP.md` desactualizado frente al repositorio. | -- | **CERRADO** | Este PR: ramas, deuda, tamanos, responsabilidades y guia Fase 3 sincronizados. |
 | DT-19 | Referencias heredadas no ASCII en `enemies.js`: `seda_araña` y `araña_domestica`. | Alta | **ABIERTO** | Owner: mantenedor. Siguiente accion: preparar un cambio de datos separado que migre esas referencias a IDs canonicos y regenere la trazabilidad. |
+| DT-20 | La PWA no distinguia recarga de interfaz, actualización de caché y build ejecutada; los errores de registro del Service Worker se ignoraban. | Alta | **CERRADO** | `fix/update-verifiable-recovery` (Fase 2B): comprobacion de fuente, estado del Service Worker y estados no confirmados visibles; no toca saves ni contenido. |
 
 ---|---|---|---|
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
@@ -400,9 +402,12 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - Una instalacion correcta de Update 2 escribe el marcador y llama a `saveGame()` solo al final; las ejecuciones posteriores son no-op idempotentes.
 - Fixtures de regresion: `tests/save_migrations.test.js` (v0, v1, v2 legacy/canonico, v2 parcial con recuperacion legacy, rollback de parcial, quest canonica desconocida, v3, corrupcion, snapshots y DT-17) y `tests/update2_transaction.test.js` (instalacion, cuatro instaladores, commit, rollback, reintento e idempotencia).
 - `.github/workflows/ci.yml` ejecuta en cada push y pull request `node --check` sobre los scripts de produccion y las suites `tests/save_migrations.test.js` y `tests/update2_transaction.test.js`, usando Node.js `22.14.0`.
+- La verificacion de actualizacion en `main.js` consulta la fuente declarada con una URL de comprobacion sin cache, pregunta al Service Worker activo por `CACHE_NAME` mediante MessageChannel y comunica estados no confirmados sin exito falso. La activacion de una nueva caché no recarga automaticamente la pagina: informa de que la página actual sigue ejecutando su build hasta que el jugador recarga.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene errores baseline ya documentados; resolver esa deuda es una tarea separada.
 
 ## 8. Changelog del mapa
+- **2026-08-21 - `fix/update-verifiable-recovery` (Fase 2B):** `main.js` diferencia recarga, comprobacion de caché y activacion de Service Worker; muestra la build efectiva, la compara con la declarada por `data_tasks.js`, consulta el `CACHE_NAME` activo y no informa éxito cuando la actualización no se puede confirmar. `sw.js` sube a `lifexp-v23` y expone un estado mínimo por MessageChannel. Se corrige en el mapa la build documentada a la declaracion efectiva auditada (`v13.4-equip-action-fix`) y se actualizan ramas, commit y responsabilidades. No se tocan contenido, saves ni migraciones.
+
 - **2026-08-21 - `fix/task-result-navigation-manual` (Fase 2A):** `engine.js` añade el registro durable `pendingTaskResult` y hace que `saveGame()` comunique exito o fallo; `ui_tasks.js` persiste antes de mostrar, conserva el resultado hasta confirmacion, recupera resultados pendientes tras recarga y revierte el estado en memoria si falla el guardado final; `main.js` mantiene historial de pantalla/modal, cierre seguro con atras/Escape/fondo y foco accesible. La rama limpia se usa como base para evitar el parche destructivo de la rama v2 divergente.
 
 
