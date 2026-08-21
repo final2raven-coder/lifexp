@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifexp-v22';
+const CACHE_NAME = 'lifexp-v23';
 
 const urlsToCache = [
   '/',
@@ -30,6 +30,16 @@ const urlsToCache = [
   '/item_system.js',
   '/main.js'
 ];
+
+self.addEventListener('message', event => {
+  if (!event.data || event.data.type !== 'lifexp-get-status' || !event.ports || !event.ports[0]) return;
+  event.ports[0].postMessage({
+    type: 'lifexp-sw-status',
+    cacheName: CACHE_NAME,
+    protocolVersion: 1,
+    scope: self.registration.scope
+  });
+});
 
 self.addEventListener('install', event => {
   event.waitUntil(
