@@ -46,6 +46,13 @@ function createHarness(rawSave, storageEntries = {}) {
     localStorage: storage,
     document: createDocument(),
     DEFAULT_TASKS: [],
+    FREQ: {
+      daily: { name: 'Diaria', days: 1, availability: { type: 'periodic', intervalDays: 1, limit: 1, repeatable: true } },
+      weekly: { name: 'Semanal', days: 7, availability: { type: 'periodic', intervalDays: 7, limit: 1, repeatable: true } },
+      biweekly: { name: 'Quincenal', days: 14, availability: { type: 'periodic', intervalDays: 14, limit: 1, repeatable: true } },
+      monthly: { name: 'Mensual', days: 30, availability: { type: 'periodic', intervalDays: 30, limit: 1, repeatable: true } },
+      once: { name: 'Una sola vez', days: null, availability: { type: 'once', intervalDays: null, limit: 1, repeatable: false } }
+    },
     QUESTS: {
       quest_progress: {
         id: 'quest_progress',
@@ -71,6 +78,10 @@ function createHarness(rawSave, storageEntries = {}) {
     loadGame,
     getState: () => gameState,
     getDefaultState: () => DEFAULT_GAME_STATE,
+    getTaskAvailability,
+    isTaskDue,
+    isTaskOverdue,
+    createTaskHistoryEntry,
     getWarnings: () => [],
     getSave: () => localStorage.getItem('lifexp_save'),
     getSnapshotKeys: () => Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter(key => key && key.startsWith('lifexp_premigration_'))
@@ -86,7 +97,7 @@ function loadFixture(fixture, storageEntries) {
 }
 
 function assertCanonicalState(state) {
-  assert.equal(state.saveVersion, 3);
+  assert.equal(state.saveVersion, 4);
   assert.ok(Array.isArray(state.inventory));
   assert.ok(state.equipment && Object.prototype.hasOwnProperty.call(state.equipment, 'weapon'));
   assert.ok(state.itemSystem && state.itemSystem.attunement);
@@ -113,7 +124,7 @@ function testV0Migration() {
   assertCanonicalState(loaded.state);
   assert.equal(JSON.stringify(loaded.state.customMarker), JSON.stringify({ preserved: true }));
   assert.equal(loaded.state.inventory.length, 0);
-  assert.match(loaded.api.getSave(), /"saveVersion":3/);
+  assert.match(loaded.api.getSave(), /"saveVersion":4/);
   assert.equal(loaded.api.getSnapshotKeys().length, 1);
 }
 
@@ -304,6 +315,128 @@ function testNoUndefinedExpansionInstallerCalls() {
   }
 }
 
+
+function testTaskModelMigrationAndIdempotence() {
+  const fixture = {
+    saveVersion: 3,
+    tasks: [
+      { id: 'legacy_daily', freq: 'daily', lastDone: '2026-08-20' },
+      { id: 'legacy_without_frequency', name: 'Legacy task', lastDone: null },
+      { id: 'archived_task', freq: 'weekly', archived: true, lastDone: '2026-08-01' }
+    ],
+    taskHistory: [
+      { taskId: 'legacy_daily', date: '2026-08-20', xp: 10, sideQuest: false },
+      { taskId: 'legacy_daily', date: '2026-08-19', xp: 8, sideQuest: true },
+      { taskId: 'legacy_daily', date: '2026-08-18', xp: 6, sideQuest: false, completionId: 'stable-history-id' }
+    ],
+    quests: { active: [], completed: [], failed: [], dailyReset: null }
+  };
+  const loaded = loadFixture(fixture);
+  assert.equal(loaded.result, true);
+  assert.equal(loaded.state.saveVersion, 4);
+  assert.equal(loaded.state.taskModelVersion, 1);
+  assert.equal(loaded.state.taskHistory.length, 3);
+  assert.equal(loaded.state.taskHistory[2].completionId, 'stable-history-id');
+  assert.ok(loaded.state.tasks.find(task => task.id === 'legacy_without_frequency').reviewStatus === 'needs_review');
+  assert.equal(loaded.state.tasks.find(task => task.id === 'archived_task').archived, true);
+
+  const persistedBeforeSecondLoad = loaded.api.getSave();
+  assert.equal(loaded.api.loadGame(), true);
+  assert.equal(loaded.api.getSave(), persistedBeforeSecondLoad);
+}
+
+function loadTaskAvailabilityFixture(task, taskHistory = []) {
+  const loaded = loadFixture({
+    saveVersion: 4,
+    tasks: [task],
+    taskHistory,
+    quests: { active: [], completed: [], failed: [], dailyReset: null }
+  });
+  assert.equal(loaded.result, true);
+  return loaded;
+}
+
+function testTaskAvailabilityFrequencies() {
+  const daily = loadTaskAvailabilityFixture({ id: 'daily', freq: 'daily' });
+  assert.equal(daily.api.getTaskAvailability(daily.state.tasks[0], '2026-08-21').status, 'available');
+  daily.state.taskHistory.push({ taskId: 'daily', date: '2026-08-20', xp: 1, sideQuest: false });
+  assert.equal(daily.api.getTaskAvailability(daily.state.tasks[0], '2026-08-21').status, 'available');
+  assert.equal(daily.api.getTaskAvailability(daily.state.tasks[0], '2026-08-20').status, 'cooldown');
+
+  const weekly = loadTaskAvailabilityFixture(
+    { id: 'weekly', freq: 'weekly' },
+    [{ taskId: 'weekly', date: '2026-08-14', xp: 1, sideQuest: false }]
+  );
+  assert.equal(weekly.api.getTaskAvailability(weekly.state.tasks[0], '2026-08-20').status, 'cooldown');
+  assert.equal(weekly.api.getTaskAvailability(weekly.state.tasks[0], '2026-08-21').status, 'available');
+
+  const biweekly = loadTaskAvailabilityFixture(
+    { id: 'biweekly', freq: 'biweekly' },
+    [{ taskId: 'biweekly', date: '2026-08-07', xp: 1, sideQuest: false }]
+  );
+  assert.equal(biweekly.api.getTaskAvailability(biweekly.state.tasks[0], '2026-08-20').status, 'cooldown');
+  assert.equal(biweekly.api.getTaskAvailability(biweekly.state.tasks[0], '2026-08-21').status, 'available');
+
+  const monthly = loadTaskAvailabilityFixture(
+    { id: 'monthly', freq: 'monthly' },
+    [{ taskId: 'monthly', date: '2026-07-22', xp: 1, sideQuest: false }]
+  );
+  assert.equal(monthly.api.getTaskAvailability(monthly.state.tasks[0], '2026-08-20').status, 'cooldown');
+  assert.equal(monthly.api.getTaskAvailability(monthly.state.tasks[0], '2026-08-21').status, 'available');
+}
+
+function testRepeatableAndNonRepeatablePolicies() {
+  const repeatable = loadTaskAvailabilityFixture(
+    {
+      id: 'repeatable',
+      availability: { type: 'periodic', intervalDays: 7, limit: 2, repeatable: true }
+    },
+    [
+      { taskId: 'repeatable', date: '2026-08-20', xp: 1, sideQuest: false },
+      { taskId: 'repeatable', date: '2026-08-21', xp: 1, sideQuest: false }
+    ]
+  );
+  assert.equal(repeatable.api.getTaskAvailability(repeatable.state.tasks[0], '2026-08-22').status, 'cooldown');
+  assert.equal(repeatable.api.getTaskAvailability(repeatable.state.tasks[0], '2026-08-28').status, 'available');
+
+  const nonRepeatable = loadTaskAvailabilityFixture({ id: 'once', freq: 'once' });
+  assert.equal(nonRepeatable.api.getTaskAvailability(nonRepeatable.state.tasks[0], '2026-08-21').status, 'available');
+  nonRepeatable.state.taskHistory.push({ taskId: 'once', date: '2026-08-21', xp: 1, sideQuest: false });
+  assert.equal(nonRepeatable.api.getTaskAvailability(nonRepeatable.state.tasks[0], '2026-08-22').status, 'completed');
+
+  const archived = loadTaskAvailabilityFixture({ id: 'archived', freq: 'daily', archived: true });
+  assert.equal(archived.api.getTaskAvailability(archived.state.tasks[0], '2026-08-21').status, 'archived');
+  assert.equal(archived.api.isTaskDue(archived.state.tasks[0], '2026-08-21'), false);
+}
+
+function testLegacyTaskWithoutFrequencyNeedsReview() {
+  const legacy = loadTaskAvailabilityFixture({ id: 'legacy', name: 'No frequency' });
+  const availability = legacy.api.getTaskAvailability(legacy.state.tasks[0], '2026-08-21');
+  assert.equal(availability.status, 'needs_review');
+  assert.equal(availability.available, true);
+  legacy.state.tasks[0].lastDone = '2026-08-20';
+  const afterCompletion = legacy.api.getTaskAvailability(legacy.state.tasks[0], '2026-08-21');
+  assert.equal(afterCompletion.status, 'needs_review');
+  assert.equal(afterCompletion.available, false);
+}
+
+function testHistoryEntryCapturesScheduleSnapshot() {
+  const loaded = loadTaskAvailabilityFixture({ id: 'snapshot', freq: 'weekly' });
+  const entry = loaded.api.createTaskHistoryEntry(loaded.state.tasks[0], { date: '2026-08-21', xp: 12, sequence: 0 });
+  assert.deepEqual(entry, {
+    taskId: 'snapshot',
+    date: '2026-08-21',
+    xp: 12,
+    sideQuest: false,
+    completionId: 'task:snapshot:2026-08-21:base:0',
+    frequency: 'weekly',
+    availability: 'periodic',
+    intervalDays: 7,
+    limit: 1,
+    repeatable: true
+  });
+}
+
 testV0Migration();
 testV1Migration();
 testV2ActiveQuestProgressMigration();
@@ -315,4 +448,9 @@ testV3AndLegacyEquipmentId();
 testCorruptedSaveDoesNotChangeOriginal();
 testSnapshotRetention();
 testNoUndefinedExpansionInstallerCalls();
-console.log('Save migration fixtures: PASS (v0, v1, v2 legacy quests, v2 canonical quests, partial quests with legacy recovery, partial quests rollback, unknown canonical quest recovery, v3, legacy equipment id, corruption, snapshot retention, DT-17 static assertion)');
+testTaskModelMigrationAndIdempotence();
+testTaskAvailabilityFrequencies();
+testRepeatableAndNonRepeatablePolicies();
+testLegacyTaskWithoutFrequencyNeedsReview();
+testHistoryEntryCapturesScheduleSnapshot();
+console.log('Save migration fixtures: PASS (v0-v4, quest recovery, task history preservation, periodic availability, repeatable/non-repeatable policies, archived tasks, legacy task review, idempotence, corruption, snapshots, DT-17 static assertion)');
