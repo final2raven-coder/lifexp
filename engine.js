@@ -398,7 +398,7 @@ function getAvailableTasks(cat = null) {
   const due = tasks.filter(t => isTaskDue(t));
   if (due.length > 0) return { tasks: due, isOverflow: false };
   
-  return { tasks, isOverflow: false };
+  return { tasks: [], isOverflow: false };
 }
 
 function pickRandomTask(tasks) {
