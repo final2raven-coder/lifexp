@@ -71,7 +71,7 @@ function escapeTaskCatalogText(value) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
 
@@ -239,28 +239,26 @@ function renderTaskScreen() {
   document.getElementById('task-name').textContent = task.name;
   document.getElementById('task-desc').textContent = task.desc;
   
-  // Stats
-  let statsHtml = '';
+  // Rewards
+  const rewardsDiv = document.getElementById('task-rewards');
+  let rewardsHtml = '';
   for (const [stat, val] of Object.entries(task.stats)) {
-    statsHtml += `<span class="stat-reward">+${Math.max(1, Math.floor(val / 10))} ${STATS[stat].abbr}</span>`;
+    rewardsHtml += `<div class="task-reward stat-${stat}">+${Math.max(1, Math.floor(val / 10))} ${STATS[stat].abbr}</div>`;
   }
-  document.getElementById('task-stats-rewards').innerHTML = statsHtml;
-  document.getElementById('task-xp').textContent = task.xp + ' XP';
+  rewardsHtml += `<div class="task-reward xp">+${task.xp} XP</div>`;
+  rewardsDiv.innerHTML = rewardsHtml;
   
-  // Overflow indicator
-  const overflowBanner = document.getElementById('overflow-banner');
-  if (currentIsOverflow) {
-    overflowBanner.classList.remove('hidden');
-  } else {
-    overflowBanner.classList.add('hidden');
-  }
+  // Overflow state is kept on the existing task card; the base HTML has no banner.
+  card.dataset.overflow = currentIsOverflow ? 'true' : 'false';
   
   // Drops
-  const dropsBox = document.getElementById('task-drops');
-  if (task.drops) {
+  const dropsBox = document.getElementById('task-drops-box');
+  const dropsList = document.getElementById('task-drops');
+  if (task.drops && dropsList) {
     dropsBox.classList.remove('hidden');
-    const themeName = task.drops.theme || 'misterioso';
-    document.getElementById('task-drop-theme').textContent = themeName;
+    const dropDetails = task.drops.theme
+      || (Array.isArray(task.drops.items) ? task.drops.items.join(', ') : 'misterioso');
+    dropsList.textContent = dropDetails;
   } else {
     dropsBox.classList.add('hidden');
   }
@@ -361,23 +359,29 @@ function renderTaskResultModal(result, task) {
 
   const sideQuestPrompt = document.getElementById('side-quest-prompt');
   const completeDrop = document.getElementById('complete-drop');
+  const continueButton = document.getElementById('btn-complete-continue');
   if (result.status === 'awaiting_side_quest') {
     completeDrop.classList.add('hidden');
     sideQuestPrompt.classList.remove('hidden');
     document.getElementById('side-quest-prompt-desc').textContent = result.sideQuestDesc || '¿Has realizado también el objetivo opcional?';
+    document.getElementById('btn-side-quest-yes').disabled = !task?.sideQuest;
+    document.getElementById('btn-side-quest-no').disabled = !task?.sideQuest;
+    continueButton.classList.add('hidden');
   } else {
     sideQuestPrompt.classList.add('hidden');
+    document.getElementById('btn-side-quest-yes').disabled = false;
+    document.getElementById('btn-side-quest-no').disabled = false;
     completeDrop.classList.toggle('hidden', !result.drop);
     const drop = result.drop;
     if (drop) {
       const dropName = drop.displayName || drop.name || drop.itemId || 'Objeto';
-      document.getElementById('complete-drop-name').textContent = dropName;
-      document.getElementById('complete-drop-rarity').textContent = drop.rarity || '';
-      document.getElementById('complete-drop-status').textContent = drop.status || '';
+      const dropDetails = [drop.status, dropName, drop.rarity].filter(Boolean).join(' · ');
+      document.getElementById('complete-drop-item').textContent = dropDetails;
     }
+    continueButton.classList.remove('hidden');
   }
 
-  document.getElementById('complete-close').textContent = result.status === 'awaiting_side_quest' ? 'Resolver después' : 'Continuar';
+  continueButton.textContent = result.status === 'awaiting_side_quest' ? 'Resolver después' : 'Continuar';
 }
 
 function openTaskResultDecision(sideQuestCompleted) {
@@ -401,6 +405,7 @@ function completeTask() {
     return;
   }
 
+  stopTimer();
   if (currentTask.sideQuest) {
     const completionId = createTaskCompletionId(currentTask, todayStr());
     gameState.pendingTaskResult = {
@@ -478,7 +483,7 @@ function finalizeCompletion(sideQuestCompleted, pendingResult) {
     }
   }
 
-  const dropResult = rollDrop(task, sideQuestCompleted);
+  let dropResult = rollDrop(task, sideQuestCompleted);
   if (sideQuestCompleted && task.sideQuest?.drops && !dropResult) {
     const sqDrop = rollSideQuestDrop(task);
     if (sqDrop) dropResult = { itemId: null, name: sqDrop };
