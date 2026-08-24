@@ -405,7 +405,6 @@ function completeTask() {
     return;
   }
 
-  stopTimer();
   if (currentTask.sideQuest) {
     const completionId = createTaskCompletionId(currentTask, todayStr());
     gameState.pendingTaskResult = {
@@ -441,11 +440,18 @@ function completeTask() {
   });
 }
 
-function finalizeCompletion(sideQuestCompleted, pendingResult) {
-  const task = gameState.tasks.find(candidate => candidate.id === pendingResult.taskId) || currentTask;
+function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskResult()) {
+  const resolvedPendingResult = pendingResult || {
+    taskId: currentTask?.id,
+    date: todayStr(),
+    isOverflow: Boolean(currentIsOverflow),
+    allowCooldownCompletion: Boolean(allowManualCooldownCompletion),
+    claimId: currentTask ? createTaskCompletionId(currentTask, todayStr()) : null
+  };
+  const task = gameState.tasks.find(candidate => candidate.id === resolvedPendingResult.taskId) || currentTask;
   if (!task) return;
   const availability = getTaskAvailability(task);
-  const canCompleteDuringCooldown = Boolean(pendingResult.allowCooldownCompletion) && availability.status === 'cooldown';
+  const canCompleteDuringCooldown = Boolean(resolvedPendingResult.allowCooldownCompletion) && availability.status === 'cooldown';
   if (availability.status !== 'available' && !canCompleteDuringCooldown) {
     showToast('Esta tarea ya no está disponible ahora.', 'gold');
     return;
@@ -453,10 +459,10 @@ function finalizeCompletion(sideQuestCompleted, pendingResult) {
 
   const stateBeforeCompletion = typeof cloneSaveState === 'function' ? cloneSaveState(gameState) : JSON.parse(JSON.stringify(gameState));
   const pendingEncounterBeforeCompletion = pendingEncounter;
-  const today = pendingResult.date || todayStr();
+  const today = resolvedPendingResult.date || todayStr();
   const completionSequence = gameState.taskHistory.filter(entry => entry && entry.taskId === task.id).length;
-  const completionId = pendingResult.claimId || createTaskCompletionId(task, today, completionSequence);
-  const baseXp = task.xp * (currentIsOverflow ? 1.5 : 1);
+  const completionId = resolvedPendingResult.claimId || createTaskCompletionId(task, today, completionSequence);
+  const baseXp = task.xp * (resolvedPendingResult.isOverflow ? 1.5 : 1);
   const sideXp = sideQuestCompleted && task.sideQuest ? task.sideQuest.xp : 0;
   const totalXp = Math.round(baseXp + sideXp);
   const goldEarned = Math.max(1, Math.floor(totalXp / 4));
@@ -551,7 +557,7 @@ function finalizeCompletion(sideQuestCompleted, pendingResult) {
     taskId: task.id,
     taskName: task.name,
     sideQuestDesc: task.sideQuest?.desc || null,
-    isOverflow: Boolean(currentIsOverflow),
+    isOverflow: Boolean(resolvedPendingResult.isOverflow),
     date: today,
     createdAt: new Date().toISOString(),
     sideQuestCompleted: Boolean(sideQuestCompleted),
