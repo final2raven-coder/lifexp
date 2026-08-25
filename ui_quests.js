@@ -16,12 +16,12 @@ function renderQuests() {
   if (typeof checkDailyQuestReset === 'function') checkDailyQuestReset();
   const active = typeof getActiveQuests === 'function' ? getActiveQuests() : [];
   if (countEl) {
-    countEl.textContent = `${active.length} activa${active.length !== 1 ? 's' : ''}`;
+    countEl.textContent = `${active.length} active${active.length !== 1 ? 's' : ''}`;
   }
   
   // Check if quests.js loaded
   if (typeof QUESTS === 'undefined') {
-    container.innerHTML = '<div class="text-muted text-center">Sistema de quests cargando...</div>';
+    container.innerHTML = '<div class="text-muted text-center">Quest system loading...</div>';
     return;
   }
   
@@ -29,7 +29,7 @@ function renderQuests() {
     container.innerHTML = `
       <div class="card" style="text-align: center; padding: 24px;">
         <div style="font-size: 32px; margin-bottom: 12px;">\uD83D\uDCDC</div>
-        <div style="color: var(--text-muted);">No tienes quests activas</div>
+        <div style="color: var(--text-muted);">No active quests</div>
         <button class="btn btn-primary" style="margin-top: 16px;" onclick="showAvailableQuests()">
           Ver quests disponibles
         </button>
@@ -47,7 +47,7 @@ function renderQuests() {
     const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : { name: quest.type, icon: '\uD83D\uDCDC', color: 'var(--gold)' };
     const percent = prog?.percent || 0;
     const isStory = quest.type === 'story';
-    const chapterInfo = isStory && quest.chapters ? `Capítulo ${(quest.currentChapter || 0) + 1}/${quest.chapters.length}` : '';
+    const chapterInfo = isStory && quest.chapters ? `Chapter ${(quest.currentChapter || 0) + 1}/${quest.chapters.length}` : '';
     
     container.innerHTML += `
       <div class="card quest-card" style="border-left: 3px solid ${typeInfo.color || 'var(--gold)'}; margin-bottom: 12px; cursor: pointer;" onclick="showQuestDetail('${questId}')">
@@ -104,7 +104,7 @@ function showAvailableQuests() {
   
   const content = document.getElementById('modal-item-content');
   if (!content) return;
-  content.innerHTML = list || '<div class="text-muted text-center">No hay quests disponibles.</div>';
+  content.innerHTML = list || '<div class="text-muted text-center">No quests available.</div>';
   document.getElementById('btn-item-action').style.display = 'none';
   openModal('modal-item');
 }
@@ -150,14 +150,14 @@ function showQuestDetail(questId) {
     </div>
     ${objectivesHtml ? `<div style="margin-bottom:12px;">${objectivesHtml}</div>` : ''}
     <div style="font-size:12px;color:var(--gold);">
-      Recompensa: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} \uD83E\uDE99
+      Reward: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} \uD83E\uDE99
     </div>
   `;
 
   const rewardApplications = [
-    ...(rewardStatus?.final ? [{ label: 'Recompensa final', ...rewardStatus.final }] : []),
+    ...(rewardStatus?.final ? [{ label: 'Final reward', ...rewardStatus.final }] : []),
     ...(rewardStatus?.chapters || []).map(chapter => ({
-      label: `Recompensa de capítulo ${chapter.rewardKey}`,
+      label: `Chapter reward ${chapter.rewardKey}`,
       ...chapter
     }))
   ];
@@ -165,18 +165,18 @@ function showQuestDetail(questId) {
     ? 'concedida'
     : status === 'pending'
       ? 'pendiente de espacio'
-      : 'requiere recuperación';
+      : 'requires recovery';
   const recoveryApplications = rewardApplications.filter(application => application.status !== 'granted');
   const rewardStatusHtml = rewardApplications.length
     ? `<div style="margin-top:12px;font-size:12px;">
         ${rewardApplications.map(application => `<div style="color:${application.status === 'granted' ? 'var(--green)' : 'var(--orange)'};margin-top:4px;">${escapeHtml(application.label)}: ${statusLabel(application.status)}</div>`).join('')}
-        ${recoveryApplications.length ? `<button class="btn btn-ghost" style="margin-top:8px;width:100%;" onclick="retryQuestRewards('${questId}'); showQuestDetail('${questId}');">Reintentar recompensas recuperables</button>` : ''}
+        ${recoveryApplications.length ? `<button class="btn btn-ghost" style="margin-top:8px;width:100%;" onclick="retryQuestRewards('${questId}'); showQuestDetail('${questId}');">Retry recoverable rewards</button>` : ''}
       </div>`
     : '';
   contentEl.innerHTML += rewardStatusHtml;
 
   const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = '\u274C Abandonar quest';
+  actionBtn.textContent = '\u274C Abandon quest';
   actionBtn.onclick = () => abandonQuest(questId);
   openModal('modal-item');
 }

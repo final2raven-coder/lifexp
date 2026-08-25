@@ -25,7 +25,7 @@ function renderHub() {
     alertsDiv.innerHTML += `
       <div class="alert alert-overflow" onclick="showOverflowTasks()">
         <div class="alert-icon">⚡</div>
-        <div class="alert-text"><strong>${overflow.length} overflow</strong> — tienen prioridad</div>
+        <div class="alert-text"><strong>${overflow.length} overflow</strong> — high priority</div>
       </div>
     `;
   }
@@ -35,7 +35,7 @@ function renderHub() {
     alertsDiv.innerHTML += `
       <div class="alert alert-saved" onclick="showSavedTasks()">
         <div class="alert-icon">\uD83D\uDCCC</div>
-        <div class="alert-text"><strong>${gameState.savedTasks.length} guardadas</strong> para luego</div>
+        <div class="alert-text"><strong>${gameState.savedTasks.length} saved</strong> for later</div>
       </div>
     `;
   }
@@ -51,8 +51,8 @@ function renderHub() {
     catGrid.innerHTML += `
       <div class="cat-card" data-cat="${catId}" onclick="openCategory('${catId}')">
         <div class="cat-icon">${cat.icon}</div>
-        <div class="cat-name">${cat.name}</div>
-        <div class="cat-pending">${pending} pendiente${pending !== 1 ? 's' : ''}</div>
+        <div class="cat-name">${typeof LifeXPPresentation !== 'undefined' ? LifeXPPresentation.getCategoryLabel(catId) : cat.name}</div>
+        <div class="cat-pending">${pending} pending task${pending !== 1 ? 's' : ''}</div>
         ${overflowCount > 0 ? `<div class="cat-overflow">⚡${overflowCount}</div>` : ''}
       </div>
     `;
@@ -67,9 +67,9 @@ function renderCharacter() {
   // Basic info
   document.getElementById('char-name').textContent = gameState.name;
   document.getElementById('char-class-icon').textContent = cls ? cls.icon : '\uD83E\uDDD1‍\uD83C\uDF3E';
-  document.getElementById('char-class-name').textContent = cls ? cls.name : 'Novato';
+  document.getElementById('char-class-name').textContent = cls ? cls.name : 'Novice';
   document.getElementById('char-level').textContent = level;
-  document.getElementById('char-tier-name').textContent = cls ? `Clase ${getTierName(cls.tier)}` : 'Sin clase';
+  document.getElementById('char-tier-name').textContent = cls ? `Class ${getTierName(cls.tier)}` : 'No class';
   
   // XP bar
   const xpProgress = getXpProgress();
@@ -145,7 +145,7 @@ function renderCharacter() {
       return `<span style="color: var(--gold);">${c.icon} ${c.name}</span>`;
     }).join(' → ');
   } else {
-    classPath.innerHTML = '<span style="color: var(--text-muted);">Aún no has elegido una clase. Alcanza nivel 10 para desbloquear la primera.</span>';
+    classPath.innerHTML = '<span style="color: var(--text-muted);">You have not chosen a class yet. Reach level 10 to unlock your first class.</span>';
   }
 }
 
@@ -384,26 +384,26 @@ function renderSettings() {
   content.innerHTML = `
     <div class="section-title">Datos</div>
     <div class="card">
-      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Actualizar versión</button>
-      <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Exportar save</button>
-      <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Importar save</button>
+      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Update version</button>
+      <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Export save</button>
+      <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Import save</button>
       <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Resetear progreso</button>
     </div>
     
     <div class="section-title">Content Planning</div>
     <div class="card">
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-        Exporta un snapshot con métricas de uso y sugerencias para planificar actualizaciones de contenido con tu agente de Langdock.
+        Export a snapshot with usage metrics and suggestions to plan content updates with your Langdock agent.
       </p>
-      <button class="btn btn-gold" onclick="exportSnapshot()">\uD83D\uDCCA Exportar Snapshot para Agente</button>
+      <button class="btn btn-gold" onclick="exportSnapshot()">\uD83D\uDCCA Export snapshot for agent</button>
     </div>
     
     <div class="section-title">Info</div>
     <div class="card">
       <p style="font-size: 13px; color: var(--text-muted);">
         LifeXP RPG v1.0 · Build ${LIFE_XP_BUILD}<br>
-        Tareas: ${gameState.tasks.length}<br>
-        Nivel: ${gameState.level}<br>
+        Tasks: ${gameState.tasks.length}<br>
+        Level: ${gameState.level}<br>
         XP Total: ${gameState.taskHistory.reduce((a, h) => a + h.xp, 0)}
       </p>
     </div>

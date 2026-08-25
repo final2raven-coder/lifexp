@@ -14,7 +14,7 @@
 | Fecha de generacion | 2026-07-30 |
 | Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones; `feat/combat-formations-target-selection` -- formaciones jugables y seleccion segura de objetivos; `fix/visible-labels-consistency` -- contrato de presentacion en ingles para objetos, recompensas y tareas) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation`, `fix/visible-labels-consistency` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation`, `fix/visible-labels-consistency` , `fix/visible-labels-5a2-3` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
 | Commit de `main` verificado | `e6274500713e542c2a260f6192d25a7cea3bcae5` |
@@ -488,6 +488,8 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 | 2026-08-12 | `fix/drop-integrity-traceability` | Reconstruida la trazabilidad de `docs/DROP_MAPPING.md`: se separan el inventario inicial (20 `EXACT`, 8 `FUZZY`, 82 `NONE`), la regeneración posterior de 269 ocurrencias y las 77 definiciones nuevas aprobadas como contenido. Se actualizan ramas y deuda técnica sin modificar datos jugables. |
 
 ---
+
+- 2026-08-25 (`fix/visible-labels-5a2-3`, preparado localmente) -- 5A.2 y 5A.3 completan la normalizacion de etiquetas visibles en hub, utilidades, combate, quests, onboarding e interfaz estatica; se reconstruyeron los ficheros completos desde sus bases y se preservaron estructura, IDs, handlers, CSS, scripts y simbolos internos. Pendiente de subir a GitHub y revisar como un unico PR de mantenimiento de presentacion.
 
 ## 9. Recuentos de contenido (verificados 2026-07-31)
 

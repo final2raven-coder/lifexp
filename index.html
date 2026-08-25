@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1149,12 +1149,12 @@ body {
     <button class="big-cta" id="btn-random-task">
       <div class="big-cta-icon">&#127922;</div>
       <div class="big-cta-text">
-        <div class="big-cta-title">Dame una tarea</div>
-        <div class="big-cta-sub">Propuesta aleatoria de cualquier categor&#237;a</div>
+        <div class="big-cta-title">Give me a task</div>
+        <div class="big-cta-sub">Random task from any category</div>
       </div>
     </button>
     <div id="hub-alerts"></div>
-    <div class="section-title">Categor&#237;as</div>
+    <div class="section-title">Categories</div>
     <div class="cat-grid" id="hub-categories"></div>
   </div>
 </div>
@@ -1163,7 +1163,7 @@ body {
 <div class="screen" id="screen-task">
   <div class="header">
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button class="btn btn-ghost btn-small" id="btn-back-hub" style="width: auto;">&#8592; Volver</button>
+      <button class="btn btn-ghost btn-small" id="btn-back-hub" style="width: auto;">&#8592; Back</button>
       <div id="task-cat-badge"></div>
     </div>
   </div>
@@ -1175,7 +1175,7 @@ body {
         <div class="task-desc" id="task-desc"></div>
         <div class="task-rewards" id="task-rewards"></div>
         <div class="task-drops" id="task-drops-box">
-          <div class="task-drops-title">&#128167; Drops posibles</div>
+          <div class="task-drops-title">&#128167; Possible drops</div>
           <div class="task-drops-list" id="task-drops"></div>
         </div>
         <div class="side-quest" id="side-quest-box">
@@ -1196,9 +1196,9 @@ body {
       </div>
     </div>
     <div class="task-actions">
-      <button class="btn btn-primary" id="btn-complete">&#10003; Completada</button>
-      <button class="btn btn-secondary" id="btn-save-later">&#128204; Guardar para luego</button>
-      <button class="btn btn-ghost" id="btn-shuffle">&#127922; Otra tarea</button>
+      <button class="btn btn-primary" id="btn-complete">&#10003; Complete</button>
+      <button class="btn btn-secondary" id="btn-save-later">&#128204; Save for later</button>
+      <button class="btn btn-ghost" id="btn-shuffle">&#127922; Another task</button>
     </div>
   </div>
 </div>
@@ -1206,14 +1206,14 @@ body {
 <!-- CHARACTER SCREEN -->
 <div class="screen" id="screen-character">
   <div class="header">
-    <div class="header-title">Personaje</div>
+    <div class="header-title">Character</div>
   </div>
   <div class="content">
     <div class="card" style="text-align: center;">
       <div style="font-size: 64px; margin-bottom: 8px;" id="char-class-icon">&#129489;&#8205;&#127806;</div>
-      <div style="font-size: 22px; font-weight: 800;" id="char-name">Aventurero</div>
-      <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;" id="char-class-name">Novato</div>
-      <div style="font-size: 12px; color: var(--text-muted);">Nivel <span id="char-level">1</span> &bull; <span id="char-tier-name">Sin clase</span></div>
+      <div style="font-size: 22px; font-weight: 800;" id="char-name">Adventurer</div>
+      <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;" id="char-class-name">Novice</div>
+      <div style="font-size: 12px; color: var(--text-muted);">Level <span id="char-level">1</span> &bull; <span id="char-tier-name">No class</span></div>
       <div style="margin-top: 12px;">
         <div class="xp-bar">
           <div class="xp-track" style="flex: 1;">
@@ -1224,13 +1224,13 @@ body {
       </div>
     </div>
     <div id="class-change-section" class="hidden">
-      <button class="btn btn-gold mb-8" onclick="showClassChangeModal()">&#11014;&#65039; Cambiar de clase</button>
+      <button class="btn btn-gold mb-8" onclick="showClassChangeModal()">&#11014;&#65039; Change class</button>
     </div>
-    <div class="section-title">Stats (Base + Clase)</div>
+    <div class="section-title">Stats (Base + Class)</div>
     <div class="stats-grid" id="char-stats-grid"></div>
-    <div class="section-title">Recursos de Combate</div>
+    <div class="section-title">Combat resources</div>
     <div id="char-resources"></div>
-    <div class="section-title">Camino de Clase</div>
+    <div class="section-title">Class path</div>
     <div class="card" id="char-class-path"></div>
   </div>
 </div>
@@ -1239,13 +1239,13 @@ body {
 <div class="screen" id="screen-inventory">
   <div class="header">
     <div style="display: flex; align-items: center; justify-content: space-between;">
-      <div class="header-title">Inventario</div>
+      <div class="header-title">Inventory</div>
       <div style="font-size: 12px; color: var(--text-muted);" id="inv-count">0/20</div>
     </div>
     <div style="display: flex; gap: 8px; margin-top: 8px;">
       <button class="inv-tab btn btn-secondary btn-small active" data-tab="inventory" onclick="switchInventoryTab('inventory')" style="flex: 1;">&#127921; Items</button>
-      <button class="inv-tab btn btn-secondary btn-small" data-tab="stash" onclick="switchInventoryTab('stash')" style="flex: 1;">&#127968; Ba&#250;l <span id="stash-count" style="font-size: 10px;">0/30</span></button>
-      <button class="inv-tab btn btn-secondary btn-small" data-tab="equipment" onclick="switchInventoryTab('equipment')" style="flex: 1;">&#9876;&#65039; Equipo</button>
+      <button class="inv-tab btn btn-secondary btn-small" data-tab="stash" onclick="switchInventoryTab('stash')" style="flex: 1;">&#127968; Stash <span id="stash-count" style="font-size: 10px;">0/30</span></button>
+      <button class="inv-tab btn btn-secondary btn-small" data-tab="equipment" onclick="switchInventoryTab('equipment')" style="flex: 1;">&#9876;&#65039; Equipment</button>
     </div>
   </div>
   <div class="content">
@@ -1256,9 +1256,9 @@ body {
       <div id="stash-grid"></div>
     </div>
     <div id="inv-tab-equipment" class="hidden">
-      <div class="section-title">Equipamiento</div>
+      <div class="section-title">Equipment</div>
       <div id="equipment-slots" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;"></div>
-      <div class="section-title">Stats de Equipo</div>
+      <div class="section-title">Equipment stats</div>
       <div id="equipment-stats" style="font-size: 13px; padding: 8px 0;"></div>
     </div>
   </div>
@@ -1268,18 +1268,18 @@ body {
 <div class="screen" id="screen-quests">
   <div class="header">
     <div style="display: flex; align-items: center; justify-content: space-between;">
-      <div class="header-title">Misiones</div>
-      <div id="quests-count" style="font-size: 13px; color: var(--text-muted);">0 activas</div>
+      <div class="header-title">Quests</div>
+      <div id="quests-count" style="font-size: 13px; color: var(--text-muted);">0 active</div>
     </div>
-    <button class="btn btn-gold btn-small" id="btn-show-available-quests" style="margin-top: 8px;">+ Nueva quest</button>
+    <button class="btn btn-gold btn-small" id="btn-show-available-quests" style="margin-top: 8px;">+ New quest</button>
   </div>
   <div class="content">
     <div id="quests-container"></div>
     <div id="quests-empty" class="hidden" style="text-align: center; padding: 40px 20px;">
       <div style="font-size: 48px; margin-bottom: 12px;">&#128196;</div>
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Sin misiones activas</div>
-      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Acepta una misión para empezar tu aventura</div>
-      <button class="btn btn-gold" id="btn-show-available-quests-empty">&#10133; Ver misiones disponibles</button>
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No active quests</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Accept a quest to start your adventure</div>
+      <button class="btn btn-gold" id="btn-show-available-quests-empty">&#10133; View available quests</button>
     </div>
   </div>
 </div>
@@ -1302,7 +1302,7 @@ body {
 <!-- SETTINGS SCREEN -->
 <div class="screen" id="screen-settings">
   <div class="header">
-    <div class="header-title">Ajustes</div>
+    <div class="header-title">Settings</div>
   </div>
   <div class="content" id="settings-content"></div>
 </div>
@@ -1315,7 +1315,7 @@ body {
   </button>
   <button class="nav-item" data-screen="character">
     <span class="nav-item-icon">&#128100;</span>
-    <span>Personaje</span>
+    <span>Character</span>
   </button>
   <button class="nav-item" data-screen="guild">
     <span class="nav-item-icon">&#9876;&#65039;</span>
@@ -1323,46 +1323,46 @@ body {
   </button>
   <button class="nav-item" data-screen="inventory">
     <span class="nav-item-icon">&#127921;</span>
-    <span>Inventario</span>
+    <span>Inventory</span>
   </button>
   <button class="nav-item" data-screen="quests">
     <span class="nav-item-icon">&#128220;</span>
-    <span>Misiones</span>
+    <span>Quests</span>
   </button>
   <button class="nav-item" data-screen="settings">
     <span class="nav-item-icon">&#9881;&#65039;</span>
-    <span>Ajustes</span>
+    <span>Settings</span>
   </button>
 </nav>
 
 <!-- COMPLETE OVERLAY -->
 <div class="complete-overlay" id="complete-overlay">
   <div class="complete-icon" id="complete-icon">&#127942;</div>
-  <div class="complete-title" id="complete-title">&#161;Tarea completada!</div>
+  <div class="complete-title" id="complete-title">Task completed!</div>
   <div class="complete-subtitle" id="complete-subtitle"></div>
   <div class="complete-rewards" id="complete-rewards"></div>
   <div class="complete-drop hidden" id="complete-drop">
-    <div class="complete-drop-title">&#127873; &#161;DROP!</div>
+    <div class="complete-drop-title">&#127873; DROP!</div>
     <div class="complete-drop-item" id="complete-drop-item"></div>
   </div>
   <div class="side-quest-prompt hidden" id="side-quest-prompt">
-    <div class="side-quest-prompt-title">&#11088; &#191;Completaste la Side Quest?</div>
+    <div class="side-quest-prompt-title">&#11088; Did you complete the Side Quest?</div>
     <div class="side-quest-prompt-desc" id="side-quest-prompt-desc"></div>
     <div class="side-quest-prompt-btns">
-      <button class="btn btn-gold" id="btn-side-quest-yes">S&#237; (+50%)</button>
+      <button class="btn btn-gold" id="btn-side-quest-yes">Yes (+50%)</button>
       <button class="btn btn-ghost" id="btn-side-quest-no">No</button>
     </div>
   </div>
-  <button class="btn btn-primary hidden" id="btn-complete-continue" style="max-width: 280px;">Continuar</button>
+  <button class="btn btn-primary hidden" id="btn-complete-continue" style="max-width: 280px;">Continue</button>
 </div>
 
 <!-- MODAL: SAVED TASKS -->
 <div class="modal-backdrop" id="modal-saved">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Tareas</div>
+    <div class="modal-title">Tasks</div>
     <div id="modal-saved-content"></div>
-    <button class="btn btn-ghost" onclick="closeModal('modal-saved')" style="margin-top: 12px;">Cerrar</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-saved')" style="margin-top: 12px;">Close</button>
   </div>
 </div>
 
@@ -1370,9 +1370,9 @@ body {
 <div class="modal-backdrop" id="modal-class">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">&#11014;&#65039; Cambiar de Clase</div>
+    <div class="modal-title">&#11014;&#65039; Change Class</div>
     <div id="modal-class-content"></div>
-    <button class="btn btn-ghost" onclick="closeModal('modal-class')" style="margin-top: 12px;">Cancelar</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-class')" style="margin-top: 12px;">Cancel</button>
   </div>
 </div>
 
@@ -1392,11 +1392,11 @@ body {
 <div class="modal-backdrop" id="modal-import">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">&#128229; Importar save</div>
-    <textarea id="import-textarea" style="width:100%;height:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:12px;resize:vertical;" placeholder="Pega el JSON aqui..."></textarea>
+    <div class="modal-title">&#128229; Import save</div>
+    <textarea id="import-textarea" style="width:100%;height:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:12px;resize:vertical;" placeholder="Paste JSON here..."></textarea>
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn btn-gold" onclick="importDataText(document.getElementById('import-textarea').value)">Importar</button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-gold" onclick="importDataText(document.getElementById('import-textarea').value)">Import</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-import')">Cancel</button>
     </div>
   </div>
 </div>
@@ -1405,21 +1405,21 @@ body {
 <div class="screen" id="screen-combat">
   <div class="header">
     <div style="display: flex; align-items: center; justify-content: space-between;">
-      <div class="header-title">&#9876;&#65039; Combate</div>
-      <div id="combat-phase" style="font-size: 13px; font-weight: 700;">Tu turno</div>
+      <div class="header-title">&#9876;&#65039; Combat</div>
+      <div id="combat-phase" style="font-size: 13px; font-weight: 700;">Your turn</div>
     </div>
   </div>
   <div class="content">
     <!-- Enemies -->
-    <div id="combat-enemies-list" class="combat-enemies-list" aria-label="Enemigos del encuentro">
+    <div id="combat-enemies-list" class="combat-enemies-list" aria-label="Encounter enemies">
       <div class="combat-enemy-card combat-enemy-card-static">
         <div class="combat-enemy-card-top">
           <span id="combat-enemy-icon" class="combat-enemy-card-icon">&#128058;</span>
           <span class="combat-enemy-card-heading">
-            <span id="combat-enemy-name" class="combat-enemy-card-name">Enemigo</span>
+            <span id="combat-enemy-name" class="combat-enemy-card-name">Enemy</span>
             <span id="combat-enemy-level" class="combat-enemy-card-level">Lv 1</span>
           </span>
-          <span class="combat-enemy-card-target">Seleccionar</span>
+          <span class="combat-enemy-card-target">Select</span>
         </div>
         <div class="combat-enemy-card-hp-row">
           <span class="combat-enemy-card-hp-label">&#10084;&#65039; HP</span>
@@ -1464,7 +1464,7 @@ body {
     <!-- Combat log -->
     <div class="card" style="margin-bottom: 12px; max-height: 120px; overflow-y: auto;">
       <div id="combat-log" style="font-size: 12px; color: var(--text-muted);">
-        <div class="combat-log-entry">El combate comienza...</div>
+        <div class="combat-log-entry">Combat begins...</div>
       </div>
     </div>
     <!-- Actions -->
@@ -1475,10 +1475,10 @@ body {
 <!-- COMBAT RESULT OVERLAY -->
 <div class="complete-overlay" id="combat-result-overlay">
   <div id="combat-result-icon" class="complete-icon">&#127942;</div>
-  <div id="combat-result-title" class="complete-title">&#161;Victoria!</div>
+  <div id="combat-result-title" class="complete-title">Victory!</div>
   <div id="combat-result-subtitle" class="complete-subtitle"></div>
   <div id="combat-result-rewards" class="complete-rewards"></div>
-  <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continuar</button>
+  <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continue</button>
 </div>
 
 <script src="classes.js"></script>
