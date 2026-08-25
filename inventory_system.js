@@ -54,6 +54,113 @@
     return { ...entry, id, qty: Math.max(1, Number(entry.qty ?? entry.quantity ?? 1) || 1) };
   }
 
+  const presentationLabels = {
+    categories: {
+      casa: 'Home',
+      cuerpo: 'Body',
+      gestiones: 'Errands',
+      social: 'Social',
+      personal: 'Personal'
+    },
+    frequencies: {
+      daily: 'Daily',
+      weekly: 'Weekly',
+      fortnightly: 'Every two weeks',
+      biweekly: 'Every two weeks',
+      monthly: 'Monthly',
+      quarterly: 'Every three months',
+      halfyearly: 'Every six months',
+      yearly: 'Yearly',
+      annual: 'Yearly',
+      once: 'One time'
+    },
+    itemTypes: {
+      weapon: 'Weapon',
+      armor: 'Armor',
+      accessory: 'Accessory',
+      artifact: 'Artifact',
+      consumable: 'Consumable',
+      material: 'Material',
+      skill: 'Skill',
+      key: 'Key item'
+    },
+    rarities: {
+      common: 'Common',
+      uncommon: 'Uncommon',
+      rare: 'Rare',
+      epic: 'Epic',
+      legendary: 'Legendary'
+    },
+    statuses: {
+      available: 'Available',
+      completed: 'Completed',
+      cooldown: 'On cooldown',
+      archived: 'Archived',
+      needs_review: 'Needs review',
+      granted: 'Granted',
+      pending: 'Recovery available',
+      rejected: 'Unresolved reward'
+    }
+  };
+
+  function getPresentationLabel(group, key, fallback) {
+    if (key == null || key === '') return fallback;
+    return presentationLabels[group]?.[String(key).toLowerCase()] || fallback;
+  }
+
+  function getItemPresentation(entry) {
+    const id = resolve(entry);
+    const item = id ? ITEMS[id] : null;
+    if (!item) {
+      return {
+        id: null,
+        name: 'Unresolved item',
+        description: 'This item could not be identified. Recovery is available.',
+        typeLabel: 'Item',
+        rarityLabel: null,
+        unresolved: true,
+        reference: typeof entry === 'string'
+          ? entry
+          : (entry?.itemId || entry?.id || entry?.name || null)
+      };
+    }
+    return {
+      id,
+      name: item.name || 'Unnamed item',
+      description: item.desc || item.description || '',
+      typeLabel: getPresentationLabel('itemTypes', item.type, 'Item'),
+      rarityLabel: getPresentationLabel('rarities', item.rarity, 'Unknown rarity'),
+      unresolved: false,
+      item
+    };
+  }
+
+  function getRewardPresentation(entry) {
+    return getItemPresentation(entry);
+  }
+
+  function getTaskPresentation(task) {
+    return {
+      categoryLabel: getPresentationLabel('categories', task?.cat, 'Adventure'),
+      frequencyLabel: getPresentationLabel('frequencies', task?.freq, 'Schedule not specified')
+    };
+  }
+
+  function getStatusPresentation(status, fallback = 'Unknown status') {
+    return presentationLabels.statuses[String(status || '').toLowerCase()] || fallback;
+  }
+
+  window.LifeXPPresentation = {
+    getItem: getItemPresentation,
+    getReward: getRewardPresentation,
+    getTask: getTaskPresentation,
+    getCategoryLabel: key => getPresentationLabel('categories', key, 'Adventure'),
+    getFrequencyLabel: key => getPresentationLabel('frequencies', key, 'Schedule not specified'),
+    getItemTypeLabel: key => getPresentationLabel('itemTypes', key, 'Item'),
+    getRarityLabel: key => getPresentationLabel('rarities', key, 'Unknown rarity'),
+    getStatusLabel: getStatusPresentation
+  };
+
   function ensurePendingLootState() {
     if (typeof gameState === 'undefined') return null;
     if (typeof normalizePendingLootState === 'function') {
@@ -292,7 +399,7 @@
     grid.innerHTML = list.map((entry, index) => {
       const id = resolve(entry);
       const item = id ? ITEMS[id] : null;
-      if (!item) return `<div class="inv-slot inv-slot-recovery" role="button" tabindex="0" onclick="showLegacyItemModal(${index})"><div class="recovery-icon">?</div><div>Unidentified item</div><small>Review recovery</small></div>`;
+      if (!item) return `<div class="inv-slot inv-slot-recovery" role="button" tabindex="0" onclick="showLegacyItemModal(${index})"><div class="recovery-icon">?</div><div>Unresolved item</div><small>Recovery available</small></div>`;
       const rarity = RARITY[item.rarity] || RARITY.common;
       const qty = Number(entry.qty || entry.quantity || 1);
       const action = `${openFn}('${id}')`;
