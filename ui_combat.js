@@ -26,17 +26,29 @@ function checkForEncounter(task) {
   const encounterType = getEncounterType(playerLevel);
   
   // Pick enemy
-  const enemy = pickRandomEnemy(theme, playerLevel, encounterType);
+  const enemy = typeof pickEncounterEnemy === 'function'
+    ? pickEncounterEnemy(theme, playerLevel, encounterType)
+    : pickRandomEnemy(theme, playerLevel, encounterType);
   if (!enemy) return null;
   
-  // Scale to player level (±2)
-  const targetLevel = Math.max(1, playerLevel + Math.floor(Math.random() * 5) - 2);
-  const scaledEnemy = typeof scaleEnemy === 'function' ? scaleEnemy(enemy, targetLevel) : enemy;
+  // Scale newly generated encounters inside the declared difficulty band.
+  const targetLevel = typeof getEncounterTargetLevel === 'function'
+    ? getEncounterTargetLevel(playerLevel, encounterType)
+    : Math.max(1, playerLevel);
+  const scaledEnemy = typeof scaleEncounterEnemy === 'function'
+    ? scaleEncounterEnemy(enemy, targetLevel)
+    : (typeof scaleEnemy === 'function' ? scaleEnemy(enemy, targetLevel) : enemy);
+  const threat = typeof getEncounterThreat === 'function'
+    ? getEncounterThreat(encounterType, scaledEnemy.level, playerLevel)
+    : null;
   
   return {
     enemy: scaledEnemy,
     tactical: encounterType !== 'common', // Elite and boss = tactical
-    theme: theme
+    theme: theme,
+    type: encounterType,
+    playerLevel: playerLevel,
+    threat
   };
 }
 
@@ -46,13 +58,15 @@ function triggerEncounterAfterTask(task) {
     pendingEncounter = encounter;
     
     // Show encounter alert in completion overlay
+    const threat = encounter.threat || { label: 'Encuentro', description: 'La amenaza se manifiesta ante ti.' };
     const alertHtml = `
       <div style="background: linear-gradient(135deg, rgba(255,77,109,0.2), transparent); 
                   border: 1px solid var(--accent); border-radius: 8px; padding: 12px; 
                   margin-top: 16px; text-align: center;">
         <div style="font-size: 24px; margin-bottom: 4px;">${encounter.enemy.icon}</div>
         <div style="font-size: 14px; font-weight: 700; color: var(--accent);">¡Encuentro!</div>
-        <div style="font-size: 12px; color: var(--text-muted);">${encounter.enemy.name} aparece</div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text);">${threat.label}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">${encounter.enemy.name} aparece · ${threat.description}</div>
       </div>
     `;
     
@@ -72,7 +86,11 @@ function startCombatFromEncounter(encounter) {
   
   // Initialize combat
   if (typeof initCombat === 'function') {
-    initCombat(encounter.enemy, encounter.tactical);
+    initCombat(encounter.enemy, encounter.tactical, {
+      type: encounter.type || encounter.enemy.type || 'common',
+      playerLevel: encounter.playerLevel || gameState.level || 1,
+      threat: encounter.threat || null
+    });
   }
   
   // Show combat screen
@@ -93,7 +111,14 @@ function renderCombatScreen() {
   // Enemy section
   document.getElementById('combat-enemy-icon').textContent = e.icon;
   document.getElementById('combat-enemy-name').textContent = e.name;
-  document.getElementById('combat-enemy-level').textContent = `Lv ${e.level}`;
+  const threat = combatState.encounter?.threat || (
+    typeof getEncounterThreat === 'function'
+      ? getEncounterThreat(e.type || 'common', e.level, gameState.level || 1)
+      : null
+  );
+  document.getElementById('combat-enemy-level').textContent = threat?.label
+    ? `Lv ${e.level} · ${threat.label}`
+    : `Lv ${e.level}`;
   document.getElementById('combat-enemy-hp').textContent = `${e.hp}/${e.maxHp}`;
   document.getElementById('combat-enemy-hp-fill').style.width = `${(e.hp / e.maxHp) * 100}%`;
   

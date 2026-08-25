@@ -9,6 +9,51 @@
 let combatState = null;
 let combatRewardSequence = 0;
 
+// Difficulty policy for newly generated individual encounters.
+const ENCOUNTER_DIFFICULTY = Object.freeze({
+  common: Object.freeze({ minPlayerLevel: 1, weight: 80, levelWindow: 3, targetOffsetMin: -1, targetOffsetMax: 1 }),
+  elite: Object.freeze({ minPlayerLevel: 5, weight: 15, levelWindow: 3, targetOffsetMin: 0, targetOffsetMax: 2 }),
+  boss: Object.freeze({ minPlayerLevel: 15, weight: 5, levelWindow: 4, targetOffsetMin: 0, targetOffsetMax: 1 })
+});
+
+const ENCOUNTER_THREAT = Object.freeze({
+  minor: Object.freeze({ label: 'Amenaza menor', description: 'Una prueba manejable para mantener el ritmo.' }),
+  balanced: Object.freeze({ label: 'Amenaza equilibrada', description: 'Un combate acorde a tu preparación actual.' }),
+  elevated: Object.freeze({ label: 'Amenaza elevada', description: 'Conviene observar tus recursos antes de comprometerte.' }),
+  milestone: Object.freeze({ label: 'Hito de combate', description: 'Un desafío excepcional que exige preparación.' })
+});
+
+const MAX_ENCOUNTER_SCALE_GAP = 5;
+
+function getEncounterDifficultyProfile(encounterType) {
+  return ENCOUNTER_DIFFICULTY[encounterType] || ENCOUNTER_DIFFICULTY.common;
+}
+
+function getEncounterPlayerLevel(playerLevel = (typeof gameState !== 'undefined' ? gameState.level : 1)) {
+  const value = Number(playerLevel);
+  return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
+}
+
+function getEncounterTargetLevel(playerLevel, encounterType) {
+  const profile = getEncounterDifficultyProfile(encounterType);
+  const span = profile.targetOffsetMax - profile.targetOffsetMin + 1;
+  const offset = profile.targetOffsetMin + Math.floor(Math.random() * span);
+  return Math.max(1, getEncounterPlayerLevel(playerLevel) + offset);
+}
+
+function getEncounterThreat(encounterType, enemyLevel, playerLevel) {
+  const profileType = ENCOUNTER_DIFFICULTY[encounterType] ? encounterType : 'common';
+  const combatLevel = getEncounterPlayerLevel(playerLevel);
+  const level = Number(enemyLevel);
+  const gap = (Number.isFinite(level) ? level : combatLevel) - combatLevel;
+  const threatKey = profileType === 'boss'
+    ? 'milestone'
+    : profileType === 'elite' || gap >= 2
+      ? 'elevated'
+      : gap <= -1 ? 'minor' : 'balanced';
+  return { key: threatKey, encounterType: profileType, levelGap: gap, ...ENCOUNTER_THREAT[threatKey] };
+}
+
 // ============================================================================
 // LifeXP Block 1 - status effects and equipment effects
 // ============================================================================
@@ -190,7 +235,7 @@ function applyEquipmentOnHitEffects(attacker, defender, result) {
 }
 
 
-function initCombat(enemy, isTactical = false) {
+function initCombat(enemy, isTactical = false, encounterMeta = null) {
   const playerStats = typeof getDerivedStats === 'function' ? getDerivedStats() : gameState.stats;
   const resources = typeof calculateResources === 'function' ? calculateResources(playerStats) : {
     hp: 100 + playerStats.vit * 5,
@@ -202,6 +247,7 @@ function initCombat(enemy, isTactical = false) {
   combatState = {
     active: true,
     tactical: isTactical,
+    encounter: encounterMeta && typeof encounterMeta === 'object' ? { ...encounterMeta } : null,
     turn: 1,
     phase: 'player', // 'player' | 'enemy' | 'resolution' | 'victory' | 'defeat'
     
@@ -822,12 +868,79 @@ function rollEncounter(taskTheme, playerLevel) {
   return Math.random() < chance;
 }
 
+function pickNearestEncounterEnemy(candidates, playerLevel) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  const distances = candidates.map(enemy => Math.abs(Number(enemy.level) - playerLevel));
+  const nearestDistance = Math.min(...distances);
+  const nearest = candidates.filter(enemy => Math.abs(Number(enemy.level) - playerLevel) <= nearestDistance + 1);
+  return nearest[Math.floor(Math.random() * nearest.length)] || null;
+}
+
+function pickEncounterEnemy(theme, playerLevel, encounterType = 'common') {
+  const combatLevel = getEncounterPlayerLevel(playerLevel);
+  const profile = getEncounterDifficultyProfile(encounterType);
+  const minLevel = Math.max(1, combatLevel - profile.levelWindow);
+  const maxLevel = combatLevel + profile.levelWindow;
+  const themedCandidates = theme && typeof getEnemiesByTheme === 'function'
+    ? getEnemiesByTheme(theme).filter(enemy => enemy.type === encounterType)
+    : [];
+  const globalCandidates = typeof getEnemiesByType === 'function'
+    ? getEnemiesByType(encounterType)
+    : [];
+  const inBand = candidates => candidates.filter(enemy => enemy.level >= minLevel && enemy.level <= maxLevel);
+  const themedInBand = inBand(themedCandidates);
+  const globalInBand = inBand(globalCandidates);
+
+  if (themedInBand.length > 0) {
+    return { ...themedInBand[Math.floor(Math.random() * themedInBand.length)] };
+  }
+  if (globalInBand.length > 0) {
+    return { ...globalInBand[Math.floor(Math.random() * globalInBand.length)] };
+  }
+
+  const fallbackCandidates = [...new Map(
+    [...themedCandidates, ...globalCandidates].map(enemy => [enemy.id, enemy])
+  ).values()];
+  const nearest = pickNearestEncounterEnemy(fallbackCandidates, combatLevel);
+  return nearest ? { ...nearest } : null;
+}
+
+function scaleEncounterEnemy(enemy, targetLevel) {
+  if (!enemy) return null;
+  const originalLevel = Number.isFinite(Number(enemy.level)) ? Number(enemy.level) : 1;
+  const requestedLevel = Number.isFinite(Number(targetLevel)) ? Number(targetLevel) : originalLevel;
+  const lowerBound = Math.max(1, originalLevel - MAX_ENCOUNTER_SCALE_GAP);
+  const upperBound = originalLevel + MAX_ENCOUNTER_SCALE_GAP;
+  const safeTargetLevel = Math.floor(Math.max(lowerBound, Math.min(upperBound, requestedLevel)));
+  const levelDiff = safeTargetLevel - originalLevel;
+  const hpMultiplier = Math.max(0.75, Math.min(1.35, 1 + levelDiff * 0.1));
+  const statMultiplier = Math.max(0.8, Math.min(1.25, 1 + levelDiff * 0.05));
+  const rewardMultiplier = Math.max(0.75, Math.min(1.35, 1 + levelDiff * 0.1));
+  const scaled = { ...enemy, level: safeTargetLevel };
+
+  scaled.hp = Math.max(1, Math.floor(Math.max(1, Number(enemy.hp) || 1) * hpMultiplier));
+  scaled.maxHp = scaled.hp;
+  scaled.xp = Math.max(0, Math.floor(Math.max(0, Number(enemy.xp) || 0) * rewardMultiplier));
+  scaled.gold = Math.max(0, Math.floor(Math.max(0, Number(enemy.gold) || 0) * rewardMultiplier));
+
+  for (const stat of ['fue', 'vit', 'des', 'int', 'vol', 'pre']) {
+    const value = Number(enemy[stat]);
+    if (Number.isFinite(value)) scaled[stat] = Math.max(0, Math.floor(value * statMultiplier));
+  }
+  return scaled;
+}
+
 function getEncounterType(playerLevel) {
-  const roll = Math.random();
-  
-  // 80% common, 15% elite, 5% boss
-  if (roll < 0.80) return 'common';
-  if (roll < 0.95) return 'elite';
-  return 'boss';
+  const combatLevel = getEncounterPlayerLevel(playerLevel);
+  const available = Object.entries(ENCOUNTER_DIFFICULTY)
+    .filter(([, profile]) => combatLevel >= profile.minPlayerLevel);
+  const totalWeight = available.reduce((total, [, profile]) => total + profile.weight, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const [encounterType, profile] of available) {
+    roll -= profile.weight;
+    if (roll < 0) return encounterType;
+  }
+  return 'common';
 }
 
