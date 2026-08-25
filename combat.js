@@ -1,233 +1,241 @@
-// ===========================================================================
-// LifeXP RPG - combat.js
-// Sistema de combate, habilidades, estados, encuentros y recompensas.
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// LifeXP RPG - Combat System (Block 4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMBAT STATE
+// ═══════════════════════════════════════════════════════════════════════════
 
 let combatState = null;
 let combatRewardSequence = 0;
 
-// ===========================================================================
-// ENCOUNTER DIFFICULTY
-// ===========================================================================
+// Difficulty policy for newly generated individual encounters.
+const ENCOUNTER_DIFFICULTY = Object.freeze({
+  common: Object.freeze({ minPlayerLevel: 1, weight: 80, levelWindow: 3, targetOffsetMin: -1, targetOffsetMax: 1 }),
+  elite: Object.freeze({ minPlayerLevel: 5, weight: 15, levelWindow: 3, targetOffsetMin: 0, targetOffsetMax: 2 }),
+  boss: Object.freeze({ minPlayerLevel: 15, weight: 5, levelWindow: 4, targetOffsetMin: 0, targetOffsetMax: 1 })
+});
 
 const ENCOUNTER_THREAT = Object.freeze({
-  minor: {
-    label: 'Amenaza menor',
-    description: 'Un encuentro por debajo de tu nivel. Sirve para limpiar la zona y mantener el ritmo.',
-    tactical: false
-  },
-  balanced: {
-    label: 'Encuentro equilibrado',
-    description: 'Un encuentro en torno a tu nivel actual.',
-    tactical: false
-  },
-  elevated: {
-    label: 'Amenaza elevada',
-    description: 'Un encuentro por encima de tu nivel. Conviene prepararse.',
-    tactical: true
-  },
-  milestone: {
-    label: 'Desafío mayor',
-    description: 'Un encuentro de riesgo alto que exige una buena preparación.',
-    tactical: true
-  }
+  minor: Object.freeze({ label: 'Amenaza menor', description: 'Una prueba manejable para mantener el ritmo.' }),
+  balanced: Object.freeze({ label: 'Amenaza equilibrada', description: 'Un combate acorde a tu preparación actual.' }),
+  elevated: Object.freeze({ label: 'Amenaza elevada', description: 'Conviene observar tus recursos antes de comprometerte.' }),
+  milestone: Object.freeze({ label: 'Hito de combate', description: 'Un desafío excepcional que exige preparación.' })
 });
 
-function getEncounterPlayerLevel(playerLevel) {
-  return Math.max(1, Number(playerLevel) || 1);
+const MAX_ENCOUNTER_SCALE_GAP = 5;
+
+function getEncounterDifficultyProfile(encounterType) {
+  return ENCOUNTER_DIFFICULTY[encounterType] || ENCOUNTER_DIFFICULTY.common;
 }
 
-function getEncounterDifficultyProfile(encounterType = 'common') {
-  const profiles = {
-    common: { levelWindow: 2 },
-    elite: { levelWindow: 1 },
-    boss: { levelWindow: 0 }
-  };
-  return profiles[encounterType] || profiles.common;
+function getEncounterPlayerLevel(playerLevel = (typeof gameState !== 'undefined' ? gameState.level : 1)) {
+  const value = Number(playerLevel);
+  return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
 }
 
-function getEncounterThreat(encounterType, enemyLevel, playerLevel) {
-  const combatLevel = getEncounterPlayerLevel(playerLevel);
-  const levelGap = (Number(enemyLevel) || combatLevel) - combatLevel;
-  const threatKey = encounterType === 'boss' || levelGap >= 3
-    ? 'milestone'
-    : levelGap >= 1
-      ? 'elevated'
-      : levelGap <= -2 ? 'minor' : 'balanced';
-  return { key: threatKey, encounterType, levelGap, ...ENCOUNTER_THREAT[threatKey] };
-}
-
-const GROUP_FORMATION_POLICY = Object.freeze({
-  commonChance: 0.08,
-  minMembers: 5,
-  maxMembers: 6,
-  homogeneousWeight: 55,
-  memberTargetOffsetMin: -3,
-  memberTargetOffsetMax: 1
-});
-
-function getFormationThreat(members, playerLevel, encounterType = 'common') {
-  const validMembers = Array.isArray(members) ? members.filter(Boolean) : [];
-  if (validMembers.length === 0) return getEncounterThreat(encounterType, playerLevel, playerLevel);
-  const combatLevel = getEncounterPlayerLevel(playerLevel);
-  const averageLevel = validMembers.reduce((total, member) => total + (Number(member.level) || combatLevel), 0) / validMembers.length;
-  const levelGap = averageLevel - combatLevel;
-  const formationPressure = levelGap + Math.max(0, validMembers.length - 1) * 0.75;
-  const threatKey = encounterType === 'boss' || formationPressure >= 3
-    ? 'milestone'
-    : formationPressure >= 1.5
-      ? 'elevated'
-      : formationPressure <= -2 ? 'minor' : 'balanced';
-  return {
-    key: threatKey,
-    encounterType,
-    levelGap,
-    formationPressure,
-    memberCount: validMembers.length,
-    averageLevel,
-    ...ENCOUNTER_THREAT[threatKey]
-  };
-}
-
-function getFormationMemberTargetLevel(playerLevel) {
-  const span = GROUP_FORMATION_POLICY.memberTargetOffsetMax - GROUP_FORMATION_POLICY.memberTargetOffsetMin + 1;
-  const offset = GROUP_FORMATION_POLICY.memberTargetOffsetMin + Math.floor(Math.random() * span);
+function getEncounterTargetLevel(playerLevel, encounterType) {
+  const profile = getEncounterDifficultyProfile(encounterType);
+  const span = profile.targetOffsetMax - profile.targetOffsetMin + 1;
+  const offset = profile.targetOffsetMin + Math.floor(Math.random() * span);
   return Math.max(1, getEncounterPlayerLevel(playerLevel) + offset);
 }
 
-function getCommonEncounterCandidates(theme, playerLevel) {
+function getEncounterThreat(encounterType, enemyLevel, playerLevel) {
+  const profileType = ENCOUNTER_DIFFICULTY[encounterType] ? encounterType : 'common';
   const combatLevel = getEncounterPlayerLevel(playerLevel);
-  const profile = getEncounterDifficultyProfile('common');
-  const minLevel = Math.max(1, combatLevel - profile.levelWindow);
-  const maxLevel = combatLevel + profile.levelWindow;
-  const themed = theme && typeof getEnemiesByTheme === 'function'
-    ? getEnemiesByTheme(theme).filter(enemy => enemy.type === 'common')
-    : [];
-  const global = typeof getEnemiesByType === 'function' ? getEnemiesByType('common') : [];
-  const inBand = candidates => candidates.filter(enemy => enemy.level >= minLevel && enemy.level <= maxLevel);
-  const candidates = inBand(themed);
-  if (candidates.length > 0) return candidates;
-  const globalInBand = inBand(global);
-  return globalInBand.length > 0 ? globalInBand : [...new Map(
-    [...themed, ...global].map(enemy => [enemy.id, enemy])
-  ).values()];
+  const level = Number(enemyLevel);
+  const gap = (Number.isFinite(level) ? level : combatLevel) - combatLevel;
+  const threatKey = profileType === 'boss'
+    ? 'milestone'
+    : profileType === 'elite' || gap >= 2
+      ? 'elevated'
+      : gap <= -1 ? 'minor' : 'balanced';
+  return { key: threatKey, encounterType: profileType, levelGap: gap, ...ENCOUNTER_THREAT[threatKey] };
 }
 
-function generateEncounterFormation(theme, playerLevel, encounterType = 'common') {
-  if (encounterType !== 'common' || Math.random() >= GROUP_FORMATION_POLICY.commonChance) return null;
-  const candidates = getCommonEncounterCandidates(theme, playerLevel);
-  if (candidates.length === 0) return null;
-
-  const memberCount = GROUP_FORMATION_POLICY.minMembers
-    + Math.floor(Math.random() * (GROUP_FORMATION_POLICY.maxMembers - GROUP_FORMATION_POLICY.minMembers + 1));
-  const isHomogeneous = Math.random() * 100 < GROUP_FORMATION_POLICY.homogeneousWeight;
-  const members = [];
-  const first = candidates[Math.floor(Math.random() * candidates.length)];
-  const sources = isHomogeneous
-    ? Array.from({ length: memberCount }, () => first)
-    : Array.from({ length: memberCount }, () => candidates[Math.floor(Math.random() * candidates.length)]);
-
-  for (const source of sources) {
-    const targetLevel = getFormationMemberTargetLevel(playerLevel);
-    const scaled = scaleEncounterEnemy(source, targetLevel);
-    if (scaled) members.push(scaled);
-  }
-  if (members.length === 0) return null;
-
-  return {
-    members,
-    mode: isHomogeneous ? 'homogeneous' : 'mixed',
-    memberCount: members.length,
-    targetLevel: getEncounterPlayerLevel(playerLevel)
-  };
+// ============================================================================
+// LifeXP Block 1 - status effects and equipment effects
+// ============================================================================
+function getCombatEffectDefinition(effect) {
+  return effect?.effect || effect?.data || effect || {};
 }
 
-// ===========================================================================
-// STATUS EFFECTS
-// ===========================================================================
-
-const STATUS_DEFINITIONS = {
-  poison: { name: 'Veneno', icon: '☠️', color: '#8bc34a' },
-  burn: { name: 'Quemadura', icon: '🔥', color: '#ff5722' },
-  bleed: { name: 'Sangrado', icon: '🩸', color: '#e91e63' },
-  stun: { name: 'Aturdido', icon: '💫', color: '#ffc107' },
-  freeze: { name: 'Congelado', icon: '❄️', color: '#03a9f4' },
-  weaken: { name: 'Debilitado', icon: '⬇️', color: '#9e9e9e' },
-  strengthen: { name: 'Fortalecido', icon: '⬆️', color: '#4caf50' },
-  regen: { name: 'Regeneración', icon: '💚', color: '#00c853' },
-  shield: { name: 'Escudo', icon: '🛡️', color: '#2196f3' },
-  focus: { name: 'Concentración', icon: '🎯', color: '#673ab7' }
-};
-
-function applyStatusEffect(target, status, data = {}, sourceId = null) {
+function applyStatusEffect(target, status, data = {}, source = 'unknown') {
   if (!target) return false;
-  const duration = Math.max(1, Number(data.duration) || 1);
-  const amount = Number(data.amount) || 0;
-  const effect = {
-    id: `${status}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-    type: status,
-    name: data.name || STATUS_DEFINITIONS[status]?.name || status,
-    icon: data.icon || STATUS_DEFINITIONS[status]?.icon || '✨',
-    duration,
-    remaining: duration,
-    amount,
-    sourceId,
-    damage: Number(data.damage) || 0
-  };
-  const collection = status === 'strengthen' || status === 'regen' || status === 'shield' || status === 'focus'
-    ? target.buffs
-    : target.debuffs;
-  if (!Array.isArray(collection)) return false;
-  const existing = collection.find(item => item.type === status);
-  if (existing) {
-    existing.remaining = Math.max(existing.remaining, duration);
-    existing.amount = Math.max(existing.amount || 0, amount);
-    existing.damage = Math.max(existing.damage || 0, effect.damage);
-  } else {
-    collection.push(effect);
-  }
+  const list = target.debuffs || (target.debuffs = []);
+  const existing = list.find(x => x.status === status);
+  const duration = Math.max(1, Number(data.duration || 1));
+  const stacks = Math.max(1, Number(data.stacks || 1));
+  if (existing) { existing.duration = Math.max(existing.duration, duration); existing.stacks = Math.min(Number(data.maxStacks || 99), (existing.stacks || 1) + stacks); }
+  else list.push({ status, duration, stacks, damage: Number(data.damage || 0), source });
   return true;
 }
 
-function removeStatusEffect(target, effectId) {
-  if (!target) return false;
-  for (const collection of [target.buffs, target.debuffs]) {
-    const index = Array.isArray(collection) ? collection.findIndex(effect => effect.id === effectId) : -1;
-    if (index >= 0) {
-      collection.splice(index, 1);
-      return true;
+function tickCombatStatuses(target, label = 'Objetivo') {
+  if (!target?.debuffs) return [];
+  const messages = [];
+
+  for (const effect of target.debuffs) {
+    const stacks = Math.max(1, Number(effect.stacks || 1));
+
+    switch (effect.status) {
+
+      // ── BURN: damage per turn ──────────────────────────────────────────
+      case 'burn': {
+        const dmg = Math.max(1, Number(effect.damage || 3) * stacks);
+        target.hp = Math.max(0, target.hp - dmg);
+        messages.push(`🔥 ${label} sufre ${dmg} de daño por quemadura.`);
+        break;
+      }
+
+      // ── POISON: damage per turn (scales with stacks) ───────────────────
+      case 'poison': {
+        const dmg = Math.max(1, Math.floor((Number(effect.damage || 2) + stacks) * stacks));
+        target.hp = Math.max(0, target.hp - dmg);
+        messages.push(`☠️ ${label} sufre ${dmg} de daño por veneno.`);
+        break;
+      }
+
+      // ── BLEED: flat damage per turn ────────────────────────────────────
+      case 'bleed': {
+        const dmg = Math.max(1, Number(effect.damage || 3) * stacks);
+        target.hp = Math.max(0, target.hp - dmg);
+        messages.push(`🩸 ${label} sangra: ${dmg} de daño.`);
+        break;
+      }
+
+      // ── FEAR: 50% chance to skip action ───────────────────────────────
+      case 'fear': {
+        if (Math.random() < 0.5) {
+          target._skipTurn = true;
+          messages.push(`😨 ${label} está aterrorizado y no puede actuar.`);
+        }
+        break;
+      }
+
+      // ── SLOW: reduces action count / speed ────────────────────────────
+      case 'slow': {
+        target._slowed = true;
+        messages.push(`🐢 ${label} está ralentizado.`);
+        break;
+      }
+
+      // ── BLIND: reduces accuracy (applied as flag, checked in calculateDamage) ──
+      case 'blind': {
+        target._blinded = true;
+        messages.push(`🌑 ${label} está cegado (precisión reducida).`);
+        break;
+      }
+
+      // ── SLEEP: skip turn; breaks on damage ────────────────────────────
+      case 'sleep': {
+        target._skipTurn = true;
+        messages.push(`💤 ${label} está dormido y no puede actuar.`);
+        break;
+      }
+
+      // ── CONFUSION: 40% chance to attack self/ally ─────────────────────
+      case 'confusion': {
+        if (Math.random() < 0.4) {
+          target._confused = true;
+          messages.push(`🌀 ${label} está confundido y podría atacarse a sí mismo.`);
+        }
+        break;
+      }
+
+      // ── MP_DRAIN: drains MP each turn ─────────────────────────────────
+      case 'mp_drain': {
+        const drain = Math.max(1, Number(effect.damage || 5) * stacks);
+        if (target.mp !== undefined) {
+          target.mp = Math.max(0, target.mp - drain);
+          messages.push(`💙 ${label} pierde ${drain} MP por drenaje.`);
+        }
+        break;
+      }
+
+      // ── LIFESTEAL: heals attacker on hit (flag for calculateDamage) ───
+      case 'lifesteal': {
+        target._lifesteal = true;
+        break;
+      }
+
+      // ── ATTACK_UP: buff — increases damage dealt ───────────────────────
+      case 'attack_up': {
+        target._attackMult = (target._attackMult || 1) * 1.25;
+        messages.push(`⚔️ ${label} tiene ataque aumentado.`);
+        break;
+      }
+
+      // ── DEFENSE_UP: buff — reduces damage received ─────────────────────
+      case 'defense_up': {
+        target._defenseMult = (target._defenseMult || 1) * 0.75;
+        messages.push(`🛡️ ${label} tiene defensa aumentada.`);
+        break;
+      }
+
+      // ── EVASION_UP: buff — increases dodge chance ──────────────────────
+      case 'evasion_up': {
+        target._evasionBonus = (target._evasionBonus || 0) + 20;
+        messages.push(`💨 ${label} tiene evasión aumentada.`);
+        break;
+      }
+
+      // ── ALL_STATS_UP: buff — all multipliers ──────────────────────────
+      case 'all_stats_up': {
+        target._attackMult  = (target._attackMult  || 1) * 1.15;
+        target._defenseMult = (target._defenseMult || 1) * 0.85;
+        target._evasionBonus = (target._evasionBonus || 0) + 10;
+        messages.push(`✨ ${label} tiene todos los atributos aumentados.`);
+        break;
+      }
     }
+
+    effect.duration -= 1;
   }
-  return false;
+
+  // Remove expired effects; also clear per-turn buff flags before next tick
+  target.debuffs = target.debuffs.filter(x => x.duration > 0);
+
+  // Clear per-turn flags that must be re-applied each tick
+  if (!target.debuffs.some(x => x.status === 'attack_up' || x.status === 'all_stats_up'))
+    delete target._attackMult;
+  if (!target.debuffs.some(x => x.status === 'defense_up' || x.status === 'all_stats_up'))
+    delete target._defenseMult;
+  if (!target.debuffs.some(x => x.status === 'evasion_up' || x.status === 'all_stats_up'))
+    delete target._evasionBonus;
+  if (!target.debuffs.some(x => x.status === 'slow'))   delete target._slowed;
+  if (!target.debuffs.some(x => x.status === 'blind'))  delete target._blinded;
+  if (!target.debuffs.some(x => x.status === 'lifesteal')) delete target._lifesteal;
+  // _skipTurn and _confused are consumed by the caller each turn
+  delete target._skipTurn;
+  delete target._confused;
+
+  messages.forEach(addCombatLog);
+  return messages;
 }
 
-function tickCombatStatuses(target, label) {
-  const effects = [
-    ...(Array.isArray(target?.buffs) ? target.buffs : []),
-    ...(Array.isArray(target?.debuffs) ? target.debuffs : [])
-  ];
-  const results = [];
-  for (const effect of effects) {
-    if (effect.type === 'poison' || effect.type === 'burn' || effect.type === 'bleed') {
-      const damage = effect.damage || effect.amount || 0;
-      target.hp = Math.max(0, target.hp - damage);
-      results.push({ type: effect.type, damage });
-      addCombatLog(`${effect.icon} ${label} sufre ${damage} de ${effect.name}.`);
-    } else if (effect.type === 'regen') {
-      const heal = Math.min(effect.amount || 0, target.maxHp - target.hp);
-      target.hp += heal;
-      results.push({ type: effect.type, heal });
-      addCombatLog(`${effect.icon} ${label} recupera ${heal} HP.`);
-    }
-    effect.remaining -= 1;
-    if (effect.remaining <= 0) removeStatusEffect(target, effect.id);
+function applyEquipmentOnHitEffects(attacker, defender, result) {
+  if (attacker !== combatState?.player || !defender || !result) return [];
+  const applied = [];
+  if (typeof getEquippedItemEffects !== 'function') return applied;
+  for (const effect of getEquippedItemEffects()) {
+    const data = getCombatEffectDefinition(effect);
+    const trigger = effect.trigger || data.trigger || 'on_hit';
+    if (trigger !== 'on_hit') continue;
+    const chance = Number(effect.chance ?? data.chance ?? 1);
+    if (Math.random() > chance) continue;
+    const status = effect.status || data.status;
+    if (!status) continue;
+    applyStatusEffect(defender, status, { ...data, damage: data.damage || (status === 'burn' ? 4 : 0) }, effect.itemId);
+    applied.push(status);
+    addCombatLog(`${effect.name || status} aplicado.`);
   }
-  return results;
+  return applied;
 }
 
-// ===========================================================================
-// COMBAT CORE
-// ===========================================================================
+
+const COMBAT_FORMATION_VERSION = 1;
 
 function createCombatantInstance(enemy, index = 0) {
   if (!enemy || typeof enemy !== 'object') return null;
@@ -258,7 +266,7 @@ function createCombatFormation(enemy, encounterMeta = null) {
     ? encounterMeta.formation
     : {};
   return {
-    version: 1,
+    version: COMBAT_FORMATION_VERSION,
     id: sourceMeta.id || `formation:${members.map(member => member.instanceId).join('|')}`,
     mode: sourceMeta.mode || (members.length === 1 ? 'single' : 'group'),
     members
@@ -279,30 +287,6 @@ function getCombatMemberByInstanceId(instanceId, state = combatState) {
   return getCombatMembers(state).find(member => member.instanceId === instanceId) || null;
 }
 
-function getCombatTarget(targetInstanceId = null, state = combatState) {
-  if (!state) return null;
-  if (targetInstanceId) return getCombatMemberByInstanceId(targetInstanceId, state);
-  if (state.selectedTargetInstanceId) {
-    const selected = getCombatMemberByInstanceId(state.selectedTargetInstanceId, state);
-    if (selected) return selected;
-  }
-  return state.enemy && state.enemy.hp > 0 ? state.enemy : getLivingCombatMembers(state)[0] || null;
-}
-
-function validateCombatTarget(targetInstanceId = null, state = combatState) {
-  const target = getCombatTarget(targetInstanceId, state);
-  if (!target) return { valid: false, target: null, message: 'No hay un objetivo válido.' };
-  if (target.hp <= 0) return { valid: false, target, message: 'Ese objetivo ya ha sido derrotado.' };
-  return { valid: true, target, message: null };
-}
-
-function selectCombatTarget(targetInstanceId, state = combatState) {
-  const validation = validateCombatTarget(targetInstanceId, state);
-  if (!validation.valid) return validation;
-  state.selectedTargetInstanceId = validation.target.instanceId;
-  return { valid: true, target: validation.target, message: null };
-}
-
 function initCombat(enemy, isTactical = false, encounterMeta = null) {
   const playerStats = typeof getDerivedStats === 'function' ? getDerivedStats() : gameState.stats;
   const resources = typeof calculateResources === 'function' ? calculateResources(playerStats) : {
@@ -319,9 +303,8 @@ function initCombat(enemy, isTactical = false, encounterMeta = null) {
     active: true,
     tactical: isTactical,
     encounter: encounterMeta && typeof encounterMeta === 'object' ? { ...encounterMeta } : null,
-    formation,
     turn: 1,
-    phase: 'player',
+    phase: 'player', // 'player' | 'enemy' | 'resolution' | 'victory' | 'defeat'
     
     player: {
       hp: resources.hp,
@@ -338,15 +321,14 @@ function initCombat(enemy, isTactical = false, encounterMeta = null) {
       defending: false
     },
     
+    formation,
     // Compatibility alias: current combat logic continues to use the primary
     // member until the target-selection phase is enabled.
     enemy: primaryEnemy,
     
     log: [],
     rewards: null,
-    rewardClaimId: createCombatRewardClaimId(formation.members.length === 1
-      ? primaryEnemy
-      : { id: formation.id }),
+    rewardClaimId: createCombatRewardClaimId(enemy),
     rewardApplication: {
       xpApplied: false,
       goldApplied: false,
@@ -366,9 +348,9 @@ function createCombatRewardClaimId(enemy) {
   return `combat:${enemyId}:${Date.now()}:${combatRewardSequence}`;
 }
 
-// ===========================================================================
-// DAMAGE CALCULATION
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// DAMAGE CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════════════
 
 function calculateDamage(attacker, defender, skill = null) {
   let baseDamage = 0;
@@ -378,116 +360,144 @@ function calculateDamage(attacker, defender, skill = null) {
     baseDamage = skill.power || 10;
     damageType = skill.damageType || 'physical';
     
+    // Scale with stat
     if (skill.scaling) {
       for (const [stat, mult] of Object.entries(skill.scaling)) {
         baseDamage += Math.floor((attacker.stats?.[stat] || attacker[stat] || 10) * mult);
       }
     }
   } else {
-    baseDamage = 5 + Math.floor((attacker.fue || attacker.stats?.fue || 10) * 0.8);
+    // Basic attack
+    const fue = attacker.stats?.fue || attacker.fue || 10;
+    const des = attacker.stats?.des || attacker.des || 10;
+    baseDamage = 5 + Math.floor(fue * 0.8 + des * 0.2);
   }
   
-  const attackerStats = attacker.stats || attacker;
-  const defenderStats = defender.stats || defender;
-  const attackStat = damageType === 'magical' ? (attackerStats.int || 10) : (attackerStats.fue || 10);
-  const defenseStat = damageType === 'magical' ? (defenderStats.vol || 10) : (defenderStats.vit || 10);
-  const defense = Math.floor(defenseStat * 0.5);
-  let damage = Math.max(1, Math.floor(baseDamage + attackStat * 0.4 - defense));
-  
-  const isCrit = Math.random() * 100 < (attackerStats.pre || 10) * 0.5;
-  if (isCrit) damage = Math.floor(damage * 1.5);
-  
-  if (defender.defending) damage = Math.floor(damage * 0.5);
-  const shield = (defender.buffs || []).find(effect => effect.type === 'shield');
-  if (shield) {
-    const absorbed = Math.min(shield.amount || 0, damage);
-    shield.amount -= absorbed;
-    damage -= absorbed;
-    if (shield.amount <= 0) removeStatusEffect(defender, shield.id);
+  // Equipment bonus (player only)
+  if (attacker === combatState?.player && typeof getEquipmentStats === 'function') {
+    const eqStats = getEquipmentStats();
+    if (damageType === 'physical') {
+      baseDamage += Math.floor((eqStats.fue || 0) * 0.5);
+    } else if (damageType === 'magical') {
+      baseDamage += Math.floor((eqStats.int || 0) * 0.5);
+    }
   }
   
-  return { damage: Math.max(0, damage), damageType, isCrit };
+  // Critical hit (DES-based)
+  const critChance = (attacker.stats?.des || attacker.des || 10) * 0.5 + 5;
+  const isCrit = Math.random() * 100 < critChance;
+  if (isCrit) {
+    baseDamage = Math.floor(baseDamage * 1.5);
+  }
+  
+  // Defense reduction
+  const defense = defender.stats?.vit || defender.vit || defender.def || 5;
+  const reduction = Math.floor(defense * 0.3);
+  
+  // Defending stance
+  if (defender.defending) {
+    baseDamage = Math.floor(baseDamage * 0.5);
+  }
+
+  // Status: attacker attack_up / all_stats_up
+  if (attacker._attackMult) baseDamage = Math.floor(baseDamage * attacker._attackMult);
+
+  // Status: defender defense_up / all_stats_up
+  if (defender._defenseMult) baseDamage = Math.floor(baseDamage * defender._defenseMult);
+
+  // Status: attacker blind — 35% chance to miss entirely
+  if (attacker._blinded && Math.random() < 0.35) {
+    return { damage: 0, isCrit: false, damageType, missed: true };
+  }
+
+  // Status: defender evasion_up — extra dodge chance
+  if (defender._evasionBonus) {
+    const dodgeRoll = Math.random() * 100;
+    if (dodgeRoll < defender._evasionBonus) {
+      return { damage: 0, isCrit: false, damageType, dodged: true };
+    }
+  }
+
+  const finalDamage = Math.max(1, baseDamage - reduction);
+
+  // Status: attacker lifesteal — heal 30% of damage dealt
+  if (attacker._lifesteal) {
+    const heal = Math.floor(finalDamage * 0.3);
+    attacker.hp = Math.min(attacker.maxHp || attacker.hp + heal, attacker.hp + heal);
+  }
+
+  return { damage: finalDamage, isCrit, damageType };
 }
 
-function calculateHeal(attacker, skill) {
-  const base = skill.power || 20;
-  const scaling = skill.scaling?.int || 0.5;
-  return Math.max(1, Math.floor(base + (attacker.stats?.int || attacker.int || 10) * scaling));
+function calculateHeal(caster, skill) {
+  let baseHeal = skill.power || 20;
+  
+  if (skill.scaling) {
+    for (const [stat, mult] of Object.entries(skill.scaling)) {
+      baseHeal += Math.floor((caster.stats?.[stat] || caster[stat] || 10) * mult);
+    }
+  }
+  
+  return baseHeal;
 }
 
-// ===========================================================================
-// PLAYER SKILLS
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// PLAYER ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════
 
 const PLAYER_SKILLS = {
+  // Basic attacks by class affinity
   basic_attack: {
-    id: 'basic_attack', name: 'Ataque básico', icon: '⚔️', type: 'attack', power: 10,
-    scaling: { fue: 0.6 }, desc: 'Un ataque físico fiable.'
+    id: 'basic_attack', name: 'Ataque básico', icon: '⚔️',
+    type: 'attack', cost: 0, costType: null,
+    power: 10, scaling: { fue: 0.8, des: 0.2 }, damageType: 'physical',
+    desc: 'Un golpe simple pero efectivo.'
   },
+  
+  // Physical skills (SP)
   power_strike: {
-    id: 'power_strike', name: 'Golpe poderoso', icon: '💥', type: 'attack', power: 22,
-    scaling: { fue: 0.9 }, costType: 'sp', cost: 20, desc: 'Un golpe fuerte que consume energía.'
+    id: 'power_strike', name: 'Golpe Potente', icon: '💪',
+    type: 'attack', cost: 15, costType: 'sp',
+    power: 25, scaling: { fue: 1.2 }, damageType: 'physical',
+    desc: 'Un golpe con toda tu fuerza.'
   },
-  quick_shot: {
-    id: 'quick_shot', name: 'Disparo rápido', icon: '🏹', type: 'attack', power: 14,
-    scaling: { des: 0.8 }, costType: 'sp', cost: 15, desc: 'Un disparo veloz y preciso.'
+  quick_slash: {
+    id: 'quick_slash', name: 'Tajo Rápido', icon: '⚡',
+    type: 'attack', cost: 10, costType: 'sp',
+    power: 15, scaling: { des: 1.0, fue: 0.3 }, damageType: 'physical',
+    desc: 'Ataque veloz con alta probabilidad de crítico.'
   },
-  fireball: {
-    id: 'fireball', name: 'Bola de fuego', icon: '🔥', type: 'attack', power: 28,
-    scaling: { int: 1.1 }, damageType: 'magical', costType: 'mp', cost: 18, desc: 'Daño mágico de fuego.'
+  
+  // Magic skills (MP)
+  fire_bolt: {
+    id: 'fire_bolt', name: 'Descarga de Fuego', icon: '🔥',
+    type: 'attack', cost: 12, costType: 'mp',
+    power: 20, scaling: { int: 1.0 }, damageType: 'magical',
+    desc: 'Lanza una bola de fuego al enemigo.'
   },
   heal: {
-    id: 'heal', name: 'Curar', icon: '💚', type: 'heal', power: 24,
-    scaling: { int: 0.8 }, costType: 'mp', cost: 15, desc: 'Recupera una parte de tus HP.'
+    id: 'heal', name: 'Curación', icon: '💚',
+    type: 'heal', cost: 15, costType: 'mp',
+    power: 30, scaling: { vol: 0.8, int: 0.3 },
+    desc: 'Restaura HP.'
   },
+  
+  // Defensive
   defend: {
-    id: 'defend', name: 'Defender', icon: '🛡️', type: 'defend', focusGain: 15,
-    desc: 'Reduce el daño del siguiente turno.'
+    id: 'defend', name: 'Defender', icon: '🛡️',
+    type: 'defend', cost: 0, costType: null,
+    focusGain: 15,
+    desc: 'Reduce el daño recibido 50% y gana Focus.'
   },
-  focus_strike: {
-    id: 'focus_strike', name: 'Golpe concentrado', icon: '🎯', type: 'attack', power: 40,
-    scaling: { fue: 1.2 }, costType: 'focus', cost: 50, desc: 'Un golpe de gran precisión.'
-  },
-  ultimate: {
-    id: 'ultimate', name: 'Técnica definitiva', icon: '✨', type: 'ultimate', power: 60,
-    scaling: { fue: 1.5, int: 0.5 }, costType: 'focus', cost: 100, desc: 'Tu técnica más poderosa.'
+  
+  // Ultimate (Focus)
+  ultimate_strike: {
+    id: 'ultimate_strike', name: 'Golpe Definitivo', icon: '💥',
+    type: 'ultimate', cost: 100, costType: 'focus',
+    power: 80, scaling: { fue: 1.5, des: 0.5 }, damageType: 'physical',
+    desc: 'Tu ataque más poderoso. Requiere Focus completo.'
   }
 };
-
-function getPlayerSkillContext(player) {
-  const stats = player?.stats || {};
-  return {
-    stats,
-    level: gameState?.level || 1,
-    equippedSkills: gameState?.equippedSkills || [],
-    knownSkills: gameState?.knownSkills || [],
-    classId: gameState?.classId || null
-  };
-}
-
-function resolvePlayerSkill(actionId, context) {
-  const definition = PLAYER_SKILLS[actionId];
-  if (!definition) return null;
-  const known = actionId === 'basic_attack' || actionId === 'defend' || actionId === 'flee'
-    || (Array.isArray(context.knownSkills) && context.knownSkills.includes(actionId));
-  const equipped = actionId === 'basic_attack' || actionId === 'defend'
-    || (Array.isArray(context.equippedSkills) && context.equippedSkills.includes(actionId));
-  return {
-    ...definition,
-    known,
-    equipped,
-    authorized: known && equipped,
-    usable: known && equipped,
-    reason: !known ? 'unknown' : !equipped ? 'not_equipped' : null
-  };
-}
-
-function getResolvedPlayerSkills(context) {
-  return Object.keys(PLAYER_SKILLS).map(id => {
-    const resolved = resolvePlayerSkill(id, context);
-    return { id, definition: PLAYER_SKILLS[id], ...resolved };
-  });
-}
 
 function getAvailableActions() {
   const p = combatState.player;
@@ -509,6 +519,7 @@ function getAvailableActions() {
     });
   }
   
+  // Flee is a combat action, not a player skill.
   actions.push({
     id: 'flee', name: 'Huir', icon: '🏃', type: 'flee',
     available: true,
@@ -519,35 +530,27 @@ function getAvailableActions() {
   return actions;
 }
 
-// ===========================================================================
-// PLAYER ACTIONS
-// ===========================================================================
-
-function executePlayerAction(actionId, targetInstanceId = null) {
+function executePlayerAction(actionId) {
   if (!combatState || combatState.phase !== 'player') return null;
 
   const p = combatState.player;
   const e = combatState.enemy;
 
-  const action = PLAYER_SKILLS[actionId] || { id: actionId };
-  const requiresTarget = action.type === 'attack' || action.type === 'ultimate';
-  const targetValidation = requiresTarget ? validateCombatTarget(targetInstanceId) : null;
-  if (targetValidation && !targetValidation.valid) {
-    return { action: actionId, success: false, message: targetValidation.message, effects: [] };
-  }
-  const target = targetValidation?.target || e;
-
+  // Tick player status effects at start of player turn
   tickCombatStatuses(p, 'Tú');
   if (p.hp <= 0) { combatState.phase = 'defeat'; return { action: 'status', defeat: true, effects: [] }; }
 
+  // Skip turn if feared or asleep
   if (p._skipTurn) {
     delete p._skipTurn;
     combatState.phase = 'enemy';
     return { action: 'skip', success: false, message: 'No puedes actuar este turno.', effects: [] };
   }
 
+  // Reset defending
   p.defending = false;
   
+  const action = PLAYER_SKILLS[actionId] || { id: actionId };
   const resolvedSkill = actionId === 'flee' ? null : resolvePlayerSkill(actionId, getPlayerSkillContext(p));
   if (actionId !== 'flee' && (!resolvedSkill || !resolvedSkill.usable)) {
     return {
@@ -564,6 +567,7 @@ function executePlayerAction(actionId, targetInstanceId = null) {
   switch (action.type || actionId) {
     case 'attack':
     case 'ultimate':
+      // Pay cost
       if (action.costType && action.cost) {
         if (p[action.costType] < action.cost) {
           result.success = false;
@@ -573,11 +577,12 @@ function executePlayerAction(actionId, targetInstanceId = null) {
         p[action.costType] -= action.cost;
       }
       
-      const dmgResult = calculateDamage(p, target, action);
-      target.hp = Math.max(0, target.hp - dmgResult.damage);
-      result.targetInstanceId = target.instanceId;
-      result.effects.push(...applyEquipmentOnHitEffects(p, target, dmgResult));
+      // Calculate and apply damage
+      const dmgResult = calculateDamage(p, e, action);
+      e.hp = Math.max(0, e.hp - dmgResult.damage);
+      result.effects.push(...applyEquipmentOnHitEffects(p, e, dmgResult));
       
+      // Gain focus from attacking
       p.focus = Math.min(p.focusMax, p.focus + 10);
       
       result.damage = dmgResult.damage;
@@ -621,10 +626,11 @@ function executePlayerAction(actionId, targetInstanceId = null) {
       break;
   }
   
-  if (getLivingCombatMembers().length === 0) {
+  // Check victory
+  if (e.hp <= 0) {
     combatState.phase = 'victory';
     result.victory = true;
-    addCombatLog(`🏆 ¡Victoria! ${getCombatMembers().length === 1 ? e.name + ' derrotado.' : 'La formación ha sido derrotada.'}`);
+    addCombatLog(`🏆 ¡Victoria! ${e.name} derrotado.`);
     calculateCombatRewards();
   } else if (combatState.phase === 'player') {
     combatState.phase = 'enemy';
@@ -633,106 +639,81 @@ function executePlayerAction(actionId, targetInstanceId = null) {
   return result;
 }
 
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 // ENEMY AI
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 
-function executeEnemyMemberTurn(enemyMember, player) {
-  const result = { action: 'attack', effects: [], memberInstanceId: enemyMember.instanceId };
-
-  tickCombatStatuses(enemyMember, enemyMember.name || 'Enemigo');
-  if (enemyMember.hp <= 0) {
-    result.action = 'status';
-    result.defeated = true;
-    return result;
-  }
-
-  if (enemyMember._skipTurn) {
-    delete enemyMember._skipTurn;
-    addCombatLog(`${enemyMember.icon || '👾'} ${enemyMember.name} no puede actuar este turno.`);
-    result.action = 'skip';
-    return result;
-  }
-
-  enemyMember.defending = false;
+function executeEnemyTurn() {
+  if (!combatState || combatState.phase !== 'enemy') return null;
   
+  const p = combatState.player;
+  const e = combatState.enemy;
+  
+  tickCombatStatuses(e, e.name || 'Enemigo');
+  if (e.hp <= 0) { combatState.phase = 'victory'; calculateCombatRewards(); return { action: 'status', victory: true, effects: [] }; }
+
+  // Skip turn if feared or asleep
+  if (e._skipTurn) {
+    delete e._skipTurn;
+    combatState.phase = 'player';
+    addCombatLog(`${e.icon || '👾'} ${e.name} no puede actuar este turno.`);
+    return { action: 'skip', effects: [] };
+  }
+
+  // Reset enemy defending
+  e.defending = false;
+  
+  let result = { action: 'attack', effects: [] };
+  
+  // Simple AI: pick from available skills or basic attack
   let chosenSkill = null;
   
-  if (enemyMember.skills && enemyMember.skills.length > 0) {
-    const usable = enemyMember.skills.filter(skill => {
-      if (skill.costType === 'mp' && (enemyMember.mp || 0) < skill.cost) return false;
-      if (skill.type === 'heal' && enemyMember.hp >= enemyMember.maxHp * 0.8) return false;
+  if (e.skills && e.skills.length > 0) {
+    // Filter usable skills
+    const usable = e.skills.filter(s => {
+      if (s.costType === 'mp' && (e.mp || 0) < s.cost) return false;
+      if (s.type === 'heal' && e.hp >= e.maxHp * 0.8) return false;
       return true;
     });
     
+    // 40% chance to use a skill if available
     if (usable.length > 0 && Math.random() < 0.4) {
       chosenSkill = usable[Math.floor(Math.random() * usable.length)];
     }
   }
   
   if (chosenSkill) {
+    // Pay cost
     if (chosenSkill.costType === 'mp') {
-      enemyMember.mp = (enemyMember.mp || 0) - chosenSkill.cost;
+      e.mp = (e.mp || 0) - chosenSkill.cost;
     }
     
     if (chosenSkill.type === 'heal') {
       const heal = chosenSkill.power || 20;
-      enemyMember.hp = Math.min(enemyMember.maxHp, enemyMember.hp + heal);
+      e.hp = Math.min(e.maxHp, e.hp + heal);
       result.heal = heal;
-      addCombatLog(`${enemyMember.icon} ${enemyMember.name} usa ${chosenSkill.name}: +${heal} HP`);
+      addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: +${heal} HP`);
     } else {
-      const dmgResult = calculateDamage(enemyMember, player, chosenSkill);
-      player.hp = Math.max(0, player.hp - dmgResult.damage);
+      const dmgResult = calculateDamage(e, p, chosenSkill);
+      p.hp = Math.max(0, p.hp - dmgResult.damage);
       result.damage = dmgResult.damage;
       result.isCrit = dmgResult.isCrit;
-      addCombatLog(`${enemyMember.icon} ${enemyMember.name} usa ${chosenSkill.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
+      addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
     }
   } else {
-    const dmgResult = calculateDamage(enemyMember, player);
-    player.hp = Math.max(0, player.hp - dmgResult.damage);
+    // Basic attack
+    const dmgResult = calculateDamage(e, p);
+    p.hp = Math.max(0, p.hp - dmgResult.damage);
     result.damage = dmgResult.damage;
     result.isCrit = dmgResult.isCrit;
-    addCombatLog(`${enemyMember.icon} ${enemyMember.name} ataca: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
+    addCombatLog(`${e.icon} ${e.name} ataca: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
   }
-
-  return result;
-}
-
-function executeEnemyTurn() {
-  if (!combatState || combatState.phase !== 'enemy') return null;
   
-  const p = combatState.player;
-  const livingMembers = getLivingCombatMembers();
-  if (livingMembers.length === 0) {
-    combatState.phase = 'victory';
-    calculateCombatRewards();
-    return { action: 'status', victory: true, effects: [], members: [] };
-  }
-
-  const memberResults = [];
-  for (const enemyMember of livingMembers) {
-    if (p.hp <= 0) break;
-    memberResults.push(executeEnemyMemberTurn(enemyMember, p));
-  }
-
-  const result = memberResults.length === 1
-    ? { ...memberResults[0], members: memberResults }
-    : {
-        action: 'formation_attack',
-        effects: memberResults.flatMap(memberResult => memberResult.effects || []),
-        damage: memberResults.reduce((total, memberResult) => total + (memberResult.damage || 0), 0),
-        members: memberResults
-      };
-
+  // Check defeat
   if (p.hp <= 0) {
     combatState.phase = 'defeat';
     result.defeat = true;
     addCombatLog('💀 Has sido derrotado...');
-  } else if (getLivingCombatMembers().length === 0) {
-    combatState.phase = 'victory';
-    result.victory = true;
-    addCombatLog('🏆 ¡La formación ha sido derrotada!');
-    calculateCombatRewards();
   } else {
     combatState.phase = 'player';
     combatState.turn++;
@@ -741,76 +722,71 @@ function executeEnemyTurn() {
   return result;
 }
 
-// ===========================================================================
-// AUTO COMBAT
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTO COMBAT (for minor encounters)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function resolveAutoCombat(enemy) {
-  const combatEnemy = Array.isArray(enemy) ? enemy : enemy;
-  const members = Array.isArray(combatEnemy) ? combatEnemy : [combatEnemy];
-  const playerStats = typeof getDerivedStats === 'function' ? getDerivedStats() : gameState.stats;
-  const playerLevel = gameState?.level || 1;
-  let playerPower = (playerStats.fue || 10) + (playerStats.int || 10) + (playerStats.des || 10) + (playerStats.vit || 10);
-  const enemyPower = members.reduce((total, member) => total + (member.level || 1) * 4 + (member.hp || 0) / 10, 0);
-  const result = {
-    victory: playerPower >= enemyPower,
-    turns: Math.max(1, Math.ceil(enemyPower / Math.max(1, playerPower))),
-    damageTaken: Math.max(0, Math.floor(enemyPower - playerPower * 0.35)),
-    rewards: null,
-    threat: getFormationThreat(members, playerLevel, members.length > 1 ? 'common' : members[0]?.type || 'common')
-  };
-  if (result.victory) {
-    result.rewards = members.map(calculateCombatMemberRewards).reduce((total, rewards) => ({
-      xp: total.xp + rewards.xp,
-      gold: total.gold + rewards.gold,
-      drops: total.drops.concat(rewards.drops)
-    }), { xp: 0, gold: 0, drops: [] });
+  initCombat(enemy, false);
+  
+  const maxTurns = 20;
+  let turns = 0;
+  
+  while (combatState.phase !== 'victory' && combatState.phase !== 'defeat' && turns < maxTurns) {
+    // Player turn - auto attack
+    if (combatState.phase === 'player') {
+      executePlayerAction('basic_attack');
+    }
+    
+    // Enemy turn
+    if (combatState.phase === 'enemy') {
+      executeEnemyTurn();
+    }
+    
+    turns++;
   }
-  return result;
+  
+  // Timeout = defeat
+  if (turns >= maxTurns && combatState.phase !== 'victory') {
+    combatState.phase = 'defeat';
+    addCombatLog('💀 El combate se prolongó demasiado...');
+  }
+  
+  return {
+    victory: combatState.phase === 'victory',
+    turns: turns,
+    log: combatState.log,
+    rewards: combatState.rewards,
+    playerHp: combatState.player.hp,
+    playerMaxHp: combatState.player.maxHp
+  };
 }
 
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 // REWARDS
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 
-function calculateCombatMemberRewards(member) {
+function calculateCombatRewards() {
+  if (!combatState || combatState.phase !== 'victory') return null;
+  if (combatState.rewards) return combatState.rewards;
+  
+  const e = combatState.enemy;
+  
   const rewards = {
-    memberInstanceId: member.instanceId,
-    enemyId: member.id || member.name || member.instanceId,
-    xp: member.xp || Math.floor(member.level * 15),
-    gold: member.gold || Math.floor(member.level * 5 + Math.random() * member.level * 3),
+    xp: e.xp || Math.floor(e.level * 15),
+    gold: e.gold || Math.floor(e.level * 5 + Math.random() * e.level * 3),
     drops: []
   };
   
-  if (member.drops && member.drops.length > 0) {
-    for (const drop of member.drops) {
+  // Roll for drops
+  if (e.drops && e.drops.length > 0) {
+    for (const drop of e.drops) {
       const chance = drop.chance || 0.1;
       if (Math.random() < chance) {
         rewards.drops.push(drop.itemId || drop.item);
       }
     }
   }
-  
-  return rewards;
-}
-
-function calculateCombatRewards() {
-  if (!combatState || combatState.phase !== 'victory') return null;
-  if (combatState.rewards) return combatState.rewards;
-  
-  const memberRewards = getCombatMembers().map(calculateCombatMemberRewards);
-  const dropSources = memberRewards.flatMap(memberReward => memberReward.drops.map(itemId => ({
-    itemId,
-    memberInstanceId: memberReward.memberInstanceId,
-    enemyId: memberReward.enemyId
-  })));
-  const rewards = {
-    xp: memberRewards.reduce((total, memberReward) => total + memberReward.xp, 0),
-    gold: memberRewards.reduce((total, memberReward) => total + memberReward.gold, 0),
-    drops: dropSources.map(drop => drop.itemId),
-    memberRewards,
-    dropSources
-  };
   
   combatState.rewards = rewards;
   
@@ -829,6 +805,7 @@ function applyCombatRewards() {
   const application = combatState.rewardApplication || { xpApplied: false, goldApplied: false, drops: {} };
   const rewardClaimId = combatState.rewardClaimId || (combatState.rewardClaimId = createCombatRewardClaimId(combatState.enemy));
   
+  // Apply XP and gold once per victory package.
   if (!application.xpApplied) {
     if (typeof addXp === 'function') {
       addXp(r.xp);
@@ -843,18 +820,10 @@ function applyCombatRewards() {
     application.goldApplied = true;
   }
   
-  const dropSources = Array.isArray(r.dropSources)
-    ? r.dropSources
-    : r.drops.map((itemId, index) => ({
-        itemId,
-        memberInstanceId: combatState.enemy?.instanceId || null,
-        enemyId: combatState.enemy?.id || combatState.enemy?.name || null,
-        dropIndex: index
-      }));
+  // Every drop is an independent durable claim. Pending drops can be retried
+  // later without replaying XP, gold, or already granted drops.
   const dropResults = r.drops.map((itemId, index) => {
-    const source = dropSources[index] || {};
-    const memberInstanceId = source.memberInstanceId || combatState.enemy?.instanceId || 'member';
-    const claimId = `${rewardClaimId}:member:${memberInstanceId}:drop:${index}`;
+    const claimId = `${rewardClaimId}:drop:${index}`;
     const result = typeof LifeXPInventory !== 'undefined' && typeof LifeXPInventory.deliverReward === 'function'
       ? LifeXPInventory.deliverReward({
           itemId,
@@ -866,8 +835,7 @@ function applyCombatRewards() {
           source: 'combat',
           metadata: {
             combatId: rewardClaimId,
-            enemyId: source.enemyId || combatState.enemy?.id || combatState.enemy?.name || null,
-            memberInstanceId,
+            enemyId: combatState.enemy?.id || combatState.enemy?.name || null,
             dropIndex: index
           }
         })
@@ -875,7 +843,6 @@ function applyCombatRewards() {
     application.drops[index] = {
       claimId,
       itemId,
-      memberInstanceId,
       status: result.status,
       reason: result.reason || null,
       updatedAt: new Date().toISOString()
@@ -888,9 +855,9 @@ function applyCombatRewards() {
   return { ...r, dropResults };
 }
 
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 // COMBAT LOG
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 
 function addCombatLog(message) {
   if (!combatState) return;
@@ -906,9 +873,9 @@ function getCombatLog() {
   return combatState?.log || [];
 }
 
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 // COMBAT UTILITIES
-// ===========================================================================
+// ═══════════════════════════════════════════════════════════════════════════
 
 function getCombatState() {
   return combatState;
@@ -930,3 +897,103 @@ function endCombat() {
   combatState = null;
   return result;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENCOUNTER GENERATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+function rollEncounter(taskTheme, playerLevel) {
+  // Base encounter chance: 15%
+  let chance = 0.15;
+  
+  // Some themes have higher encounter rates
+  const highEncounterThemes = ['exploracion', 'naturaleza', 'agua_profunda'];
+  if (highEncounterThemes.includes(taskTheme)) {
+    chance = 0.25;
+  }
+  
+  // Lower chance for home/admin tasks
+  const lowEncounterThemes = ['hallazgos', 'oro_comercio', 'alianzas'];
+  if (lowEncounterThemes.includes(taskTheme)) {
+    chance = 0.08;
+  }
+  
+  return Math.random() < chance;
+}
+
+function pickNearestEncounterEnemy(candidates, playerLevel) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  const distances = candidates.map(enemy => Math.abs(Number(enemy.level) - playerLevel));
+  const nearestDistance = Math.min(...distances);
+  const nearest = candidates.filter(enemy => Math.abs(Number(enemy.level) - playerLevel) <= nearestDistance + 1);
+  return nearest[Math.floor(Math.random() * nearest.length)] || null;
+}
+
+function pickEncounterEnemy(theme, playerLevel, encounterType = 'common') {
+  const combatLevel = getEncounterPlayerLevel(playerLevel);
+  const profile = getEncounterDifficultyProfile(encounterType);
+  const minLevel = Math.max(1, combatLevel - profile.levelWindow);
+  const maxLevel = combatLevel + profile.levelWindow;
+  const themedCandidates = theme && typeof getEnemiesByTheme === 'function'
+    ? getEnemiesByTheme(theme).filter(enemy => enemy.type === encounterType)
+    : [];
+  const globalCandidates = typeof getEnemiesByType === 'function'
+    ? getEnemiesByType(encounterType)
+    : [];
+  const inBand = candidates => candidates.filter(enemy => enemy.level >= minLevel && enemy.level <= maxLevel);
+  const themedInBand = inBand(themedCandidates);
+  const globalInBand = inBand(globalCandidates);
+
+  if (themedInBand.length > 0) {
+    return { ...themedInBand[Math.floor(Math.random() * themedInBand.length)] };
+  }
+  if (globalInBand.length > 0) {
+    return { ...globalInBand[Math.floor(Math.random() * globalInBand.length)] };
+  }
+
+  const fallbackCandidates = [...new Map(
+    [...themedCandidates, ...globalCandidates].map(enemy => [enemy.id, enemy])
+  ).values()];
+  const nearest = pickNearestEncounterEnemy(fallbackCandidates, combatLevel);
+  return nearest ? { ...nearest } : null;
+}
+
+function scaleEncounterEnemy(enemy, targetLevel) {
+  if (!enemy) return null;
+  const originalLevel = Number.isFinite(Number(enemy.level)) ? Number(enemy.level) : 1;
+  const requestedLevel = Number.isFinite(Number(targetLevel)) ? Number(targetLevel) : originalLevel;
+  const lowerBound = Math.max(1, originalLevel - MAX_ENCOUNTER_SCALE_GAP);
+  const upperBound = originalLevel + MAX_ENCOUNTER_SCALE_GAP;
+  const safeTargetLevel = Math.floor(Math.max(lowerBound, Math.min(upperBound, requestedLevel)));
+  const levelDiff = safeTargetLevel - originalLevel;
+  const hpMultiplier = Math.max(0.75, Math.min(1.35, 1 + levelDiff * 0.1));
+  const statMultiplier = Math.max(0.8, Math.min(1.25, 1 + levelDiff * 0.05));
+  const rewardMultiplier = Math.max(0.75, Math.min(1.35, 1 + levelDiff * 0.1));
+  const scaled = { ...enemy, level: safeTargetLevel };
+
+  scaled.hp = Math.max(1, Math.floor(Math.max(1, Number(enemy.hp) || 1) * hpMultiplier));
+  scaled.maxHp = scaled.hp;
+  scaled.xp = Math.max(0, Math.floor(Math.max(0, Number(enemy.xp) || 0) * rewardMultiplier));
+  scaled.gold = Math.max(0, Math.floor(Math.max(0, Number(enemy.gold) || 0) * rewardMultiplier));
+
+  for (const stat of ['fue', 'vit', 'des', 'int', 'vol', 'pre']) {
+    const value = Number(enemy[stat]);
+    if (Number.isFinite(value)) scaled[stat] = Math.max(0, Math.floor(value * statMultiplier));
+  }
+  return scaled;
+}
+
+function getEncounterType(playerLevel) {
+  const combatLevel = getEncounterPlayerLevel(playerLevel);
+  const available = Object.entries(ENCOUNTER_DIFFICULTY)
+    .filter(([, profile]) => combatLevel >= profile.minPlayerLevel);
+  const totalWeight = available.reduce((total, [, profile]) => total + profile.weight, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const [encounterType, profile] of available) {
+    roll -= profile.weight;
+    if (roll < 0) return encounterType;
+  }
+  return 'common';
+}
+
