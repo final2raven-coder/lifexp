@@ -54,6 +54,17 @@ const DEFAULT_GAME_STATE = {
   // Class (placeholder for next block)
   classId: 'novato',
   classLevel: 1,
+
+  // Skills: known, equipped and source are explicit persisted data.
+  skills: {
+    version: 1,
+    known: ['basic_attack', 'defend'],
+    equipped: ['basic_attack', 'defend'],
+    sources: {
+      basic_attack: [{ type: 'initial', id: 'starter' }],
+      defend: [{ type: 'initial', id: 'starter' }]
+    }
+  },
   
   // Quests (placeholder)
   activeQuests: [],
@@ -437,6 +448,163 @@ function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+// ===========================================================================
+// PLAYER SKILL CONTRACT
+// ===========================================================================
+
+const SKILL_SOURCE_TYPES = Object.freeze({
+  initial: 'initial',
+  class: 'class',
+  equipment: 'equipment',
+  unlock: 'unlock',
+  progression: 'progression'
+});
+
+function getDefaultSkillState() {
+  return cloneSaveState(DEFAULT_GAME_STATE.skills);
+}
+
+function normalizeSkillIds(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(id => typeof id === 'string' && id.length > 0))];
+}
+
+function normalizeSkillSource(source) {
+  if (!isPlainObject(source)) return null;
+  if (!Object.values(SKILL_SOURCE_TYPES).includes(source.type)) return null;
+  if (typeof source.id !== 'string' || source.id.length === 0) return null;
+  return cloneSaveState(source);
+}
+
+function normalizeSkillSources(value) {
+  if (!isPlainObject(value)) return {};
+  const normalized = {};
+  for (const [skillId, rawSources] of Object.entries(value)) {
+    const sources = Array.isArray(rawSources) ? rawSources : [rawSources];
+    const validSources = sources.map(normalizeSkillSource).filter(Boolean);
+    if (validSources.length > 0) normalized[skillId] = validSources;
+  }
+  return normalized;
+}
+
+function normalizeSkillState(value) {
+  const source = isPlainObject(value) ? value : {};
+  const defaults = getDefaultSkillState();
+  return {
+    version: Number.isInteger(source.version) && source.version >= 1 ? source.version : defaults.version,
+    known: source.known === undefined ? [...defaults.known] : normalizeSkillIds(source.known),
+    equipped: source.equipped === undefined ? [...defaults.equipped] : normalizeSkillIds(source.equipped),
+    sources: source.sources === undefined ? cloneSaveState(defaults.sources) : normalizeSkillSources(source.sources)
+  };
+}
+
+function getPlayerSkillCatalog() {
+  return typeof PLAYER_SKILLS !== 'undefined' && isPlainObject(PLAYER_SKILLS) ? PLAYER_SKILLS : {};
+}
+
+function getPlayerSkillDefinition(skillId) {
+  const definition = getPlayerSkillCatalog()[skillId];
+  return isPlainObject(definition) ? definition : null;
+}
+
+function getPlayerSkillSources(skillId, definition = null) {
+  const stateSources = gameState.skills?.sources?.[skillId];
+  const declaredSources = definition?.sources ?? definition?.source;
+  const allSources = [];
+  if (Array.isArray(stateSources)) allSources.push(...stateSources);
+  if (declaredSources !== undefined) {
+    allSources.push(...(Array.isArray(declaredSources) ? declaredSources : [declaredSources]));
+  }
+  const seen = new Set();
+  return allSources.map(normalizeSkillSource).filter(source => {
+    if (!source) return false;
+    const key = JSON.stringify(source);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getPlayerSkillContext(player = null) {
+  const actor = isPlainObject(player) ? player : {};
+  return {
+    player: {
+      ...gameState,
+      ...actor,
+      level: gameState.level,
+      classId: gameState.classId,
+      classLevel: gameState.classLevel
+    }
+  };
+}
+
+function checkPlayerSkillRequirements(definition, context = {}) {
+  const requirements = isPlainObject(definition?.requirements) ? definition.requirements : {};
+  const actor = isPlainObject(context.player) ? context.player : context;
+  const unmet = [];
+  const level = Number(actor.level ?? gameState.level);
+  const classLevel = Number(actor.classLevel ?? gameState.classLevel);
+  const classId = actor.classId ?? gameState.classId;
+
+  const requiredLevel = requirements.level ?? requirements.minLevel;
+  if (requiredLevel !== undefined && Number.isFinite(Number(requiredLevel)) && level < Number(requiredLevel)) unmet.push('level');
+  if (requirements.classLevel !== undefined && Number.isFinite(Number(requirements.classLevel)) && classLevel < Number(requirements.classLevel)) unmet.push('classLevel');
+  if (typeof requirements.classId === 'string' && classId !== requirements.classId) unmet.push('class');
+  if (Array.isArray(requirements.classIds) && requirements.classIds.length > 0 && !requirements.classIds.includes(classId)) unmet.push('class');
+
+  let resourceAvailable = null;
+  const costType = definition?.costType;
+  const cost = Number(definition?.cost || 0);
+  if (costType && cost > 0) {
+    resourceAvailable = Number(actor[costType]) >= cost;
+    if (!resourceAvailable) unmet.push(costType);
+  }
+  if (definition?.type === 'heal' && Number.isFinite(Number(actor.hp)) && Number.isFinite(Number(actor.maxHp)) && actor.hp >= actor.maxHp) {
+    unmet.push('fullHealth');
+  }
+
+  return { met: unmet.length === 0, unmet, resourceAvailable };
+}
+
+function resolvePlayerSkill(skillId, context = {}) {
+  const id = typeof skillId === 'string' ? skillId : '';
+  const state = isPlainObject(gameState.skills) ? gameState.skills : getDefaultSkillState();
+  const definition = getPlayerSkillDefinition(id);
+  const sources = getPlayerSkillSources(id, definition);
+  const known = state.known.includes(id);
+  const equipped = state.equipped.includes(id);
+  const requirements = checkPlayerSkillRequirements(definition, context);
+  const hasSource = sources.length > 0;
+  const authorized = Boolean(definition && known && equipped && hasSource);
+  const usable = Boolean(authorized && requirements.met);
+
+  let reason = null;
+  if (!definition) reason = 'definition_unavailable';
+  else if (!known) reason = 'unknown';
+  else if (!equipped) reason = 'not_equipped';
+  else if (!hasSource) reason = 'source_missing';
+  else if (!requirements.met) reason = requirements.unmet[0];
+
+  return {
+    id,
+    definition,
+    known,
+    equipped,
+    authorized,
+    usable,
+    sources,
+    resourceAvailable: requirements.resourceAvailable,
+    unmetRequirements: requirements.unmet,
+    reason
+  };
+}
+
+function getResolvedPlayerSkills(context = {}) {
+  const state = isPlainObject(gameState.skills) ? gameState.skills : getDefaultSkillState();
+  const ids = [...new Set([...state.known, ...state.equipped])];
+  return ids.map(skillId => resolvePlayerSkill(skillId, context));
+}
+
 const PENDING_LOOT_SCHEMA_VERSION = 1;
 
 function getPendingLootMetadata(entry) {
@@ -584,6 +752,13 @@ function applySchemaDefaults(input, warnings = []) {
   if (!Array.isArray(state.quests.completed)) { state.quests.completed = []; recordSchemaDefault(warnings, 'quests.completed'); }
   if (!Array.isArray(state.quests.failed)) { state.quests.failed = []; recordSchemaDefault(warnings, 'quests.failed'); }
   if (state.quests.dailyReset !== null && typeof state.quests.dailyReset !== 'string') { state.quests.dailyReset = null; recordSchemaDefault(warnings, 'quests.dailyReset'); }
+
+  const rawSkills = isPlainObject(state.skills) ? state.skills : null;
+  state.skills = normalizeSkillState(rawSkills);
+  if (!rawSkills) recordSchemaDefault(warnings, 'skills');
+  if (rawSkills && !Array.isArray(rawSkills.known)) recordSchemaDefault(warnings, 'skills.known');
+  if (rawSkills && !Array.isArray(rawSkills.equipped)) recordSchemaDefault(warnings, 'skills.equipped');
+  if (rawSkills && !isPlainObject(rawSkills.sources)) recordSchemaDefault(warnings, 'skills.sources');
 
   state.itemSystem = isPlainObject(state.itemSystem) ? { ...defaults.itemSystem, ...state.itemSystem } : cloneSaveState(defaults.itemSystem);
   if (!isFiniteNumber(state.itemSystem.version) || state.itemSystem.version < 1) { state.itemSystem.version = defaults.itemSystem.version; recordSchemaDefault(warnings, 'itemSystem.version'); }
@@ -823,8 +998,17 @@ function migrateV2ToV3(state, context = {}) {
   state.pendingReceipts = Array.isArray(state.pendingReceipts) ? state.pendingReceipts : [];
   state.receivedReceipts = Array.isArray(state.receivedReceipts) ? state.receivedReceipts : [];
   state.lastReceiptId = isFiniteNumber(state.lastReceiptId) ? state.lastReceiptId : 0;
-  migrateQuestState(state);
   return state;
+}
+
+function migrateV4ToCurrent(state) {
+  return state;
+}
+
+function migrateState(parsed) {
+  const from = parseSaveVersion(parsed);
+  const warnings = [];
+  return runMigrations(parsed, from, warnings);
 }
 
 const MIGRATIONS = [
