@@ -86,10 +86,14 @@ function startCombatFromEncounter(encounter) {
   
   // Initialize combat
   if (typeof initCombat === 'function') {
+    const formation = encounter.formation || (Array.isArray(encounter.enemy)
+      ? { members: encounter.enemy }
+      : null);
     initCombat(encounter.enemy, encounter.tactical, {
       type: encounter.type || encounter.enemy.type || 'common',
       playerLevel: encounter.playerLevel || gameState.level || 1,
-      threat: encounter.threat || null
+      threat: encounter.threat || null,
+      formation
     });
   }
   
@@ -102,35 +106,99 @@ function startCombatFromEncounter(encounter) {
 // COMBAT UI
 // ===========================================================================
 
+function escapeCombatHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function getCombatUiMembers() {
+  if (typeof getCombatMembers === 'function') {
+    return getCombatMembers();
+  }
+  return combatState?.enemy ? [combatState.enemy] : [];
+}
+
+function renderCombatEnemyList(members, selectedTargetInstanceId) {
+  const listEl = document.getElementById('combat-enemies-list');
+  if (!listEl) return;
+
+  listEl.innerHTML = '';
+  if (members.length === 0) {
+    listEl.innerHTML = '<div class="combat-enemy-empty">No quedan enemigos en pie.</div>';
+    return;
+  }
+
+  members.forEach((member, index) => {
+    const defeated = Number(member.hp) <= 0;
+    const selected = !defeated && member.instanceId === selectedTargetInstanceId;
+    const suffix = index === 0 ? '' : `-${index}`;
+    const hp = Math.max(0, Number(member.hp) || 0);
+    const maxHp = Math.max(1, Number(member.maxHp) || Number(member.hp) || 1);
+    const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `combat-enemy-card${selected ? ' selected' : ''}${defeated ? ' defeated' : ''}`;
+    card.dataset.instanceId = member.instanceId || '';
+    card.disabled = defeated;
+    card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    card.setAttribute('aria-label', defeated
+      ? `${member.name}, derrotado`
+      : `${member.name}, nivel ${member.level}, ${selected ? 'objetivo seleccionado' : 'seleccionar como objetivo'}`);
+    card.innerHTML = `
+      <div class="combat-enemy-card-top">
+        <span id="combat-enemy-icon${suffix}" class="combat-enemy-card-icon">${escapeCombatHtml(member.icon || '👾')}</span>
+        <span class="combat-enemy-card-heading">
+          <span id="combat-enemy-name${suffix}" class="combat-enemy-card-name">${escapeCombatHtml(member.name || 'Enemigo')}</span>
+          <span id="combat-enemy-level${suffix}" class="combat-enemy-card-level">Lv ${escapeCombatHtml(member.level)}</span>
+        </span>
+        <span class="combat-enemy-card-target">${defeated ? 'Derrotado' : selected ? 'Objetivo' : 'Seleccionar'}</span>
+      </div>
+      <div class="combat-enemy-card-hp-row">
+        <span class="combat-enemy-card-hp-label">❤️ HP</span>
+        <span class="combat-enemy-card-hp-track">
+          <span id="combat-enemy-hp-fill${suffix}" class="combat-enemy-card-hp-fill" style="width: ${hpPercent}%;"></span>
+        </span>
+        <span id="combat-enemy-hp${suffix}" class="combat-enemy-card-hp-value">${hp}/${maxHp}</span>
+      </div>
+    `;
+    if (!defeated) {
+      card.addEventListener('click', () => selectCombatTarget(member.instanceId));
+    }
+    listEl.appendChild(card);
+  });
+}
+
 function renderCombatScreen() {
   if (!combatState) return;
   
   const p = combatState.player;
-  const e = combatState.enemy;
+  const members = getCombatUiMembers();
+  const livingMembers = members.filter(member => Number(member.hp) > 0);
+  let selectedTarget = null;
+  if (typeof normalizeSelectedCombatTarget === 'function') {
+    selectedTarget = normalizeSelectedCombatTarget();
+  } else {
+    selectedTarget = livingMembers.find(member => member.instanceId === combatState.selectedTargetInstanceId)
+      || livingMembers[0]
+      || null;
+    if (selectedTarget) combatState.selectedTargetInstanceId = selectedTarget.instanceId;
+  }
   
-  // Enemy section
-  document.getElementById('combat-enemy-icon').textContent = e.icon;
-  document.getElementById('combat-enemy-name').textContent = e.name;
-  const threat = combatState.encounter?.threat || (
-    typeof getEncounterThreat === 'function'
-      ? getEncounterThreat(e.type || 'common', e.level, gameState.level || 1)
-      : null
-  );
-  document.getElementById('combat-enemy-level').textContent = threat?.label
-    ? `Lv ${e.level} · ${threat.label}`
-    : `Lv ${e.level}`;
-  document.getElementById('combat-enemy-hp').textContent = `${e.hp}/${e.maxHp}`;
-  document.getElementById('combat-enemy-hp-fill').style.width = `${(e.hp / e.maxHp) * 100}%`;
+  renderCombatEnemyList(members, selectedTarget?.instanceId || null);
   
   // Player section
   document.getElementById('combat-player-hp').textContent = `${p.hp}/${p.maxHp}`;
-  document.getElementById('combat-player-hp-fill').style.width = `${(p.hp / p.maxHp) * 100}%`;
+  document.getElementById('combat-player-hp-fill').style.width = `${Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100))}%`;
   document.getElementById('combat-player-mp').textContent = `${p.mp}/${p.maxMp}`;
-  document.getElementById('combat-player-mp-fill').style.width = `${(p.mp / p.maxMp) * 100}%`;
+  document.getElementById('combat-player-mp-fill').style.width = `${Math.max(0, Math.min(100, (p.mp / p.maxMp) * 100))}%`;
   document.getElementById('combat-player-sp').textContent = `${p.sp}/${p.maxSp}`;
-  document.getElementById('combat-player-sp-fill').style.width = `${(p.sp / p.maxSp) * 100}%`;
+  document.getElementById('combat-player-sp-fill').style.width = `${Math.max(0, Math.min(100, (p.sp / p.maxSp) * 100))}%`;
   document.getElementById('combat-player-focus').textContent = `${p.focus}/${p.focusMax}`;
-  document.getElementById('combat-player-focus-fill').style.width = `${(p.focus / p.focusMax) * 100}%`;
+  document.getElementById('combat-player-focus-fill').style.width = `${Math.max(0, Math.min(100, (p.focus / p.focusMax) * 100))}%`;
   
   // Actions
   renderCombatActions();
@@ -147,6 +215,17 @@ function renderCombatScreen() {
     phaseEl.textContent = 'Turno enemigo';
     phaseEl.style.color = 'var(--red)';
   }
+}
+
+function selectCombatTarget(instanceId) {
+  if (!combatState || combatState.phase !== 'player') return false;
+  const target = typeof setCombatTarget === 'function'
+    ? setCombatTarget(instanceId)
+    : getCombatUiMembers().find(member => member.instanceId === instanceId && Number(member.hp) > 0);
+  if (!target) return false;
+  combatState.selectedTargetInstanceId = target.instanceId;
+  renderCombatScreen();
+  return true;
 }
 
 function renderCombatActions() {
@@ -184,7 +263,7 @@ function renderCombatLog() {
 function executeCombatAction(actionId) {
   if (!combatState || combatState.phase !== 'player') return;
   
-  const result = executePlayerAction(actionId);
+  const result = executePlayerAction(actionId, combatState.selectedTargetInstanceId || null);
   renderCombatScreen();
   
   // Check for end conditions
@@ -216,7 +295,10 @@ function showCombatVictory() {
   // Show victory overlay
   document.getElementById('combat-result-icon').textContent = '\uD83C\uDFC6';
   document.getElementById('combat-result-title').textContent = '¡Victoria!';
-  document.getElementById('combat-result-subtitle').textContent = `${combatState.enemy.name} derrotado`;
+  const defeatedMembers = getCombatUiMembers();
+  document.getElementById('combat-result-subtitle').textContent = defeatedMembers.length === 1
+    ? `${defeatedMembers[0].name} derrotado`
+    : `${defeatedMembers.length} enemigos derrotados`;
   
   let rewardsHtml = '';
   if (rewards) {

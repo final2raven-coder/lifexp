@@ -967,6 +967,112 @@ body {
 .onboarding-dot.active { background: var(--accent); }
 
 /* Combat */
+.combat-enemies-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.combat-enemy-card {
+  width: 100%;
+  appearance: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.1s;
+}
+.combat-enemy-card:hover:not(:disabled) { border-color: var(--accent); }
+.combat-enemy-card:active:not(:disabled) { transform: scale(0.99); }
+.combat-enemy-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.combat-enemy-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-glow), var(--shadow-glow);
+}
+.combat-enemy-card.defeated {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.combat-enemy-card-static { cursor: default; }
+.combat-enemy-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.combat-enemy-card-icon { font-size: 36px; line-height: 1; }
+.combat-enemy-card-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.combat-enemy-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 800;
+}
+.combat-enemy-card-level {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.combat-enemy-card-target {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.combat-enemy-card.defeated .combat-enemy-card-target { color: var(--text-muted); }
+.combat-enemy-card-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.combat-enemy-card-hp-label {
+  color: var(--red);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.combat-enemy-card-hp-track {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 4px;
+}
+.combat-enemy-card-hp-fill {
+  display: block;
+  height: 100%;
+  background: var(--red);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+.combat-enemy-card-hp-value {
+  min-width: 58px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+.combat-enemy-empty {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  padding: 16px;
+  text-align: center;
+}
+@media (min-width: 560px) {
+  .combat-enemies-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .combat-action-btn {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -1172,7 +1278,7 @@ body {
     <div id="quests-empty" class="hidden" style="text-align: center; padding: 40px 20px;">
       <div style="font-size: 48px; margin-bottom: 12px;">&#128196;</div>
       <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Sin misiones activas</div>
-      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Acepta una misión para empezar tu aventura</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Acepta una misiÃ³n para empezar tu aventura</div>
       <button class="btn btn-gold" id="btn-show-available-quests-empty">&#10133; Ver misiones disponibles</button>
     </div>
   </div>
@@ -1304,19 +1410,24 @@ body {
     </div>
   </div>
   <div class="content">
-    <!-- Enemy -->
-    <div class="card" style="text-align: center; margin-bottom: 12px;">
-      <div id="combat-enemy-icon" style="font-size: 64px; margin-bottom: 8px;">&#128058;</div>
-      <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 4px;">
-        <span id="combat-enemy-name" style="font-size: 18px; font-weight: 800;">Enemigo</span>
-        <span id="combat-enemy-level" style="font-size: 12px; color: var(--text-muted);">Lv 1</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-        <span style="font-size: 12px; color: var(--red);">&#10084;&#65039; HP</span>
-        <div style="flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
-          <div id="combat-enemy-hp-fill" style="background: var(--red); height: 100%; width: 100%; transition: width 0.3s;"></div>
+    <!-- Enemies -->
+    <div id="combat-enemies-list" class="combat-enemies-list" aria-label="Enemigos del encuentro">
+      <div class="combat-enemy-card combat-enemy-card-static">
+        <div class="combat-enemy-card-top">
+          <span id="combat-enemy-icon" class="combat-enemy-card-icon">&#128058;</span>
+          <span class="combat-enemy-card-heading">
+            <span id="combat-enemy-name" class="combat-enemy-card-name">Enemigo</span>
+            <span id="combat-enemy-level" class="combat-enemy-card-level">Lv 1</span>
+          </span>
+          <span class="combat-enemy-card-target">Seleccionar</span>
         </div>
-        <span id="combat-enemy-hp" style="color: var(--text-muted);">100/100</span>
+        <div class="combat-enemy-card-hp-row">
+          <span class="combat-enemy-card-hp-label">&#10084;&#65039; HP</span>
+          <span class="combat-enemy-card-hp-track">
+            <span id="combat-enemy-hp-fill" class="combat-enemy-card-hp-fill" style="width: 100%;"></span>
+          </span>
+          <span id="combat-enemy-hp" class="combat-enemy-card-hp-value">100/100</span>
+        </div>
       </div>
     </div>
     <!-- Player stats -->

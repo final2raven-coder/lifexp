@@ -257,8 +257,23 @@ function createCombatFormation(enemy, encounterMeta = null) {
     : Array.isArray(encounterMeta?.formation?.members)
       ? encounterMeta.formation.members
       : [enemy];
+  const usedInstanceIds = new Set();
   const members = sourceMembers
-    .map((member, index) => createCombatantInstance(member, index))
+    .map((member, index) => {
+      const instance = createCombatantInstance(member, index);
+      if (!instance) return null;
+
+      const originalInstanceId = String(instance.instanceId || `enemy:${index + 1}`);
+      let uniqueInstanceId = originalInstanceId;
+      let suffix = index + 1;
+      while (usedInstanceIds.has(uniqueInstanceId)) {
+        suffix += 1;
+        uniqueInstanceId = `${originalInstanceId}:${suffix}`;
+      }
+      instance.instanceId = uniqueInstanceId;
+      usedInstanceIds.add(uniqueInstanceId);
+      return instance;
+    })
     .filter(Boolean);
   if (members.length === 0) return null;
 
@@ -285,6 +300,31 @@ function getLivingCombatMembers(state = combatState) {
 
 function getCombatMemberByInstanceId(instanceId, state = combatState) {
   return getCombatMembers(state).find(member => member.instanceId === instanceId) || null;
+}
+
+function normalizeSelectedCombatTarget(state = combatState) {
+  if (!state) return null;
+  const selected = getCombatMemberByInstanceId(state.selectedTargetInstanceId, state);
+  if (selected && Number(selected.hp) > 0) return selected;
+  const nextTarget = getLivingCombatMembers(state)[0] || null;
+  state.selectedTargetInstanceId = nextTarget?.instanceId || null;
+  return nextTarget;
+}
+
+function resolveCombatTarget(targetInstanceId = null, state = combatState) {
+  if (!state) return null;
+  if (targetInstanceId) {
+    const requestedTarget = getCombatMemberByInstanceId(targetInstanceId, state);
+    return requestedTarget && Number(requestedTarget.hp) > 0 ? requestedTarget : null;
+  }
+  return normalizeSelectedCombatTarget(state);
+}
+
+function setCombatTarget(targetInstanceId, state = combatState) {
+  const target = resolveCombatTarget(targetInstanceId, state);
+  if (!target) return null;
+  state.selectedTargetInstanceId = target.instanceId;
+  return target;
 }
 
 function initCombat(enemy, isTactical = false, encounterMeta = null) {
@@ -322,8 +362,9 @@ function initCombat(enemy, isTactical = false, encounterMeta = null) {
     },
     
     formation,
-    // Compatibility alias: current combat logic continues to use the primary
-    // member until the target-selection phase is enabled.
+    selectedTargetInstanceId: primaryEnemy.instanceId,
+    // Compatibility alias: current combat logic continues to expose the primary
+    // member to legacy consumers while target-aware flows use the formation.
     enemy: primaryEnemy,
     
     log: [],
@@ -530,11 +571,10 @@ function getAvailableActions() {
   return actions;
 }
 
-function executePlayerAction(actionId) {
+function executePlayerAction(actionId, targetInstanceId = null) {
   if (!combatState || combatState.phase !== 'player') return null;
 
   const p = combatState.player;
-  const e = combatState.enemy;
 
   // Tick player status effects at start of player turn
   tickCombatStatuses(p, 'Tú');
@@ -562,9 +602,22 @@ function executePlayerAction(actionId) {
       effects: []
     };
   }
+
+  const actionType = action.type || actionId;
+  const requiresTarget = actionType === 'attack' || actionType === 'ultimate';
+  const target = requiresTarget ? resolveCombatTarget(targetInstanceId) : null;
+  if (requiresTarget && !target) {
+    return {
+      action: actionId,
+      success: false,
+      message: 'Selecciona un enemigo vivo.',
+      effects: []
+    };
+  }
+
   let result = { action: actionId, success: true, effects: [] };
   
-  switch (action.type || actionId) {
+  switch (actionType) {
     case 'attack':
     case 'ultimate':
       // Pay cost
@@ -577,16 +630,17 @@ function executePlayerAction(actionId) {
         p[action.costType] -= action.cost;
       }
       
-      // Calculate and apply damage
-      const dmgResult = calculateDamage(p, e, action);
-      e.hp = Math.max(0, e.hp - dmgResult.damage);
-      result.effects.push(...applyEquipmentOnHitEffects(p, e, dmgResult));
+      // Calculate and apply damage to the selected living member.
+      const dmgResult = calculateDamage(p, target, action);
+      target.hp = Math.max(0, target.hp - dmgResult.damage);
+      result.effects.push(...applyEquipmentOnHitEffects(p, target, dmgResult));
       
       // Gain focus from attacking
       p.focus = Math.min(p.focusMax, p.focus + 10);
       
       result.damage = dmgResult.damage;
       result.isCrit = dmgResult.isCrit;
+      result.targetInstanceId = target.instanceId;
       addCombatLog(`${action.icon} ${action.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
       break;
       
@@ -626,14 +680,18 @@ function executePlayerAction(actionId) {
       break;
   }
   
-  // Check victory
-  if (e.hp <= 0) {
+  // Check victory after the action: every member must be defeated.
+  const livingEnemies = getLivingCombatMembers();
+  if (livingEnemies.length === 0) {
     combatState.phase = 'victory';
     result.victory = true;
-    addCombatLog(`🏆 ¡Victoria! ${e.name} derrotado.`);
+    addCombatLog('🏆 ¡Victoria! Todos los enemigos han sido derrotados.');
     calculateCombatRewards();
-  } else if (combatState.phase === 'player') {
-    combatState.phase = 'enemy';
+  } else {
+    normalizeSelectedCombatTarget();
+    if (combatState.phase === 'player') {
+      combatState.phase = 'enemy';
+    }
   }
   
   return result;
@@ -647,78 +705,103 @@ function executeEnemyTurn() {
   if (!combatState || combatState.phase !== 'enemy') return null;
   
   const p = combatState.player;
-  const e = combatState.enemy;
-  
-  tickCombatStatuses(e, e.name || 'Enemigo');
-  if (e.hp <= 0) { combatState.phase = 'victory'; calculateCombatRewards(); return { action: 'status', victory: true, effects: [] }; }
+  const turnMembers = getLivingCombatMembers().slice();
+  const memberResults = [];
 
-  // Skip turn if feared or asleep
-  if (e._skipTurn) {
-    delete e._skipTurn;
-    combatState.phase = 'player';
-    addCombatLog(`${e.icon || '👾'} ${e.name} no puede actuar este turno.`);
-    return { action: 'skip', effects: [] };
+  if (turnMembers.length === 0) {
+    combatState.phase = 'victory';
+    calculateCombatRewards();
+    return { action: 'status', victory: true, members: [], effects: [] };
   }
 
-  // Reset enemy defending
-  e.defending = false;
-  
-  let result = { action: 'attack', effects: [] };
-  
-  // Simple AI: pick from available skills or basic attack
-  let chosenSkill = null;
-  
-  if (e.skills && e.skills.length > 0) {
-    // Filter usable skills
-    const usable = e.skills.filter(s => {
-      if (s.costType === 'mp' && (e.mp || 0) < s.cost) return false;
-      if (s.type === 'heal' && e.hp >= e.maxHp * 0.8) return false;
-      return true;
-    });
-    
-    // 40% chance to use a skill if available
-    if (usable.length > 0 && Math.random() < 0.4) {
-      chosenSkill = usable[Math.floor(Math.random() * usable.length)];
+  for (const e of turnMembers) {
+    if (p.hp <= 0) break;
+    if (Number(e.hp) <= 0) continue;
+
+    tickCombatStatuses(e, e.name || 'Enemigo');
+    if (e.hp <= 0) continue;
+
+    // Skip turn if feared or asleep
+    if (e._skipTurn) {
+      delete e._skipTurn;
+      addCombatLog(`${e.icon || '👾'} ${e.name} no puede actuar este turno.`);
+      memberResults.push({ instanceId: e.instanceId, action: 'skip', effects: [] });
+      continue;
     }
-  }
-  
-  if (chosenSkill) {
-    // Pay cost
-    if (chosenSkill.costType === 'mp') {
-      e.mp = (e.mp || 0) - chosenSkill.cost;
+
+    // Reset enemy defending
+    e.defending = false;
+    
+    let result = { instanceId: e.instanceId, action: 'attack', effects: [] };
+    
+    // Simple AI: pick from available skills or basic attack
+    let chosenSkill = null;
+    
+    if (e.skills && e.skills.length > 0) {
+      // Filter usable skills
+      const usable = e.skills.filter(s => {
+        if (s.costType === 'mp' && (e.mp || 0) < s.cost) return false;
+        if (s.type === 'heal' && e.hp >= e.maxHp * 0.8) return false;
+        return true;
+      });
+      
+      // 40% chance to use a skill if available
+      if (usable.length > 0 && Math.random() < 0.4) {
+        chosenSkill = usable[Math.floor(Math.random() * usable.length)];
+      }
     }
     
-    if (chosenSkill.type === 'heal') {
-      const heal = chosenSkill.power || 20;
-      e.hp = Math.min(e.maxHp, e.hp + heal);
-      result.heal = heal;
-      addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: +${heal} HP`);
+    if (chosenSkill) {
+      // Pay cost
+      if (chosenSkill.costType === 'mp') {
+        e.mp = (e.mp || 0) - chosenSkill.cost;
+      }
+      
+      if (chosenSkill.type === 'heal') {
+        const heal = chosenSkill.power || 20;
+        e.hp = Math.min(e.maxHp, e.hp + heal);
+        result.heal = heal;
+        addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: +${heal} HP`);
+      } else {
+        const dmgResult = calculateDamage(e, p, chosenSkill);
+        p.hp = Math.max(0, p.hp - dmgResult.damage);
+        result.damage = dmgResult.damage;
+        result.isCrit = dmgResult.isCrit;
+        addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
+      }
     } else {
-      const dmgResult = calculateDamage(e, p, chosenSkill);
+      // Basic attack
+      const dmgResult = calculateDamage(e, p);
       p.hp = Math.max(0, p.hp - dmgResult.damage);
       result.damage = dmgResult.damage;
       result.isCrit = dmgResult.isCrit;
-      addCombatLog(`${e.icon} ${e.name} usa ${chosenSkill.name}: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
+      addCombatLog(`${e.icon} ${e.name} ataca: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
     }
-  } else {
-    // Basic attack
-    const dmgResult = calculateDamage(e, p);
-    p.hp = Math.max(0, p.hp - dmgResult.damage);
-    result.damage = dmgResult.damage;
-    result.isCrit = dmgResult.isCrit;
-    addCombatLog(`${e.icon} ${e.name} ataca: ${dmgResult.damage} daño${dmgResult.isCrit ? ' ¡CRÍTICO!' : ''}`);
+
+    memberResults.push(result);
   }
   
-  // Check defeat
+  // Check defeat after all living members have had a chance to act.
   if (p.hp <= 0) {
     combatState.phase = 'defeat';
-    result.defeat = true;
     addCombatLog('💀 Has sido derrotado...');
+  } else if (getLivingCombatMembers().length === 0) {
+    combatState.phase = 'victory';
+    calculateCombatRewards();
   } else {
     combatState.phase = 'player';
     combatState.turn++;
+    normalizeSelectedCombatTarget();
   }
-  
+
+  const result = {
+    action: 'formation_turn',
+    members: memberResults,
+    effects: memberResults.flatMap(member => member.effects || []),
+    defeat: combatState.phase === 'defeat',
+    victory: combatState.phase === 'victory'
+  };
+  if (memberResults.length === 1) Object.assign(result, memberResults[0]);
   return result;
 }
 
@@ -770,20 +853,32 @@ function calculateCombatRewards() {
   if (!combatState || combatState.phase !== 'victory') return null;
   if (combatState.rewards) return combatState.rewards;
   
-  const e = combatState.enemy;
-  
+  const members = getCombatMembers();
   const rewards = {
-    xp: e.xp || Math.floor(e.level * 15),
-    gold: e.gold || Math.floor(e.level * 5 + Math.random() * e.level * 3),
-    drops: []
+    xp: 0,
+    gold: 0,
+    drops: [],
+    dropSources: []
   };
   
-  // Roll for drops
-  if (e.drops && e.drops.length > 0) {
-    for (const drop of e.drops) {
-      const chance = drop.chance || 0.1;
-      if (Math.random() < chance) {
-        rewards.drops.push(drop.itemId || drop.item);
+  // Resolve XP, gold and drops independently for every defeated member.
+  for (const member of members) {
+    rewards.xp += member.xp || Math.floor(member.level * 15);
+    rewards.gold += member.gold || Math.floor(member.level * 5 + Math.random() * member.level * 3);
+    
+    if (member.drops && member.drops.length > 0) {
+      for (const drop of member.drops) {
+        const chance = drop.chance || 0.1;
+        if (Math.random() < chance) {
+          const itemId = drop.itemId || drop.item;
+          rewards.drops.push(itemId);
+          rewards.dropSources.push({
+            itemId,
+            enemyId: member.id || member.name || null,
+            enemyName: member.name || null,
+            instanceId: member.instanceId || null
+          });
+        }
       }
     }
   }
@@ -835,7 +930,11 @@ function applyCombatRewards() {
           source: 'combat',
           metadata: {
             combatId: rewardClaimId,
-            enemyId: combatState.enemy?.id || combatState.enemy?.name || null,
+            enemyId: combatState.rewards.dropSources?.[index]?.enemyId
+              || combatState.enemy?.id
+              || combatState.enemy?.name
+              || null,
+            enemyInstanceId: combatState.rewards.dropSources?.[index]?.instanceId || null,
             dropIndex: index
           }
         })
