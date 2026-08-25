@@ -12,7 +12,7 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones) |
+| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones; `feat/combat-formations-target-selection` -- formaciones jugables y seleccion segura de objetivos) |
 | Branch de produccion | `main` |
 | Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
@@ -52,9 +52,9 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 
 | Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
 |---|---:|---|---|
-| `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
+| `index.html` | 46290 | CSS completo + HTML de todas las pantallas, lista multiobjetivo de combate y orden de carga de scripts | -- |
 | `engine.js` | 47005 | `gameState`, schema canonico, contrato y resolver comun de habilidades, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `DEFAULT_GAME_STATE`, `resolvePlayerSkill`, `getResolvedPlayerSkills`, `getPlayerSkillContext`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
-| `combat.js` | 38748 | Logica de combate, autorizacion uniforme de habilidades, politica de dificultad de encuentros individuales, escalado acotado, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
+| `combat.js` | 42539 | Logica de combate, formaciones versionadas, seleccion y validacion de objetivos, turnos multi-enemigo, autorizacion uniforme de habilidades, dificultad acotada, recompensas idempotentes y entrega durable de drops | `initCombat`, `createCombatFormation`, `getCombatMembers`, `getLivingCombatMembers`, `getCombatMemberByInstanceId`, `setCombatTarget`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
@@ -66,7 +66,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|---|
 | `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
 | `ui_tasks.js` | 20380 | Pantalla de tarea, completado, drops, encuentros y persistencia/recuperacion de `pendingTaskResult` | `openRandomTask`, `openCategory`, `completeTask`, `finalizeCompletion`, `presentPendingTaskResult`, `restorePendingTaskResult`, `dismissComplete` |
-| `ui_combat.js` | 12485 | UI de combate, seleccion segura de encuentros, lectura de amenaza y feedback estructurado de recompensas | `renderCombatScreen`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
+| `ui_combat.js` | 16115 | UI de combate, seleccion segura de encuentros, lista y seleccion de miembros, lectura de amenaza y feedback estructurado de recompensas | `renderCombatScreen`, `renderCombatEnemyList`, `selectCombatTarget`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
 | `ui_quests.js` | 9575 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `acceptQuest`, `abandonQuest` |
 | `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
@@ -287,9 +287,13 @@ Una partida nueva y cualquier save sin `skills` reciben el mismo estado inicial 
 
 ### Contrato de encuentros individuales (Fase 4B.1)
 
-`combat.js` aplica `ENCOUNTER_DIFFICULTY` como politica declarativa de disponibilidad por rango: los encuentros comunes estan disponibles desde el nivel 1, los elite desde el 5 y los bosses desde el 15. La seleccion prioriza enemigos del tema dentro de una banda segura, despues candidatos globales dentro de la misma banda y finalmente el enemigo mas cercano entre todos los candidatos del tipo solicitado; no selecciona arbitrariamente una amenaza lejana cuando existe una alternativa valida. `getEncounterTargetLevel()` conserva la variacion pequena por encima o debajo del nivel del jugador y `scaleEncounterEnemy()` limita la diferencia de escalado a cinco niveles, manteniendo vida, estadisticas y recompensas en rangos validos. `getEncounterThreat()` clasifica la amenaza como menor, equilibrada, elevada o hito y `ui_combat.js` la presenta antes y durante el combate. `initCombat()` conserva `type`, nivel de referencia y `threat` como metadatos transitorios; los combates ya iniciados no se regeneran, no se migran y no cambian sus recompensas. No se anaden grupos de enemigos en esta fase.
+`combat.js` aplica `ENCOUNTER_DIFFICULTY` como politica declarativa de disponibilidad por rango: los encuentros comunes estan disponibles desde el nivel 1, los elite desde el 5 y los bosses desde el 15. La seleccion prioriza enemigos del tema dentro de una banda segura, despues candidatos globales dentro de la misma banda y finalmente el enemigo mas cercano entre todos los candidatos del tipo solicitado; no selecciona arbitrariamente una amenaza lejana cuando existe una alternativa valida. `getEncounterTargetLevel()` conserva la variacion pequena por encima o debajo del nivel del jugador y `scaleEncounterEnemy()` limita la diferencia de escalado a cinco niveles, manteniendo vida, estadisticas y recompensas en rangos validos. `getEncounterThreat()` clasifica la amenaza como menor, equilibrada, elevada o hito y `ui_combat.js` la presenta antes y durante el combate. `initCombat()` conserva `type`, nivel de referencia y `threat` como metadatos transitorios; los combates ya iniciados no se regeneran, no se migran y no cambian sus recompensas. No se modifica la generacion aleatoria de grupos en esta fase; el uso jugable de formaciones se documenta en el contrato siguiente.
 
-## 5. Orden de carga de scripts (index.html, lineas 1373-1395)
+### Contrato de formaciones jugables (Fase 4B.2)
+
+`formation.members` es la coleccion canonica de combatientes. Cada miembro recibe un `instanceId` unico dentro del encuentro; se conservan los IDs validos proporcionados por el origen y las colisiones se desambiguan de forma determinista durante la construccion. `combatState.enemy` permanece como alias retrocompatible del miembro principal, pero la UI y el motor multiobjetivo usan `selectedTargetInstanceId` y los helpers de miembros. `renderCombatEnemyList()` muestra todos los miembros, permite seleccionar solo miembros vivos y marca los derrotados sin hacerlos seleccionables. `executePlayerAction()` valida que los ataques tengan un objetivo vivo perteneciente a la formacion; `executeEnemyTurn()` recorre solo los miembros vivos; la victoria se alcanza cuando todos han sido derrotados. Esta fase no cambia la generacion aleatoria de grupos, la persistencia de combates interrumpidos ni el catalogo de enemigos.
+
+## 5. Orden de carga de scripts (index.html, lineas 1484-1506)
 
 El orden es estricto: cada fichero depende de los anteriores como globals.
 
@@ -313,7 +317,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 17. ui_combat.js        -- UI de combate, encuentros y feedback de post-tarea
 18. ui_misc.js          -- UI miscelanea (mapa, gremio, lore, clase, quests rapidas)
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
-20. ui_feedback.js      -- UI de feedback visual de recompensas, drops y progresion
+20. ui_feedback.js     -- UI de feedback visual de recompensas, drops y progresion
 21. ui_quests.js        -- UI de quests
 22. item_system.js      -- Sistema de items (attunement, rituales, modales)
 23. main.js             -- Punto de entrada (event listeners, SW)
@@ -439,6 +443,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 
 ## 8. Changelog del mapa
 
+- **2026-08-25 - `feat/combat-formations-target-selection` (Fase 4B.2, Opcion A):** `combat.js` activa el uso jugable de `formation.members` con IDs de instancia unicos y desambiguacion determinista de colisiones; `executePlayerAction()` propaga y valida `targetInstanceId`; `executeEnemyTurn()` procesa todos los miembros vivos; `ui_combat.js` renderiza la lista completa y permite seleccionar objetivos; `index.html` incorpora los estilos y la estructura multiobjetivo. Se mantiene el alias `combatState.enemy`, la compatibilidad con combates individuales y la politica de recompensas agregadas. No se modifican la generacion aleatoria de grupos, la persistencia de combates interrumpidos ni `enemies.js`.
 - **2026-08-25 - `fix/combat-difficulty-readable` (Fase 4B.1):** se anade una politica declarativa de dificultad para encuentros individuales: comunes desde nivel 1, elite desde nivel 5 y bosses desde nivel 15; la seleccion prioriza tema y banda segura, el fallback elige el enemigo mas cercano disponible, el escalado queda acotado y la amenaza se comunica antes y durante el combate. `initCombat()` conserva metadatos transitorios del encuentro; no hay migracion de save ni regeneracion de combates ya iniciados. No se modifica el catalogo de enemigos ni se incluyen grupos de combate, que quedan para una rama independiente.
 - **2026-08-24 - `fix/consistent-skill-requirements-clean`:** se añade el estado explicito de habilidades y una unica resolucion de autorizacion para combate. La partida actual y una partida nueva siguen la misma regla; no se añaden excepciones para saves antiguos ni por ID.
 - **2026-08-21 - `feat/category-task-completion` (Fase 3B):** `ui_tasks.js` mantiene el aleatorio global y añade catalogo completo por categoria con estado, proxima fecha, historial basico, completado manual durante enfriamiento y aleatorio restringido mediante el resolver comun. `engine.js` ancla las politicas periodicas con limite uno en la ultima finalizacion y no devuelve tareas en enfriamiento como piscina aleatoria. `ui_hub.js` conserva las tarjetas de categoria como elementos interactivos tactiles mediante su `onclick`; no anade navegacion ni activacion por teclado. No se modifica contenido, recompensas ni el esquema de saves; el resultado pendiente conserva la intencion de completado manual para sobrevivir a una recarga.
@@ -602,6 +607,14 @@ La validacion se ejecuto sobre la combinacion de catalogos actual y los cambios 
 La suite `tests/save_migrations.test.js` pasa con cobertura v0-v4, conservacion de historial, disponibilidad periodica, limites, tareas archivadas, revision de tareas legacy, idempotencia, corrupcion, snapshots y assertion de carga de expansion. `node --check` pasa para los tres ficheros modificados. `validate_content.js` permanece fuera del gate de CI de este PR por los 96 errores baseline descritos arriba.
 
 ### 11. Cambios recientes
+
+#### `feat/combat-formations-target-selection`
+
+- `combat.js` convierte las formaciones versionadas en objetivos jugables y conserva IDs unicos incluso cuando la entrada de origen contiene colisiones.
+- `ui_combat.js` muestra todos los miembros, permite seleccionar objetivos vivos y conserva la UI de combate individual como caso de un miembro.
+- `index.html` anade la rejilla responsive, el estado visual de objetivo, el estado derrotado y el foco de teclado para la lista de enemigos.
+- La fase valida acciones con objetivos inexistentes o derrotados, ejecuta el turno de todos los enemigos vivos y resuelve la victoria solo cuando no queda ninguno.
+- No se modifican la generacion aleatoria de grupos, la persistencia de combates interrumpidos, las recompensas avanzadas ni el catalogo de enemigos.
 
 #### `feat/combat-formations-foundation`
 
