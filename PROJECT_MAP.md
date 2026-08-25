@@ -12,12 +12,12 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-24 (`fix/consistent-skill-requirements-clean` -- regla uniforme de habilidades) |
+| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `fix/update-verifiable`, `fix/update-verifiable-recovery`, `fix/task-history-availability`, `feat/category-task-completion` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `8660448bd94d8762078f98acca97dd1546cd5abd` |
+| Commit de `main` verificado | `912a686034b6b938d5824ad8691ac3389b9968cd` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` (declaracion efectiva auditada en `data_tasks.js`; el valor `v13.6-inventory-language-boundary` anterior del mapa era incorrecto) |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -54,7 +54,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
 | `engine.js` | 47005 | `gameState`, schema canonico, contrato y resolver comun de habilidades, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `DEFAULT_GAME_STATE`, `resolvePlayerSkill`, `getResolvedPlayerSkills`, `getPlayerSkillContext`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
-| `combat.js` | 30677 | Logica de combate, autorizacion uniforme de habilidades, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards` |
+| `combat.js` | 36575 | Logica de combate, autorizacion uniforme de habilidades, politica de dificultad de encuentros individuales, escalado acotado, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
@@ -66,7 +66,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|---|
 | `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
 | `ui_tasks.js` | 20380 | Pantalla de tarea, completado, drops, encuentros y persistencia/recuperacion de `pendingTaskResult` | `openRandomTask`, `openCategory`, `completeTask`, `finalizeCompletion`, `presentPendingTaskResult`, `restorePendingTaskResult`, `dismissComplete` |
-| `ui_combat.js` | 11288 | UI de combate, encuentros y feedback estructurado de recompensas | `renderCombatScreen`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
+| `ui_combat.js` | 12485 | UI de combate, seleccion segura de encuentros, lectura de amenaza y feedback estructurado de recompensas | `renderCombatScreen`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
 | `ui_quests.js` | 9575 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `acceptQuest`, `abandonQuest` |
 | `ui_feedback.js` | 5518 | Feedback visual de recompensas, drops y progresion | `showRewardFeedback`, `showDropFeedback`, `showLevelUp` |
@@ -285,6 +285,10 @@ Las frecuencias conocidas de `FREQ` declaran una politica periodica con limite p
 
 Una partida nueva y cualquier save sin `skills` reciben el mismo estado inicial normal (`basic_attack` y `defend`). No se conceden permisos por antiguedad, no se recuperan acciones de una lista historica y no existe una excepcion por ID. Si una habilidad guardada carece de fuente valida, se conserva pero no es utilizable.
 
+### Contrato de encuentros individuales (Fase 4B.1)
+
+`combat.js` aplica `ENCOUNTER_DIFFICULTY` como politica declarativa de disponibilidad por rango: los encuentros comunes estan disponibles desde el nivel 1, los elite desde el 5 y los bosses desde el 15. La seleccion prioriza enemigos del tema dentro de una banda segura, despues candidatos globales dentro de la misma banda y finalmente el enemigo mas cercano entre todos los candidatos del tipo solicitado; no selecciona arbitrariamente una amenaza lejana cuando existe una alternativa valida. `getEncounterTargetLevel()` conserva la variacion pequena por encima o debajo del nivel del jugador y `scaleEncounterEnemy()` limita la diferencia de escalado a cinco niveles, manteniendo vida, estadisticas y recompensas en rangos validos. `getEncounterThreat()` clasifica la amenaza como menor, equilibrada, elevada o hito y `ui_combat.js` la presenta antes y durante el combate. `initCombat()` conserva `type`, nivel de referencia y `threat` como metadatos transitorios; los combates ya iniciados no se regeneran, no se migran y no cambian sus recompensas. No se anaden grupos de enemigos en esta fase.
+
 ## 5. Orden de carga de scripts (index.html, lineas 1373-1395)
 
 El orden es estricto: cada fichero depende de los anteriores como globals.
@@ -377,7 +381,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 |---|---|---|---|---|
 | DT-01 | Lista de assets del Service Worker mantenida manualmente. | -- | **CERRADO** | PR #23 (`fix/sw-assets`): el validador comprueba la sincronizacion `index.html`/`sw.js` y se incrementa la cache. La rama ya no existe. |
 | DT-02 | IDs no canonicos en tablas de drops y compatibilidad de lectura para valores legacy. | -- | **CERRADO** | PR #29 (`fix: migrate drop-table item IDs to canonical ASCII`) corrigio `DROP_TABLES` y preservo aliases de lectura; PRs #34 y #35 regeneraron la trazabilidad. Las ramas ya no existen. |
-| DT-03 | Interfaz exacta entre `combat.js` y `engine.js` no verificada en el mapa. | Baja | **ABIERTO** | Owner: mantenedor. Siguiente accion: revisar ambos contratos y documentar sus simbolos sin cambiar comportamiento. |
+| DT-03 | Interfaz exacta entre `combat.js` y `engine.js` no verificada en el mapa. | -- | **CERRADO** | `fix/combat-difficulty-readable`: contrato de combate y metadatos de encuentro revisados y documentados. |
 | DT-04 | `ui_misc.js` agrupa mapa, gremio, lore, clase y quests rapidas. | Baja | **ABIERTO** | Owner: mantenedor. Siguiente accion: proponer un refactor separado; no mezclarlo con arreglos ni contenido. |
 | DT-05 | `item_flavor.js` concentra el mayor volumen de datos narrativos. | Baja | **VIGILAR** | Owner: mantenedor. Siguiente accion: medir tiempo de carga antes de plantear cambios. |
 | DT-06 | Stub huerfano `ashbrand_hotfix.js`. | -- | **CERRADO** | PR #26 (`fix/dt-17-remove-ashbrand-stub`) retiro el fichero; PR #33 dejo constancia documental. No existe en `main` ni se referencia desde `index.html`/`sw.js`. |
@@ -400,7 +404,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 ---|---|---|---|
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | ~~`DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente~~ | -- | **RESUELTO en `DROP_TABLES` y drops de tareas** (la trazabilidad historica de las sustituciones queda separada de las 77 definiciones nuevas aprobadas) |
-| DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
+| DT-03 | ~~`combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa~~ | -- | **RESUELTO** (`fix/combat-difficulty-readable`: contrato revisado y documentado) |
 | DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, gremio, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
 | DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
 | DT-06 | ~~`ashbrand_hotfix.js` existe en el repo pero no se carga en `index.html`; es un fichero huerfano que debe eliminarse o integrarse~~ | -- | **RESUELTO** (verificado 2026-08-11: el fichero ya no existe en `main`; fue eliminado en el saneamiento previo. No hay referencias en `index.html` ni en `sw.js`.) |
@@ -435,6 +439,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 
 ## 8. Changelog del mapa
 
+- **2026-08-25 - `fix/combat-difficulty-readable` (Fase 4B.1):** se anade una politica declarativa de dificultad para encuentros individuales: comunes desde nivel 1, elite desde nivel 5 y bosses desde nivel 15; la seleccion prioriza tema y banda segura, el fallback elige el enemigo mas cercano disponible, el escalado queda acotado y la amenaza se comunica antes y durante el combate. `initCombat()` conserva metadatos transitorios del encuentro; no hay migracion de save ni regeneracion de combates ya iniciados. No se modifica el catalogo de enemigos ni se incluyen grupos de combate, que quedan para una rama independiente.
 - **2026-08-24 - `fix/consistent-skill-requirements-clean`:** se añade el estado explicito de habilidades y una unica resolucion de autorizacion para combate. La partida actual y una partida nueva siguen la misma regla; no se añaden excepciones para saves antiguos ni por ID.
 - **2026-08-21 - `feat/category-task-completion` (Fase 3B):** `ui_tasks.js` mantiene el aleatorio global y añade catalogo completo por categoria con estado, proxima fecha, historial basico, completado manual durante enfriamiento y aleatorio restringido mediante el resolver comun. `engine.js` ancla las politicas periodicas con limite uno en la ultima finalizacion y no devuelve tareas en enfriamiento como piscina aleatoria. `ui_hub.js` conserva las tarjetas de categoria como elementos interactivos tactiles mediante su `onclick`; no anade navegacion ni activacion por teclado. No se modifica contenido, recompensas ni el esquema de saves; el resultado pendiente conserva la intencion de completado manual para sobrevivir a una recarga.
 
