@@ -12,12 +12,12 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales) |
+| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
-| Commit de `main` verificado | `912a686034b6b938d5824ad8691ac3389b9968cd` |
+| Commit de `main` verificado | `e6274500713e542c2a260f6192d25a7cea3bcae5` |
 | Commit de la rama de backup | `218cb09e118920b5323598e194c1bd8f07be2ae1` |
 | Build string | `LIFE_XP_BUILD = 'v13.4-equip-action-fix'` (declaracion efectiva auditada en `data_tasks.js`; el valor `v13.6-inventory-language-boundary` anterior del mapa era incorrecto) |
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
@@ -30,7 +30,7 @@
 ## 1. Arquitectura en 10 lineas
 
 LifeXP es una **SPA vanilla JS / PWA** sin bundler ni framework.
-`index.html` contiene todo el CSS y el HTML; los scripts se cargan en orden al final del `<body>`.
+`index.html` contiene todo el CSS y el HTML de todas las pantallas; los scripts se cargan en orden al final del `<body>`.
 El estado global vive en el objeto `gameState` (definido en `engine.js`) y se persiste en `localStorage` bajo la clave `lifexp_save`; el loader actual migra saves versionados de forma secuencial hasta `saveVersion: 4`.
 Los datos de contenido (items, enemigos, quests, clases) son constantes declaradas en ficheros separados y consumidas por `engine.js` y `combat.js` como globals.
 Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_content.js` valida su orden de carga, los ejecuta explicitamente, comprueba la instalacion completa antes de marcar la actualizacion y revierte catalogos, estado en memoria y save si falla cualquier paso.
@@ -54,7 +54,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
 | `engine.js` | 47005 | `gameState`, schema canonico, contrato y resolver comun de habilidades, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `DEFAULT_GAME_STATE`, `resolvePlayerSkill`, `getResolvedPlayerSkills`, `getPlayerSkillContext`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
-| `combat.js` | 36575 | Logica de combate, autorizacion uniforme de habilidades, politica de dificultad de encuentros individuales, escalado acotado, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
+| `combat.js` | 38748 | Logica de combate, autorizacion uniforme de habilidades, politica de dificultad de encuentros individuales, escalado acotado, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
@@ -449,7 +449,6 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 
 - **2026-08-21 - `fix/task-result-navigation-manual` (Fase 2A):** `engine.js` añade el registro durable `pendingTaskResult` y hace que `saveGame()` comunique exito o fallo; `ui_tasks.js` persiste antes de mostrar, conserva el resultado hasta confirmacion, recupera resultados pendientes tras recarga y revierte el estado en memoria si falla el guardado final; `main.js` mantiene historial de pantalla/modal, cierre seguro con atras/Escape/fondo y foco accesible. La rama limpia se usa como base para evitar el parche destructivo de la rama v2 divergente.
 
-
 - **2026-08-19 - `fix/rewards-recoverable` (Fase A1):** la instalacion transaccional valida de forma general las referencias de recompensas antes de guardar. Se cubren tablas de drops, drops de enemigos, drops de tareas y side quests en array u objeto, recompensas de quests y recompensas de capitulos. Una referencia no canonica o ausente provoca rollback determinista y conserva el save anterior. La cobertura vive en `tests/update2_transaction.test.js`, que prueba siete formas de referencia rota.
 
 
@@ -601,3 +600,13 @@ La ejecucion completa anterior registro 3 errores y 26 avisos en el estado de en
 La validacion se ejecuto sobre la combinacion de catalogos actual y los cambios de Fase 3A. Cargo 87 items, 30 enemigos, 10 quests, 0 clases y 41 tareas en el sandbox del validador. El resultado fue `96` errores, todos referencias de items inexistentes desde drops legacy de tareas (`DEFAULT_TASKS[*].drops.items` y `DEFAULT_TASKS[*].sideQuest.drops`). No se modificaron catalogos ni se crearon items ficticios: el problema es una deuda de integridad de contenido independiente del modelo de tareas y queda registrada en DT-22.
 
 La suite `tests/save_migrations.test.js` pasa con cobertura v0-v4, conservacion de historial, disponibilidad periodica, limites, tareas archivadas, revision de tareas legacy, idempotencia, corrupcion, snapshots y assertion de carga de expansion. `node --check` pasa para los tres ficheros modificados. `validate_content.js` permanece fuera del gate de CI de este PR por los 96 errores baseline descritos arriba.
+
+### 11. Cambios recientes
+
+#### `feat/combat-formations-foundation`
+
+- `combat.js` incorpora `COMBAT_FORMATION_VERSION = 1` y el modelo interno de formaciones.
+- Cada miembro de una formacion recibe un `instanceId` estable dentro del encuentro.
+- `initCombat()` conserva la API de combates individuales mediante `combatState.enemy`, que apunta al miembro principal.
+- Se añaden helpers para obtener todos los miembros, filtrar los vivos y localizar una instancia.
+- Esta fase no activa aun la generacion aleatoria de grupos, la nueva UI, la persistencia ni cambios de recompensas.

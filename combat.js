@@ -235,6 +235,58 @@ function applyEquipmentOnHitEffects(attacker, defender, result) {
 }
 
 
+const COMBAT_FORMATION_VERSION = 1;
+
+function createCombatantInstance(enemy, index = 0) {
+  if (!enemy || typeof enemy !== 'object') return null;
+  const baseId = enemy.id || enemy.name || 'enemy';
+  return {
+    ...enemy,
+    instanceId: enemy.instanceId || `${baseId}:${index + 1}`,
+    hp: Number.isFinite(Number(enemy.hp)) ? Number(enemy.hp) : 0,
+    maxHp: Number.isFinite(Number(enemy.maxHp)) ? Number(enemy.maxHp) : Number(enemy.hp) || 0,
+    buffs: Array.isArray(enemy.buffs) ? [...enemy.buffs] : [],
+    debuffs: Array.isArray(enemy.debuffs) ? [...enemy.debuffs] : [],
+    defending: Boolean(enemy.defending)
+  };
+}
+
+function createCombatFormation(enemy, encounterMeta = null) {
+  const sourceMembers = Array.isArray(enemy)
+    ? enemy
+    : Array.isArray(encounterMeta?.formation?.members)
+      ? encounterMeta.formation.members
+      : [enemy];
+  const members = sourceMembers
+    .map((member, index) => createCombatantInstance(member, index))
+    .filter(Boolean);
+  if (members.length === 0) return null;
+
+  const sourceMeta = encounterMeta?.formation && typeof encounterMeta.formation === 'object'
+    ? encounterMeta.formation
+    : {};
+  return {
+    version: COMBAT_FORMATION_VERSION,
+    id: sourceMeta.id || `formation:${members.map(member => member.instanceId).join('|')}`,
+    mode: sourceMeta.mode || (members.length === 1 ? 'single' : 'group'),
+    members
+  };
+}
+
+function getCombatMembers(state = combatState) {
+  if (!state) return [];
+  if (Array.isArray(state.formation?.members)) return state.formation.members;
+  return state.enemy ? [state.enemy] : [];
+}
+
+function getLivingCombatMembers(state = combatState) {
+  return getCombatMembers(state).filter(member => Number(member.hp) > 0);
+}
+
+function getCombatMemberByInstanceId(instanceId, state = combatState) {
+  return getCombatMembers(state).find(member => member.instanceId === instanceId) || null;
+}
+
 function initCombat(enemy, isTactical = false, encounterMeta = null) {
   const playerStats = typeof getDerivedStats === 'function' ? getDerivedStats() : gameState.stats;
   const resources = typeof calculateResources === 'function' ? calculateResources(playerStats) : {
@@ -243,6 +295,9 @@ function initCombat(enemy, isTactical = false, encounterMeta = null) {
     sp: 50 + (playerStats.fue + playerStats.des),
     focusMax: 100
   };
+  const formation = createCombatFormation(enemy, encounterMeta);
+  if (!formation) return null;
+  const primaryEnemy = formation.members[0];
   
   combatState = {
     active: true,
@@ -266,14 +321,10 @@ function initCombat(enemy, isTactical = false, encounterMeta = null) {
       defending: false
     },
     
-    enemy: {
-      ...enemy,
-      hp: enemy.hp,
-      maxHp: enemy.hp,
-      buffs: [],
-      debuffs: [],
-      defending: false
-    },
+    formation,
+    // Compatibility alias: current combat logic continues to use the primary
+    // member until the target-selection phase is enabled.
+    enemy: primaryEnemy,
     
     log: [],
     rewards: null,
@@ -285,7 +336,9 @@ function initCombat(enemy, isTactical = false, encounterMeta = null) {
     }
   };
   
-  addCombatLog(`¡Encuentro con ${enemy.name}!`);
+  addCombatLog(formation.members.length === 1
+    ? `¡Encuentro con ${primaryEnemy.name}!`
+    : `¡Encuentro con ${formation.members.length} enemigos!`);
   return combatState;
 }
 
