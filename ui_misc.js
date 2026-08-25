@@ -69,7 +69,7 @@ function showClassChangeModal() {
   const available = getAvailableClassChanges(classId, level);
   
   if (available.length === 0) {
-    alert('No hay clases disponibles para cambiar.');
+    alert('No classes are available to change.');
     return;
   }
   
@@ -77,7 +77,7 @@ function showClassChangeModal() {
   const options = document.getElementById('modal-class-options');
   
   if (!classId) {
-    info.textContent = `Has alcanzado nivel ${level}. ¡Es hora de elegir tu primera clase!`;
+    info.textContent = `You reached level ${level}. It is time to choose your first class!`;
   } else {
     const currentCls = CLASS_TREE[classId];
     info.textContent = `Puedes avanzar desde ${currentCls.name} a una de estas especializaciones:`;
@@ -112,7 +112,7 @@ function showClassChangeModal() {
 function selectClass(classId) {
   const cls = CLASS_TREE[classId];
   
-  if (!confirm(`¿Quieres convertirte en ${cls.name}?\n\n${cls.desc}\n\nEsta decisión afectará tu camino de progresión.`)) {
+  if (!confirm(`Become ${cls.name}?\n\n${cls.desc}\n\nThis decision will affect your progression path.`)) {
     return;
   }
   
@@ -124,7 +124,7 @@ function selectClass(classId) {
   renderHub();
   
   // Show celebration
-  alert(`\uD83C\uDF89 ¡Te has convertido en ${cls.name}!\n\nTus stats han mejorado y tienes acceso a nuevas habilidades.`);
+  alert(`\uD83C\uDF89 You became ${cls.name}!\n\nYour stats improved and you now have access to new skills.`);
 }
 
 // ===========================================================================
@@ -169,7 +169,7 @@ function exportSnapshot() {
       exportDate: new Date().toISOString(),
       version: '1.0',
       purpose: 'LifeXP content update planning snapshot',
-      instructions: 'Este fichero contiene el estado actual del jugador y métricas de uso. Úsalo para planificar actualizaciones de contenido (nuevas tareas, quests, items, enemigos, balanceo).'
+      instructions: "This file contains the player's current state and usage metrics. Use it to plan content updates (new tasks, quests, items, enemies, and balance changes)."
     },
     
     player: {
@@ -222,7 +222,7 @@ function exportSnapshot() {
   a.click();
   URL.revokeObjectURL(url);
   
-  alert('Snapshot exportado. Compártelo con tu agente de Langdock para planificar updates de contenido.');
+  alert('Snapshot exported. Share it with your Langdock agent to plan content updates.');
 }
 
 function calculateDaysActive() {
@@ -284,7 +284,7 @@ function generateContentSuggestions() {
     suggestions.push({
       type: 'progression',
       priority: 'high',
-      message: 'El jugador está en nivel ' + level + ' pero sigue siendo Novato. Considera añadir recordatorios o tutoriales sobre el sistema de clases.'
+      message: 'The player is level ' + level + ' but is still a Novice. Consider adding reminders or tutorials about the class system.'
     });
   }
   
@@ -292,7 +292,7 @@ function generateContentSuggestions() {
     suggestions.push({
       type: 'content',
       priority: 'medium',
-      message: 'Jugador nivel ' + level + '. Considera añadir quests de historia más avanzadas o contenido endgame.'
+      message: 'Player level ' + level + '. Consider adding more advanced story quests or endgame content.'
     });
   }
   
@@ -306,7 +306,7 @@ function generateContentSuggestions() {
     suggestions.push({
       type: 'balance',
       priority: 'medium',
-      message: 'Categorías poco usadas: ' + neglectedCats.join(', ') + '. Considera hacer las tareas de estas categorías más atractivas o añadir mejores recompensas.'
+      message: 'Underused categories: ' + neglectedCats.join(', ') + '. Consider making tasks in these categories more appealing or adding better rewards.'
     });
   }
   
@@ -324,7 +324,7 @@ function generateContentSuggestions() {
     suggestions.push({
       type: 'systems',
       priority: 'medium',
-      message: 'Inventario casi lleno. Considera añadir sistema de stash, crafting para consumir materiales, o tienda para vender.'
+      message: 'Inventory is nearly full. Consider adding a stash, crafting to consume materials, or a shop for selling.'
     });
   }
   
@@ -334,7 +334,7 @@ function generateContentSuggestions() {
 function importDataText(text) {
   const data = JSON.parse(text);
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    throw new Error('El fichero no contiene un save válido.');
+    throw new Error('The file does not contain a valid save.');
   }
   if (!('level' in data) && !('tasks' in data) && !('taskHistory' in data)) {
     throw new Error('Faltan datos reconocibles de LifeXP.');
@@ -362,7 +362,7 @@ function showImportModal() {
       alert('Datos importados correctamente');
       location.reload();
     } catch (err) {
-      alert('Error al importar: ' + err.message);
+      alert('Import error: ' + err.message);
     }
   };
   input.click();
@@ -388,8 +388,8 @@ window.LifeXPBackup = {
 };
 
 function resetGame() {
-  if (!confirm('¿Seguro que quieres borrar todo el progreso?')) return;
-  if (!confirm('¿SEGURO? Esta acción no se puede deshacer.')) return;
+  if (!confirm('Are you sure you want to delete all progress?')) return;
+  if (!confirm('ARE YOU SURE? This action cannot be undone.')) return;
   
   localStorage.removeItem('lifexp_save');
   location.reload();

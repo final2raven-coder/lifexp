@@ -58,15 +58,15 @@ function triggerEncounterAfterTask(task) {
     pendingEncounter = encounter;
     
     // Show encounter alert in completion overlay
-    const threat = encounter.threat || { label: 'Encuentro', description: 'La amenaza se manifiesta ante ti.' };
+    const threat = encounter.threat || { label: 'Encounter', description: 'A threat manifests before you.' };
     const alertHtml = `
       <div style="background: linear-gradient(135deg, rgba(255,77,109,0.2), transparent); 
                   border: 1px solid var(--accent); border-radius: 8px; padding: 12px; 
                   margin-top: 16px; text-align: center;">
         <div style="font-size: 24px; margin-bottom: 4px;">${encounter.enemy.icon}</div>
-        <div style="font-size: 14px; font-weight: 700; color: var(--accent);">¡Encuentro!</div>
+        <div style="font-size: 14px; font-weight: 700; color: var(--accent);">Encounter!</div>
         <div style="font-size: 13px; font-weight: 700; color: var(--text);">${threat.label}</div>
-        <div style="font-size: 12px; color: var(--text-muted);">${encounter.enemy.name} aparece · ${threat.description}</div>
+        <div style="font-size: 12px; color: var(--text-muted);"> ${encounter.enemy.name} appears · ${threat.description}</div>
       </div>
     `;
     
@@ -74,7 +74,7 @@ function triggerEncounterAfterTask(task) {
     rewardsEl.innerHTML += alertHtml;
     
     // Change continue button text
-    document.getElementById('btn-complete-continue').textContent = '⚔️ ¡Al combate!';
+    document.getElementById('btn-complete-continue').textContent = '⚔️ To combat!';
   }
 }
 
@@ -128,7 +128,7 @@ function renderCombatEnemyList(members, selectedTargetInstanceId) {
 
   listEl.innerHTML = '';
   if (members.length === 0) {
-    listEl.innerHTML = '<div class="combat-enemy-empty">No quedan enemigos en pie.</div>';
+    listEl.innerHTML = '<div class="combat-enemy-empty">No enemies remain standing.</div>';
     return;
   }
 
@@ -146,16 +146,16 @@ function renderCombatEnemyList(members, selectedTargetInstanceId) {
     card.disabled = defeated;
     card.setAttribute('aria-pressed', selected ? 'true' : 'false');
     card.setAttribute('aria-label', defeated
-      ? `${member.name}, derrotado`
-      : `${member.name}, nivel ${member.level}, ${selected ? 'objetivo seleccionado' : 'seleccionar como objetivo'}`);
+      ? `${member.name}, defeated`
+      : `${member.name}, level ${member.level}, ${selected ? 'target selected' : 'select as target'}`);
     card.innerHTML = `
       <div class="combat-enemy-card-top">
         <span id="combat-enemy-icon${suffix}" class="combat-enemy-card-icon">${escapeCombatHtml(member.icon || '👾')}</span>
         <span class="combat-enemy-card-heading">
-          <span id="combat-enemy-name${suffix}" class="combat-enemy-card-name">${escapeCombatHtml(member.name || 'Enemigo')}</span>
+          <span id="combat-enemy-name${suffix}" class="combat-enemy-card-name">${escapeCombatHtml(member.name || 'Enemy')}</span>
           <span id="combat-enemy-level${suffix}" class="combat-enemy-card-level">Lv ${escapeCombatHtml(member.level)}</span>
         </span>
-        <span class="combat-enemy-card-target">${defeated ? 'Derrotado' : selected ? 'Objetivo' : 'Seleccionar'}</span>
+        <span class="combat-enemy-card-target">${defeated ? 'Defeated' : selected ? 'Target' : 'Select'}</span>
       </div>
       <div class="combat-enemy-card-hp-row">
         <span class="combat-enemy-card-hp-label">❤️ HP</span>
@@ -209,10 +209,10 @@ function renderCombatScreen() {
   // Phase indicator
   const phaseEl = document.getElementById('combat-phase');
   if (combatState.phase === 'player') {
-    phaseEl.textContent = 'Tu turno';
+    phaseEl.textContent = 'Your turn';
     phaseEl.style.color = 'var(--green)';
   } else if (combatState.phase === 'enemy') {
-    phaseEl.textContent = 'Turno enemigo';
+    phaseEl.textContent = 'Enemy turn';
     phaseEl.style.color = 'var(--red)';
   }
 }
@@ -294,11 +294,11 @@ function showCombatVictory() {
   
   // Show victory overlay
   document.getElementById('combat-result-icon').textContent = '\uD83C\uDFC6';
-  document.getElementById('combat-result-title').textContent = '¡Victoria!';
+  document.getElementById('combat-result-title').textContent = 'Victory!';
   const defeatedMembers = getCombatUiMembers();
   document.getElementById('combat-result-subtitle').textContent = defeatedMembers.length === 1
-    ? `${defeatedMembers[0].name} derrotado`
-    : `${defeatedMembers.length} enemigos derrotados`;
+    ? `${defeatedMembers[0].name} defeated`
+    : `${defeatedMembers.length} enemies defeated`;
   
   let rewardsHtml = '';
   if (rewards) {
@@ -313,7 +313,7 @@ function showCombatVictory() {
         const statusLabel = result?.status === 'pending'
           ? ' (pendiente: libera espacio para recuperarlo)'
           : result?.status === 'rejected'
-            ? ' (no entregado: revisa recuperación)'
+            ? ' (not delivered: review recovery)'
             : '';
         rewardsHtml += `<div class="complete-reward" style="color: var(--purple);">\uD83C\uDF81 ${item?.name || drop}${statusLabel}</div>`;
       });
@@ -326,8 +326,8 @@ function showCombatVictory() {
 
 function showCombatDefeat() {
   document.getElementById('combat-result-icon').textContent = '\uD83D\uDC80';
-  document.getElementById('combat-result-title').textContent = 'Derrotado...';
-  document.getElementById('combat-result-subtitle').textContent = 'Vives para luchar otro día';
+  document.getElementById('combat-result-title').textContent = 'Defeated...';
+  document.getElementById('combat-result-subtitle').textContent = 'Live to fight another day';
   document.getElementById('combat-result-rewards').innerHTML = '';
   
   document.getElementById('combat-result-overlay').classList.add('show');
@@ -357,7 +357,7 @@ function saveForLater() {
 
 function showSavedTasks() {
   const list = document.getElementById('modal-tasks-list');
-  document.getElementById('modal-tasks-title').textContent = '\uD83D\uDCCC Tareas guardadas';
+  document.getElementById('modal-tasks-title').textContent = '\uD83D\uDCCC Saved tasks';
   
   list.innerHTML = '';
   for (const taskId of gameState.savedTasks) {
@@ -392,7 +392,7 @@ function openSavedTask(taskId) {
 
 function showOverflowTasks() {
   const list = document.getElementById('modal-tasks-list');
-  document.getElementById('modal-tasks-title').textContent = '⚡ Tareas overflow';
+  document.getElementById('modal-tasks-title').textContent = '⚡ Overflow tasks';
   
   const overflow = getOverflowTasks();
   list.innerHTML = '';

@@ -80,28 +80,28 @@ function triggerHaptic() {
 const onboardingSteps = [
   {
     icon: '⚔️',
-    title: 'Bienvenido a LifeXP',
-    text: 'Un RPG donde progresas completando tareas de la vida real. Sube de nivel, consigue loot, y derrota enemigos.'
+    title: 'Welcome to LifeXP',
+    text: 'An RPG where you progress by completing real-life tasks. Level up, collect loot, and defeat enemies.'
   },
   {
     icon: '\uD83D\uDCCB',
-    title: 'Sistema de Tareas',
-    text: 'Cada día recibirás tareas aleatorias de tus categorías (Casa, Cuerpo, Gestiones, Social, Personal). Completa la tarea en la vida real y márcala como hecha.'
+    title: 'Task System',
+    text: 'Each day, you receive random tasks from your categories (Home, Body, Errands, Social, Personal). Complete the task in real life and mark it as done.'
   },
   {
     icon: '⚡',
     title: 'Overflow',
-    text: 'Las tareas atrasadas entran en "overflow" y dan +50% XP. Tienen prioridad, así que intenta mantenerlas al día.'
+    text: 'Overdue tasks enter "overflow" and grant +50% XP. They have priority, so try to keep up with them.'
   },
   {
     icon: '\uD83C\uDFB2',
-    title: 'Drops y Combate',
-    text: 'Al completar tareas puedes conseguir items y encontrar enemigos. El combate puede ser automático o táctico según la dificultad.'
+    title: 'Drops and Combat',
+    text: 'Completing tasks can earn you items and trigger encounters. Combat can be automatic or tactical depending on difficulty.'
   },
   {
     icon: '\uD83C\uDFF0',
-    title: '¡A jugar!',
-    text: 'Pulsa el botón central para recibir tu primera tarea. ¡Buena suerte, aventurero!'
+    title: "Let's play!",
+    text: 'Press the central button to get your first task. Good luck, adventurer!'
   }
 ];
 
@@ -135,8 +135,8 @@ function renderOnboardingStep() {
       <div class="onboarding-title">${step.title}</div>
       <div class="onboarding-text">${step.text}</div>
       <div class="onboarding-dots">${dotsHtml}</div>
-      <button class="btn btn-gold" onclick="nextOnboardingStep()">${currentOnboardingStep < onboardingSteps.length - 1 ? 'Siguiente' : '¡Empezar!'}</button>
-      ${currentOnboardingStep > 0 ? '<button class="btn btn-ghost" style="margin-top: 8px;" onclick="prevOnboardingStep()">Atrás</button>' : ''}
+      <button class="btn btn-gold" onclick="nextOnboardingStep()">${currentOnboardingStep < onboardingSteps.length - 1 ? 'Next' : 'Start playing!'}</button>
+      ${currentOnboardingStep > 0 ? '<button class="btn btn-ghost" style="margin-top: 8px;" onclick="prevOnboardingStep()">Back</button>' : ''}
     </div>
   `;
   
@@ -166,7 +166,7 @@ function finishOnboarding() {
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 300);
   }
-  showToast('¡Bienvenido, aventurero!', 'gold');
+  showToast('Welcome, adventurer!', 'gold');
 }
 
 function skipOnboarding() {
