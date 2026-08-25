@@ -12,7 +12,7 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-21 (`feat/category-task-completion` -- Fase 3B, catalogo por categoria y completado manual) |
+| Ultima actualizacion | 2026-08-24 (`fix/consistent-skill-requirements-clean` -- regla uniforme de habilidades) |
 | Branch de produccion | `main` |
 | Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `fix/update-verifiable`, `fix/update-verifiable-recovery`, `fix/task-history-availability`, `feat/category-task-completion` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
@@ -53,8 +53,8 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
-| `engine.js` | 40111 | `gameState`, schema canonico, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
-| `combat.js` | 30528 | Logica de combate, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards` |
+| `engine.js` | 47005 | `gameState`, schema canonico, contrato y resolver comun de habilidades, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `DEFAULT_GAME_STATE`, `resolvePlayerSkill`, `getResolvedPlayerSkills`, `getPlayerSkillContext`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
+| `combat.js` | 30677 | Logica de combate, autorizacion uniforme de habilidades, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
@@ -279,6 +279,12 @@ Las frecuencias conocidas de `FREQ` declaran una politica periodica con limite p
 
 ---
 
+### Contrato de habilidades (Fase 4A)
+
+`gameState.skills` es la fuente de verdad para la autorizacion del jugador. `known` registra las habilidades conocidas; `equipped` registra las preparadas; `sources` conserva la trazabilidad declarativa con tipos `initial`, `class`, `equipment`, `unlock` o `progression`. `resolvePlayerSkill()` deriva `authorized` y `usable` a partir de definicion, conocimiento, equipamiento, fuente, requisitos y recursos. `getAvailableActions()` y `executePlayerAction()` consumen el mismo resolver.
+
+Una partida nueva y cualquier save sin `skills` reciben el mismo estado inicial normal (`basic_attack` y `defend`). No se conceden permisos por antiguedad, no se recuperan acciones de una lista historica y no existe una excepcion por ID. Si una habilidad guardada carece de fuente valida, se conserva pero no es utilizable.
+
 ## 5. Orden de carga de scripts (index.html, lineas 1373-1395)
 
 El orden es estricto: cada fichero depende de los anteriores como globals.
@@ -357,7 +363,7 @@ El resultado `ready` conserva los valores mostrables y el resumen de drop; `dism
 9. **Los IDs de contenido son `snake_case` puro (`^[a-z0-9_]+$`).** Cualquier string con espacios, mayusculas o acentos en un campo de ID es un error detectable por el validador.
 10. **`sw.js` y `index.html` deben estar sincronizados.** Cada `<script src="...">` en `index.html` debe tener su entrada en `urlsToCache` de `sw.js`. El validador (check 10, `SW_MISSING_ASSET`) lo detecta como error bloqueante.
 11. **Version de cache incremental.** Al anadir o eliminar cualquier fichero de la app, incrementar `CACHE_NAME` en `sw.js` (`lifexp-v22` -> `lifexp-v23`, etc.) para forzar actualizacion en clientes existentes.
-12. **Actualizacion verificable.** `main.js` distingue comprobacion de la interfaz, refresco de la caché y activacion de un Service Worker; compara `LIFE_XP_BUILD` ejecutada con la declarada por una lectura sin caché de `data_tasks.js`, consulta el estado de la caché por MessageChannel y nunca muestra una actualización aplicada si alguno de esos pasos no puede confirmarse.
+12. **Actualizacion verificable.** `main.js` distingue comprobacion de la interfaz, refresco de la caché y build ejecutada; compara `LIFE_XP_BUILD` ejecutada con la declarada por una lectura sin caché de `data_tasks.js`, consulta el estado de la caché por MessageChannel y nunca muestra una actualización aplicada si alguno de esos pasos no puede confirmarse.
 13. **Contrato de recompensas durable.** `pendingLoot` usa `{ version: 1, entries: [] }` y acepta formatos legacy al cargar; `rewardLedger` registra `claimId` y estados para que las entregas sean idempotentes. `ui_tasks.js` y `combat.js` conectan tareas, side quests y combate a `LifeXPInventory.deliverReward()`; la instalacion transaccional bloquea referencias de drops no canonicas o ausentes antes del commit.
 14. **Historial y disponibilidad de tareas.** `taskHistory` es append-only y no se usa `lastDone` como unica fuente de verdad. `getTaskAvailability()` aplica la politica declarativa de cada tarea; `getTaskAvailabilityDefinition()` marca como `needs_review` las definiciones incompletas o invalidas; las tareas archivadas se conservan y no se ofrecen para completar. La migracion `3->4` no elimina historial ni contenido legacy.
 
@@ -395,7 +401,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 | DT-01 | ~~`sw.js` tiene lista de assets hardcodeada; si se anade un fichero nuevo sin actualizar el SW, la PWA puede servir version antigua~~ | -- | **RESUELTO** (fix/sw-assets: check 10 en validador detecta desincronias; CACHE_NAME subida a v21) |
 | DT-02 | ~~`DROP_TABLES` en `items.js` usa nombres de items en texto libre (no IDs); si un item se renombra, los drops se rompen silenciosamente~~ | -- | **RESUELTO en `DROP_TABLES` y drops de tareas** (la trazabilidad historica de las sustituciones queda separada de las 77 definiciones nuevas aprobadas) |
 | DT-03 | `combat.js` no se ha leido en detalle en esta sesion; su interfaz exacta con `engine.js` no esta verificada en este mapa | Baja | Pendiente verificacion |
-| DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, clase, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
+| DT-04 | `ui_misc.js` agrupa pantallas muy distintas (mapa, gremio, lore, quests rapidas); candidato a split en refactor futuro | Baja | Abierto |
 | DT-05 | `item_flavor.js` es el fichero mas grande de datos (44 KB); si crece mucho puede afectar tiempo de carga inicial | Baja | Vigilar |
 | DT-06 | ~~`ashbrand_hotfix.js` existe en el repo pero no se carga en `index.html`; es un fichero huerfano que debe eliminarse o integrarse~~ | -- | **RESUELTO** (verificado 2026-08-11: el fichero ya no existe en `main`; fue eliminado en el saneamiento previo. No hay referencias en `index.html` ni en `sw.js`.) |
 | DT-07 | `expansion_*.js` usan `Object.assign` sin guard de duplicados; si un ID de expansion colisiona con uno base, el base se sobreescribe silenciosamente | Media | Abierto |
@@ -428,6 +434,8 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 - `node validate_content.js` queda fuera del gate de CI de este PR porque mantiene 96 errores baseline de referencias de items en drops legacy de tareas; resolver esa deuda es una tarea de contenido separada y no se maquilla en esta fase.
 
 ## 8. Changelog del mapa
+
+- **2026-08-24 - `fix/consistent-skill-requirements-clean`:** se añade el estado explicito de habilidades y una unica resolucion de autorizacion para combate. La partida actual y una partida nueva siguen la misma regla; no se añaden excepciones para saves antiguos ni por ID.
 - **2026-08-21 - `feat/category-task-completion` (Fase 3B):** `ui_tasks.js` mantiene el aleatorio global y añade catalogo completo por categoria con estado, proxima fecha, historial basico, completado manual durante enfriamiento y aleatorio restringido mediante el resolver comun. `engine.js` ancla las politicas periodicas con limite uno en la ultima finalizacion y no devuelve tareas en enfriamiento como piscina aleatoria. `ui_hub.js` conserva las tarjetas de categoria como elementos interactivos tactiles mediante su `onclick`; no anade navegacion ni activacion por teclado. No se modifica contenido, recompensas ni el esquema de saves; el resultado pendiente conserva la intencion de completado manual para sobrevivir a una recarga.
 
 - **2026-08-21 - `fix/task-history-availability` (Fase 3A):** `engine.js` pasa a `saveVersion: 4`, conserva todo `taskHistory`, anade snapshots de programacion por realizacion, evalua disponibilidad periodica con limites, soporta tareas de una sola vez, conserva tareas archivadas y marca como `needs_review` las tareas legacy sin frecuencia o con politica invalida. Se anaden `FREQ` declarativas, migracion `v3->v4`, pruebas de compatibilidad v0-v4, idempotencia, rollback y disponibilidad. `ui_tasks.js` no se modifica: la integracion del flujo visible queda en DT-21. La validacion de contenido detecta 96 referencias legacy rotas fuera del alcance; se registran en DT-22 sin alterar catalogos.
