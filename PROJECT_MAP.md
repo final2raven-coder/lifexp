@@ -54,7 +54,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 |---|---:|---|---|
 | `index.html` | 43838 | CSS completo + HTML de todas las pantallas + orden de carga de scripts | -- |
 | `engine.js` | 47005 | `gameState`, schema canonico, contrato y resolver comun de habilidades, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `DEFAULT_GAME_STATE`, `resolvePlayerSkill`, `getResolvedPlayerSkills`, `getPlayerSkillContext`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
-| `combat.js` | 36575 | Logica de combate, autorizacion uniforme de habilidades, politica de dificultad de encuentros individuales, escalado acotado, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
+| `combat.js` | 38748 | Logica de combate, autorizacion uniforme de habilidades, politica de dificultad de encuentros individuales, escalado acotado, calculo idempotente de recompensas y entrega durable de drops | `initCombat`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
 | `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
@@ -313,7 +313,7 @@ El orden es estricto: cada fichero depende de los anteriores como globals.
 17. ui_combat.js        -- UI de combate, encuentros y feedback de post-tarea
 18. ui_misc.js          -- UI miscelanea (mapa, gremio, lore, clase, quests rapidas)
 19. guild.js            -- Sistema de gremio (receipts, sync, guild state)
-20. ui_feedback.js     -- UI de feedback visual de recompensas, drops y progresion
+20. ui_feedback.js      -- UI de feedback visual de recompensas, drops y progresion
 21. ui_quests.js        -- UI de quests
 22. item_system.js      -- Sistema de items (attunement, rituales, modales)
 23. main.js             -- Punto de entrada (event listeners, SW)
