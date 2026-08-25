@@ -403,42 +403,24 @@ const PLAYER_SKILLS = {
 function getAvailableActions() {
   const p = combatState.player;
   const actions = [];
+  const resolvedSkills = getResolvedPlayerSkills(getPlayerSkillContext(p));
+
+  for (const resolved of resolvedSkills) {
+    if (!resolved.definition || !PLAYER_SKILLS[resolved.id]) continue;
+    actions.push({
+      ...resolved.definition,
+      available: resolved.usable,
+      skillState: {
+        known: resolved.known,
+        equipped: resolved.equipped,
+        authorized: resolved.authorized,
+        reason: resolved.reason,
+        unmetRequirements: resolved.unmetRequirements
+      }
+    });
+  }
   
-  // Basic attack always available
-  actions.push({ ...PLAYER_SKILLS.basic_attack, available: true });
-  
-  // Equipped skills (simplified: use power_strike and fire_bolt for now)
-  const skill1 = PLAYER_SKILLS.power_strike;
-  const skill2 = PLAYER_SKILLS.fire_bolt;
-  
-  actions.push({
-    ...skill1,
-    available: p[skill1.costType] >= skill1.cost
-  });
-  
-  actions.push({
-    ...skill2,
-    available: p[skill2.costType] >= skill2.cost
-  });
-  
-  // Heal
-  const healSkill = PLAYER_SKILLS.heal;
-  actions.push({
-    ...healSkill,
-    available: p.mp >= healSkill.cost && p.hp < p.maxHp
-  });
-  
-  // Ultimate
-  const ultimate = PLAYER_SKILLS.ultimate_strike;
-  actions.push({
-    ...ultimate,
-    available: p.focus >= ultimate.cost
-  });
-  
-  // Defend
-  actions.push({ ...PLAYER_SKILLS.defend, available: true });
-  
-  // Flee
+  // Flee is a combat action, not a player skill.
   actions.push({
     id: 'flee', name: 'Huir', icon: '🏃', type: 'flee',
     available: true,
@@ -470,6 +452,17 @@ function executePlayerAction(actionId) {
   p.defending = false;
   
   const action = PLAYER_SKILLS[actionId] || { id: actionId };
+  const resolvedSkill = actionId === 'flee' ? null : resolvePlayerSkill(actionId, getPlayerSkillContext(p));
+  if (actionId !== 'flee' && (!resolvedSkill || !resolvedSkill.usable)) {
+    return {
+      action: actionId,
+      success: false,
+      message: resolvedSkill?.reason === 'not_equipped'
+        ? 'Esta habilidad no está equipada.'
+        : 'Esta habilidad no está disponible.',
+      effects: []
+    };
+  }
   let result = { action: actionId, success: true, effects: [] };
   
   switch (action.type || actionId) {
