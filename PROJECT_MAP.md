@@ -12,9 +12,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones; `feat/combat-formations-target-selection` -- formaciones jugables y seleccion segura de objetivos) |
+| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones; `feat/combat-formations-target-selection` -- formaciones jugables y seleccion segura de objetivos; `fix/visible-labels-consistency` -- contrato de presentacion en ingles para objetos, recompensas y tareas) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation`, `fix/visible-labels-consistency` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
 | Commit de `main` verificado | `e6274500713e542c2a260f6192d25a7cea3bcae5` |
@@ -56,7 +56,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | `engine.js` | 47005 | `gameState`, schema canonico, contrato y resolver comun de habilidades, modelo de tareas e historial, migraciones transaccionales v0->v4, snapshots pre-migracion, rollback, `updateStreak`, `showScreen` y resultado pendiente de tarea | `gameState`, `DEFAULT_GAME_STATE`, `resolvePlayerSkill`, `getResolvedPlayerSkills`, `getPlayerSkillContext`, `saveGame`, `loadGame`, `addXp`, `addStats`, `getAvailableTasks`, `getTaskAvailability`, `createTaskHistoryEntry`, `showScreen`, `CURRENT_SAVE_VERSION`, `normalizePendingLootState`, `cloneSaveState` |
 | `combat.js` | 42539 | Logica de combate, formaciones versionadas, seleccion y validacion de objetivos, turnos multi-enemigo, autorizacion uniforme de habilidades, dificultad acotada, recompensas idempotentes y entrega durable de drops | `initCombat`, `createCombatFormation`, `getCombatMembers`, `getLivingCombatMembers`, `getCombatMemberByInstanceId`, `setCombatTarget`, `getAvailableActions`, `executePlayerAction`, `executeEnemyTurn`, `calculateCombatRewards`, `applyCombatRewards`, `getEncounterType`, `pickEncounterEnemy`, `scaleEncounterEnemy`, `getEncounterThreat` |
 | `guild.js` | 11298 | Sistema cooperativo: receipts, sync, guild state | `generateReceipt`, `applyReceipt`, `renderGuild` |
-| `inventory_system.js` | 17410 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes y repair al arrancar | `LifeXPInventory`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
+| `inventory_system.js` | 20598 | Subsistema canonico de inventario, entrega estructurada de recompensas, cola de pendientes, repair al arrancar y contrato de presentacion en ingles | `LifeXPInventory`, `LifeXPPresentation`, `normalizeItemText`, `emergencyRerollLegacyItem`, `deliverReward`, `getPendingLoot`, `retryPendingLoot`, `renderInventory`, `renderCanonicalInventory`, `renderCanonicalStash` |
 | `item_system.js` | 32396 | Attunement, rituales, curses, modales de item, knowledge system, activation panel y narrativa declarativa de fallos de equipamiento | `initializeItemSystem`, `equipItem`, `unequipItem`, `showItemModal`, `getActiveItemEffects`, `renderActivationPanel`, `getItemRequirementNarrative` |
 | `main.js` | 14234 | Punto de entrada: event listeners, registro/verificacion del Service Worker, comparacion de build y sincronizacion History API de pantallas/modales | `initializeLifeXPHistory`, `syncLifeXPScreenHistory`, `pushTaskResultHistory`, `closeTaskResultModal`, `registerAndVerifyLifeXPServiceWorker` |
 
@@ -65,7 +65,7 @@ Los tamanos son bytes del arbol de `main` verificado el 2026-08-18; no son estim
 | Fichero | Bytes | Pantalla / zona | Funciones clave |
 |---|---:|---|---|
 | `ui_hub.js` | 16403 | Hub principal, inventario, equipamiento, settings; deriva los fallos de equipamiento al narrador de requisitos | `renderHub`, `renderCharacter`, `renderInventory`, `renderEquipment`, `equipItemFromInventory`, `unequipItemToInventory`, `useConsumable`, `renderSettings` |
-| `ui_tasks.js` | 20380 | Pantalla de tarea, completado, drops, encuentros y persistencia/recuperacion de `pendingTaskResult` | `openRandomTask`, `openCategory`, `completeTask`, `finalizeCompletion`, `presentPendingTaskResult`, `restorePendingTaskResult`, `dismissComplete` |
+| `ui_tasks.js` | 27980 | Pantalla de tarea, completado, drops, encuentros, persistencia/recuperacion de `pendingTaskResult` y presentacion en ingles | `openRandomTask`, `openCategory`, `completeTask`, `finalizeCompletion`, `presentPendingTaskResult`, `restorePendingTaskResult`, `dismissComplete`, `getTaskDropPresentation` |
 | `ui_combat.js` | 16115 | UI de combate, seleccion segura de encuentros, lista y seleccion de miembros, lectura de amenaza y feedback estructurado de recompensas | `renderCombatScreen`, `renderCombatEnemyList`, `selectCombatTarget`, `startCombatFromEncounter`, `showCombatVictory`, `showCombatDefeat` |
 | `ui_misc.js` | 12642 | Mapa, gremio, lore, clase y quests rapidas | `renderMap`, `renderGuildScreen`, `renderLore`, `renderClass`, `renderQuickQuests` |
 | `ui_quests.js` | 9575 | Lista y detalle de quests | `renderQuests`, `showQuestDetail`, `acceptQuest`, `abandonQuest` |
@@ -623,3 +623,11 @@ La suite `tests/save_migrations.test.js` pasa con cobertura v0-v4, conservacion 
 - `initCombat()` conserva la API de combates individuales mediante `combatState.enemy`, que apunta al miembro principal.
 - Se añaden helpers para obtener todos los miembros, filtrar los vivos y localizar una instancia.
 - Esta fase no activa aun la generacion aleatoria de grupos, la nueva UI, la persistencia ni cambios de recompensas.
+
+#### `fix/visible-labels-consistency` (Fase 5A.1)
+
+- Se añade `LifeXPPresentation` como contrato común de presentación en inglés para categorías, frecuencias, tipos, rarezas, estados, objetos y recompensas.
+- Las referencias de objetos conservan sus IDs para lógica, persistencia y recuperación, pero los nombres visibles pasan por resolución canónica; las referencias no resolubles se presentan como `Unresolved item` o `Unresolved reward`, nunca como claves técnicas desnudas.
+- La pantalla de tareas presenta categorías, frecuencias, estados, drops, resultados y mensajes en inglés; el texto original de las tareas reales se conserva sin traducir ni modificar.
+- No se cambian IDs, catálogo de contenido, tipos canónicos, reglas de entrega, migraciones ni saves existentes.
+- Esta fase no modifica combate, quests, feedback global ni textos estáticos de `index.html`; quedan fuera del alcance de este PR.
