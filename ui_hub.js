@@ -24,7 +24,7 @@ function renderHub() {
   if (overflow.length > 0) {
     alertsDiv.innerHTML += `
       <div class="alert alert-overflow" onclick="showOverflowTasks()">
-        <div class="alert-icon">⚡</div>
+        <div class="alert-icon">${LifeXPIcons.renderUI('world.lightning', { size: 20 })}</div>
         <div class="alert-text"><strong>${overflow.length} overflow</strong> — high priority</div>
       </div>
     `;
@@ -34,7 +34,7 @@ function renderHub() {
   if (gameState.savedTasks.length > 0) {
     alertsDiv.innerHTML += `
       <div class="alert alert-saved" onclick="showSavedTasks()">
-        <div class="alert-icon">\uD83D\uDCCC</div>
+        <div class="alert-icon">${LifeXPIcons.renderUI('world.pin', { size: 20 })}</div>
         <div class="alert-text"><strong>${gameState.savedTasks.length} saved</strong> for later</div>
       </div>
     `;
@@ -50,10 +50,10 @@ function renderHub() {
     
     catGrid.innerHTML += `
       <div class="cat-card" data-cat="${catId}" onclick="openCategory('${catId}')">
-        <div class="cat-icon">${cat.icon}</div>
+        <div class="cat-icon">${LifeXPIcons.renderCategory({ id: catId, name: cat.name }, { size: 34 })}</div>
         <div class="cat-name">${typeof LifeXPPresentation !== 'undefined' ? LifeXPPresentation.getCategoryLabel(catId) : cat.name}</div>
         <div class="cat-pending">${pending} pending task${pending !== 1 ? 's' : ''}</div>
-        ${overflowCount > 0 ? `<div class="cat-overflow">⚡${overflowCount}</div>` : ''}
+        ${overflowCount > 0 ? `<div class="cat-overflow">${LifeXPIcons.renderUI('world.lightning', { size: 14 })}${overflowCount}</div>` : ''}
       </div>
     `;
   }
@@ -66,7 +66,9 @@ function renderCharacter() {
   
   // Basic info
   document.getElementById('char-name').textContent = gameState.name;
-  document.getElementById('char-class-icon').textContent = cls ? cls.icon : '\uD83E\uDDD1‍\uD83C\uDF3E';
+  document.getElementById('char-class-icon').innerHTML = cls
+    ? LifeXPIcons.renderClass(cls, { size: 64, decorative: true })
+    : LifeXPIcons.renderUI('ui.person', { size: 64 });
   document.getElementById('char-class-name').textContent = cls ? cls.name : 'Novice';
   document.getElementById('char-level').textContent = level;
   document.getElementById('char-tier-name').textContent = cls ? `Class ${getTierName(cls.tier)}` : 'No class';
@@ -118,19 +120,19 @@ function renderCharacter() {
   document.getElementById('char-resources').innerHTML = `
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--red);">❤️ ${resources.hp}</div>
+        <div style="font-size: 24px; color: var(--red);">${LifeXPIcons.renderUI('ui.heart', { size: 24 })} ${resources.hp}</div>
         <div style="font-size: 11px; color: var(--text-muted);">HP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--blue);">\uD83D\uDCA7 ${resources.mp}</div>
+        <div style="font-size: 24px; color: var(--blue);">${LifeXPIcons.renderUI('ui.mana', { size: 24 })} ${resources.mp}</div>
         <div style="font-size: 11px; color: var(--text-muted);">MP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--green);">⚡ ${resources.sp}</div>
+        <div style="font-size: 24px; color: var(--green);">${LifeXPIcons.renderUI('world.lightning', { size: 24 })} ${resources.sp}</div>
         <div style="font-size: 11px; color: var(--text-muted);">SP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--purple);">\uD83C\uDFAF ${resources.focusMax}</div>
+        <div style="font-size: 24px; color: var(--purple);">${LifeXPIcons.renderUI('ui.target', { size: 24 })} ${resources.focusMax}</div>
         <div style="font-size: 11px; color: var(--text-muted);">Focus Max</div>
       </div>
     </div>
@@ -142,7 +144,7 @@ function renderCharacter() {
     const chain = getClassChain(classId);
     classPath.innerHTML = chain.map((cId, i) => {
       const c = CLASS_TREE[cId];
-      return `<span style="color: var(--gold);">${c.icon} ${c.name}</span>`;
+      return `<span style="color: var(--gold);">${LifeXPIcons.renderClass(c, { size: 18 })} ${c.name}</span>`;
     }).join(' → ');
   } else {
     classPath.innerHTML = '<span style="color: var(--text-muted);">You have not chosen a class yet. Reach level 10 to unlock your first class.</span>';
@@ -207,11 +209,11 @@ function renderEquipment() {
   if (!slots) return;
   
   const slotConfig = [
-    { key: 'weapon', name: 'Weapon', icon: '⚔️' },
-    { key: 'armor', name: 'Armor', icon: '\uD83D\uDEE1️' },
-    { key: 'accessory1', name: 'Accessory 1', icon: '\uD83D\uDC8D' },
-    { key: 'accessory2', name: 'Accessory 2', icon: '\uD83D\uDC8D' },
-    { key: 'artifact', name: 'Artifact', icon: '\uD83D\uDD2E' }
+    { key: 'weapon', name: 'Weapon', iconRef: 'item.weapon' },
+    { key: 'armor', name: 'Armor', iconRef: 'item.armor' },
+    { key: 'accessory1', name: 'Accessory 1', iconRef: 'item.accessory' },
+    { key: 'accessory2', name: 'Accessory 2', iconRef: 'item.accessory' },
+    { key: 'artifact', name: 'Artifact', iconRef: 'item.artifact' }
   ];
   
   slots.innerHTML = '';
@@ -225,7 +227,7 @@ function renderEquipment() {
       <div class="equip-slot" onclick="${item ? `showEquippedItemModal('${cfg.key}')` : ''}"
            style="background: var(--bg-surface); border: 2px solid ${rarity ? rarity.color : 'var(--border)'}; 
                   border-radius: 8px; padding: 12px; text-align: center; cursor: ${item ? 'pointer' : 'default'};">
-        <div style="font-size: 28px;">${item ? item.icon : cfg.icon}</div>
+        <div class="equipment-slot-icon">${item ? LifeXPIcons.renderItem(item, { size: 28 }) : LifeXPIcons.renderUI(cfg.iconRef, { size: 28 })}</div>
         <div style="font-size: 11px; color: ${item ? rarity.color : 'var(--text-muted)'}; margin-top: 4px;">
           ${item ? item.name : cfg.name}
         </div>
@@ -257,7 +259,7 @@ function showLegacyItemModal(slotIndex) {
   const used = Boolean(slot.recoveryUsed);
   document.getElementById('modal-item-content').innerHTML = `
     <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:48px;">❔</div>
+      <div style="font-size:48px;">${LifeXPIcons.renderUI('ui.generic', { size: 48 })}</div>
       <div style="font-size:18px;font-weight:700;color:var(--orange);">Unreadable reward</div>
       <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
     </div>
@@ -265,7 +267,7 @@ function showLegacyItemModal(slotIndex) {
     <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">Emergency reroll is a data-recovery tool, not a normal mechanic.</div>
   `;
   const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.textContent = used ? 'Recovery already used' : '\uD83D\uDD04 Rebuild reward';
+  actionBtn.innerHTML = used ? 'Recovery already used' : `${LifeXPIcons.renderUI('ui.refresh', { size: 16 })} Rebuild reward`;
   actionBtn.disabled = used;
   actionBtn.onclick = () => {
     if (used || typeof emergencyRerollLegacyItem !== 'function') return;
@@ -384,10 +386,10 @@ function renderSettings() {
   content.innerHTML = `
     <div class="section-title">Datos</div>
     <div class="card">
-      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Update version</button>
-      <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Export save</button>
-      <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Import save</button>
-      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Resetear progreso</button>
+      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">${LifeXPIcons.renderUI('ui.refresh', { size: 16 })} Update version</button>
+      <button class="btn btn-secondary mb-8" onclick="exportData()">${LifeXPIcons.renderUI('ui.upload', { size: 16 })} Export save</button>
+      <button class="btn btn-secondary mb-8" onclick="showImportModal()">${LifeXPIcons.renderUI('ui.download', { size: 16 })} Import save</button>
+      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">${LifeXPIcons.renderUI('ui.trash', { size: 16 })} Resetear progreso</button>
     </div>
     
     <div class="section-title">Content Planning</div>
@@ -395,7 +397,7 @@ function renderSettings() {
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
         Export a snapshot with usage metrics and suggestions to plan content updates with your Langdock agent.
       </p>
-      <button class="btn btn-gold" onclick="exportSnapshot()">\uD83D\uDCCA Export snapshot for agent</button>
+      <button class="btn btn-gold" onclick="exportSnapshot()">${LifeXPIcons.renderUI('ui.analytics', { size: 16 })} Export snapshot for agent</button>
     </div>
     
     <div class="section-title">Info</div>
