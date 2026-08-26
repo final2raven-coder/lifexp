@@ -1,31 +1,35 @@
 // ===========================================================================
 // LifeXP RPG - ui_misc.js
-// Modales, timer, cambio de clase, export/import/snapshot, reset.
-// Depende de: engine.js, classes.js.
+// Modales, timer, class selection, export/import, metrics, recovery.
+// ===========================================================================
+
+// ===========================================================================
+// MODAL SYSTEM
 // ===========================================================================
 
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (!modal) return false;
-  modal.classList.add('show');
-  // Fallback for cached/older CSS versions.
-  modal.style.display = 'flex';
-  return true;
+  if (modal) modal.classList.add('active');
 }
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (!modal) return;
-  modal.classList.remove('show');
-  modal.style.display = '';
+  if (modal) modal.classList.remove('active');
 }
+
+// Close modal on backdrop click
+window.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('active');
+  }
+});
 
 // ===========================================================================
 // TIMER
 // ===========================================================================
 
 function toggleTimer() {
-  if (timerRunning) {
+  if (gameState.timerRunning) {
     stopTimer();
   } else {
     startTimer();
@@ -33,102 +37,94 @@ function toggleTimer() {
 }
 
 function startTimer() {
-  timerRunning = true;
-  document.getElementById('timer-toggle').textContent = '⏸';
-  timerInterval = setInterval(() => {
-    timerSeconds++;
-    updateTimerDisplay();
-  }, 1000);
+  gameState.timerRunning = true;
+  gameState.timerStartedAt = Date.now();
+  document.getElementById('timer-toggle').innerHTML = LifeXPIcons.renderUI('ui.pause', { size: 18 });
+  saveGame();
+  updateTimerDisplay();
 }
 
 function stopTimer() {
-  timerRunning = false;
-  clearInterval(timerInterval);
-  document.getElementById('timer-toggle').textContent = '▶';
+  gameState.timerRunning = false;
+  if (gameState.timerStartedAt) {
+    gameState.totalFocusSeconds += Math.floor((Date.now() - gameState.timerStartedAt) / 1000);
+  }
+  gameState.timerStartedAt = null;
+  document.getElementById('timer-toggle').innerHTML = LifeXPIcons.renderUI('ui.play', { size: 18 });
+  saveGame();
+  updateTimerDisplay();
 }
 
 function resetTimer() {
   stopTimer();
-  timerSeconds = 0;
+  gameState.totalFocusSeconds = 0;
+  saveGame();
   updateTimerDisplay();
 }
 
 function updateTimerDisplay() {
-  const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
-  const secs = (timerSeconds % 60).toString().padStart(2, '0');
+  let seconds = gameState.totalFocusSeconds || 0;
+  if (gameState.timerRunning && gameState.timerStartedAt) {
+    seconds += Math.floor((Date.now() - gameState.timerStartedAt) / 1000);
+  }
+  const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const secs = (seconds % 60).toString().padStart(2, '0');
   document.getElementById('timer-display').textContent = `${mins}:${secs}`;
 }
 
 // ===========================================================================
-// CLASS CHANGE SYSTEM
+// CLASS SELECTION
 // ===========================================================================
 
 function showClassChangeModal() {
-  const classId = gameState.classId === 'novato' ? null : gameState.classId;
-  const level = gameState.level;
-  const available = getAvailableClassChanges(classId, level);
+  const list = document.getElementById('class-options');
+  if (!list) return;
   
-  if (available.length === 0) {
-    alert('No classes are available to change.');
-    return;
-  }
+  const available = getAvailableClassChanges(gameState.classId === 'novato' ? null : gameState.classId, gameState.level);
   
-  const info = document.getElementById('modal-class-info');
-  const options = document.getElementById('modal-class-options');
-  
-  if (!classId) {
-    info.textContent = `You reached level ${level}. It is time to choose your first class!`;
-  } else {
-    const currentCls = CLASS_TREE[classId];
-    info.textContent = `Puedes avanzar desde ${currentCls.name} a una de estas especializaciones:`;
-  }
-  
-  options.innerHTML = '';
-  
-  for (const clsId of available) {
-    const cls = CLASS_TREE[clsId];
-    const statsText = Object.entries(cls.stats).map(([s, v]) => `${STATS[s].abbr} +${v}`).join(', ');
+  list.innerHTML = available.map(classId => {
+    const cls = CLASS_TREE[classId];
+    const reqText = getClassRequirementsText(cls);
+    const resourceText = cls.resources ? `Resources: ${cls.resources.join(', ')}` : '';
     
-    options.innerHTML += `
-      <div class="card" style="cursor: pointer; transition: transform 0.2s;" 
-           onclick="selectClass('${clsId}')"
-           onmouseenter="this.style.transform='scale(1.02)'" 
-           onmouseleave="this.style.transform='scale(1)'">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="font-size: 40px;">${cls.icon}</div>
-          <div style="flex: 1;">
-            <div style="font-size: 16px; font-weight: 700; color: var(--gold);">${cls.name}</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">${cls.desc}</div>
-            <div style="font-size: 11px; color: var(--green); margin-top: 4px;">${statsText}</div>
-          </div>
+    return `
+      <div class="class-option" onclick="selectClass('${classId}')">
+        <div class="class-option-icon">${LifeXPIcons.renderClass(cls, { size: 44 })}</div>
+        <div class="class-option-info">
+          <div class="class-option-name" style="color: ${cls.color}">${cls.name}</div>
+          <div class="class-option-desc">${cls.description}</div>
+          <div class="class-option-req">${reqText}</div>
+          ${resourceText ? `<div class="class-option-resources">${resourceText}</div>` : ''}
         </div>
       </div>
     `;
-  }
+  }).join('');
   
-  document.getElementById('modal-class').classList.add('show');
+  openModal('modal-class-change');
 }
 
 function selectClass(classId) {
   const cls = CLASS_TREE[classId];
+  if (!cls) return;
   
-  if (!confirm(`Become ${cls.name}?\n\n${cls.desc}\n\nThis decision will affect your progression path.`)) {
-    return;
-  }
+  if (!confirm(`Choose ${cls.name} as your class? This cannot be undone.`)) return;
   
   gameState.classId = classId;
+  gameState.classHistory = gameState.classHistory || [];
+  gameState.classHistory.push({
+    classId,
+    chosenAt: new Date().toISOString(),
+    level: gameState.level
+  });
+  
   saveGame();
-  
-  closeModal('modal-class');
+  closeModal('modal-class-change');
   renderCharacter();
-  renderHub();
-  
-  // Show celebration
-  alert(`\uD83C\uDF89 You became ${cls.name}!\n\nYour stats improved and you now have access to new skills.`);
+  showToast(`You are now a ${cls.name}!`, 'gold');
 }
 
 // ===========================================================================
-// IMPORT/EXPORT
+// EXPORT / IMPORT
 // ===========================================================================
 
 function downloadJson(data, filename) {
@@ -137,261 +133,158 @@ function downloadJson(data, filename) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
-  document.body.appendChild(a);
   a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  URL.revokeObjectURL(url);
 }
 
 function backupCurrentSave(reason = 'manual') {
-  try {
-    const current = localStorage.getItem('lifexp_save');
-    if (!current) return false;
-    const key = 'lifexp_save_backup_' + Date.now();
-    localStorage.setItem(key, current);
-    localStorage.setItem('lifexp_save_last_backup', key);
-    return true;
-  } catch (e) {
-    console.warn('Could not create save backup:', e);
-    return false;
-  }
+  const payload = {
+    reason,
+    exportedAt: new Date().toISOString(),
+    saveVersion: gameState.saveVersion,
+    gameState: JSON.parse(JSON.stringify(gameState))
+  };
+  
+  localStorage.setItem('lifexp_last_backup', JSON.stringify(payload));
+  return payload;
 }
 
 function exportData(options = {}) {
-  const filename = options.filename || `lifexp_save_${todayStr()}.json`;
-  downloadJson(gameState, filename);
+  const payload = backupCurrentSave(options.reason || 'manual');
+  downloadJson(payload, `lifexp-save-${new Date().toISOString().slice(0, 10)}.json`);
+  showToast('Save exported.', 'success');
 }
 
 function exportSnapshot() {
-  // Generate a comprehensive snapshot for content update planning
-  const snapshot = {
-    meta: {
-      exportDate: new Date().toISOString(),
-      version: '1.0',
-      purpose: 'LifeXP content update planning snapshot',
-      instructions: "This file contains the player's current state and usage metrics. Use it to plan content updates (new tasks, quests, items, enemies, and balance changes)."
-    },
-    
-    player: {
-      name: gameState.name,
-      level: gameState.level,
-      xp: gameState.xp,
-      gold: gameState.gold,
-      streak: gameState.streak,
-      classId: gameState.classId,
-      classLevel: gameState.classLevel,
-      stats: { ...gameState.stats }
-    },
-    
-    progression: {
-      totalTasksCompleted: gameState.taskHistory.length,
-      uniqueTasksCompleted: [...new Set(gameState.taskHistory.map(h => h.taskId))].length,
-      sideQuestsCompleted: gameState.taskHistory.filter(h => h.sideQuest).length,
-      totalXpEarned: gameState.taskHistory.reduce((a, h) => a + h.xp, 0),
-      questsCompleted: gameState.completedQuests.length,
-      daysActive: calculateDaysActive()
-    },
-    
-    taskMetrics: generateTaskMetrics(),
-    
-    inventory: {
-      itemCount: gameState.inventory.length,
-      equipped: { ...gameState.equipment },
-      items: gameState.inventory.map(slot => ({
-        id: slot.id,
-        qty: slot.qty || 1,
-        name: typeof ITEMS !== 'undefined' && ITEMS[slot.id] ? ITEMS[slot.id].name : slot.id
-      }))
-    },
-    
-    activeQuests: gameState.activeQuests.map(q => ({
-      questId: q.questId,
-      stepIndex: q.stepIndex,
-      startedAt: q.startedAt
-    })),
-    
-    suggestions: generateContentSuggestions()
-  };
-  
-  const data = JSON.stringify(snapshot, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `lifexp_snapshot_${todayStr()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  
-  alert('Snapshot exported. Share it with your Langdock agent to plan content updates.');
+  const snapshot = generateAgentSnapshot();
+  downloadJson(snapshot, `lifexp-snapshot-${new Date().toISOString().slice(0, 10)}.json`);
+  showToast('Snapshot exported.', 'success');
 }
 
+function importDataText(text) {
+  try {
+    const imported = JSON.parse(text);
+    const candidate = imported.gameState || imported;
+    if (!candidate || typeof candidate !== 'object' || !candidate.tasks || !Array.isArray(candidate.tasks)) {
+      throw new Error('Invalid save format');
+    }
+    
+    backupCurrentSave('before-import');
+    gameState = migrateSave(candidate);
+    saveGame();
+    location.reload();
+  } catch (error) {
+    showToast('Could not import save.', 'error');
+  }
+}
+
+function showImportModal() {
+  const input = document.getElementById('import-file');
+  if (!input) return;
+  input.value = '';
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    importDataText(text);
+  };
+  input.click();
+}
+
+// ===========================================================================
+// CONTENT METRICS / SUGGESTIONS
+// ===========================================================================
+
 function calculateDaysActive() {
-  if (gameState.taskHistory.length === 0) return 0;
-  const dates = [...new Set(gameState.taskHistory.map(h => h.date))];
-  return dates.length;
+  const dates = gameState.taskHistory.map(h => h.date?.slice(0, 10)).filter(Boolean);
+  return new Set(dates).size;
 }
 
 function generateTaskMetrics() {
-  const metrics = {
-    byCategory: {},
-    byFrequency: {},
-    mostCompleted: [],
-    neverCompleted: [],
-    overflowFrequent: []
+  const byCategory = {};
+  const completed = gameState.taskHistory.filter(h => h.completed);
+  
+  for (const entry of completed) {
+    byCategory[entry.category] = byCategory[entry.category] || { completed: 0, xp: 0 };
+    byCategory[entry.category].completed++;
+    byCategory[entry.category].xp += entry.xp || 0;
+  }
+  
+  return {
+    totalTasks: gameState.tasks.length,
+    completedTasks: completed.length,
+    byCategory,
+    daysActive: calculateDaysActive(),
+    currentStreak: gameState.streak,
+    level: gameState.level,
+    totalXp: gameState.xp
   };
-  
-  // Initialize categories
-  for (const cat of Object.keys(CATEGORIES)) {
-    metrics.byCategory[cat] = { completed: 0, overflow: 0 };
-  }
-  
-  // Count completions by task
-  const taskCounts = {};
-  for (const h of gameState.taskHistory) {
-    taskCounts[h.taskId] = (taskCounts[h.taskId] || 0) + 1;
-  }
-  
-  // Categorize
-  for (const h of gameState.taskHistory) {
-    const task = getTaskById(h.taskId);
-    if (task) {
-      metrics.byCategory[task.cat].completed++;
-    }
-  }
-  
-  // Find most completed
-  const sorted = Object.entries(taskCounts).sort((a, b) => b[1] - a[1]);
-  metrics.mostCompleted = sorted.slice(0, 5).map(([id, count]) => {
-    const task = getTaskById(id);
-    return { id, name: task?.name || id, count };
-  });
-  
-  // Find never completed
-  metrics.neverCompleted = gameState.tasks
-    .filter(t => !taskCounts[t.id])
-    .map(t => ({ id: t.id, name: t.name, category: t.cat }));
-  
-  return metrics;
 }
 
 function generateContentSuggestions() {
+  const metrics = generateTaskMetrics();
   const suggestions = [];
-  const level = gameState.level;
-  const totalTasks = gameState.taskHistory.length;
+  const categoryIds = Object.keys(CATEGORIES);
   
-  // Level-based suggestions
-  if (level >= 10 && gameState.classId === 'novato') {
-    suggestions.push({
-      type: 'progression',
-      priority: 'high',
-      message: 'The player is level ' + level + ' but is still a Novice. Consider adding reminders or tutorials about the class system.'
-    });
+  for (const catId of categoryIds) {
+    const catMetrics = metrics.byCategory[catId];
+    if (!catMetrics || catMetrics.completed < 3) {
+      suggestions.push({ type: 'category', category: catId, reason: 'Low activity' });
+    }
   }
   
-  if (level >= 20) {
-    suggestions.push({
-      type: 'content',
-      priority: 'medium',
-      message: 'Player level ' + level + '. Consider adding more advanced story quests or endgame content.'
-    });
-  }
-  
-  // Task variety
-  const taskMetrics = generateTaskMetrics();
-  const neglectedCats = Object.entries(taskMetrics.byCategory)
-    .filter(([cat, data]) => data.completed < totalTasks * 0.1)
-    .map(([cat]) => CATEGORIES[cat].name);
-  
-  if (neglectedCats.length > 0) {
-    suggestions.push({
-      type: 'balance',
-      priority: 'medium',
-      message: 'Underused categories: ' + neglectedCats.join(', ') + '. Consider making tasks in these categories more appealing or adding better rewards.'
-    });
-  }
-  
-  // Never completed tasks
-  if (taskMetrics.neverCompleted.length > 5) {
-    suggestions.push({
-      type: 'cleanup',
-      priority: 'low',
-      message: taskMetrics.neverCompleted.length + ' tareas nunca completadas. Revisa si son relevantes o si necesitan ajustes.'
-    });
-  }
-  
-  // Inventory suggestions
-  if (gameState.inventory.length >= 18) {
-    suggestions.push({
-      type: 'systems',
-      priority: 'medium',
-      message: 'Inventory is nearly full. Consider adding a stash, crafting to consume materials, or a shop for selling.'
-    });
+  if (metrics.daysActive < 7) {
+    suggestions.push({ type: 'retention', reason: 'Less than 7 active days' });
   }
   
   return suggestions;
 }
 
-function importDataText(text) {
-  const data = JSON.parse(text);
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    throw new Error('The file does not contain a valid save.');
-  }
-  if (!('level' in data) && !('tasks' in data) && !('taskHistory' in data)) {
-    throw new Error('Faltan datos reconocibles de LifeXP.');
-  }
-  backupCurrentSave('before-import');
-  gameState = { ...gameState, ...data };
-  gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
-  gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
-  gameState.taskHistory = Array.isArray(gameState.taskHistory) ? gameState.taskHistory : [];
-  gameState.completedQuests = Array.isArray(gameState.completedQuests) ? gameState.completedQuests : [];
-  gameState.activeQuests = Array.isArray(gameState.activeQuests) ? gameState.activeQuests : [];
-  saveGame();
-  return true;
+function generateAgentSnapshot() {
+  return {
+    exportedAt: new Date().toISOString(),
+    player: {
+      level: gameState.level,
+      xp: gameState.xp,
+      gold: gameState.gold,
+      streak: gameState.streak,
+      classId: gameState.classId
+    },
+    metrics: generateTaskMetrics(),
+    suggestions: generateContentSuggestions(),
+    inventory: gameState.inventory.map(i => ({ itemId: i.itemId, qty: i.qty })),
+    completedQuests: gameState.completedQuests || []
+  };
 }
 
-function showImportModal() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json,application/json';
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      importDataText(await file.text());
-      alert('Datos importados correctamente');
-      location.reload();
-    } catch (err) {
-      alert('Import error: ' + err.message);
-    }
-  };
-  input.click();
-}
+// ===========================================================================
+// EMERGENCY ROUTE
+// ===========================================================================
 
 function handleEmergencyDataRoute() {
   const params = new URLSearchParams(location.search);
-  if (params.get('export') === '1') {
-    exportData({ filename: `lifexp_save_${todayStr()}.json` });
-    history.replaceState({}, document.title, location.pathname);
-    return;
-  }
-  if (params.get('import') === '1') {
-    showImportModal();
-    history.replaceState({}, document.title, location.pathname);
-  }
+  if (params.get('emergency') !== '1') return false;
+  
+  const content = document.getElementById('emergency-content');
+  if (!content) return false;
+  
+  content.innerHTML = `
+    <h2>Emergency data recovery</h2>
+    <p>Your save is still stored locally. Use the export action to make a backup before recovery.</p>
+    <button class="btn btn-gold" onclick="exportData({ reason: 'emergency-route' })">Export current save</button>
+  `;
+  showScreen('emergency');
+  return true;
 }
 
-window.LifeXPBackup = {
-  export: () => exportData(),
-  importText: (text) => importDataText(text),
-  backup: () => backupCurrentSave('manual')
-};
+// ===========================================================================
+// RESET
+// ===========================================================================
 
 function resetGame() {
-  if (!confirm('Are you sure you want to delete all progress?')) return;
-  if (!confirm('ARE YOU SURE? This action cannot be undone.')) return;
+  if (!confirm('Reset all progress? This cannot be undone.')) return;
   
+  backupCurrentSave('before-reset');
   localStorage.removeItem('lifexp_save');
   location.reload();
 }
-
