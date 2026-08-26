@@ -1124,11 +1124,11 @@ body {
       <div class="header-title">Life<span>XP</span></div>
       <div class="header-stats">
         <div class="header-stat">
-          <span class="header-stat-icon">&#128293;</span>
+          <span class="header-stat-icon" data-lifexp-icon="world.fire" data-icon-size="16"></span>
           <span class="header-stat-value" id="hub-streak">0</span>
         </div>
         <div class="header-stat">
-          <span class="header-stat-icon">&#129689;</span>
+          <span class="header-stat-icon" data-lifexp-icon="ui.coin" data-icon-size="16"></span>
           <span class="header-stat-value" id="hub-gold">0</span>
         </div>
         <div class="header-stat">
@@ -1147,7 +1147,7 @@ body {
   </div>
   <div class="content">
     <button class="big-cta" id="btn-random-task">
-      <div class="big-cta-icon">&#127922;</div>
+      <div class="big-cta-icon" data-lifexp-icon="world.dice" data-icon-size="48"></div>
       <div class="big-cta-text">
         <div class="big-cta-title">Give me a task</div>
         <div class="big-cta-sub">Random task from any category</div>
@@ -1163,7 +1163,7 @@ body {
 <div class="screen" id="screen-task">
   <div class="header">
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button class="btn btn-ghost btn-small" id="btn-back-hub" style="width: auto;">&#8592; Back</button>
+      <button class="btn btn-ghost btn-small" id="btn-back-hub" style="width: auto;"><span data-lifexp-icon="ui.back" data-icon-size="16"></span> Back</button>
       <div id="task-cat-badge"></div>
     </div>
   </div>
@@ -1175,12 +1175,12 @@ body {
         <div class="task-desc" id="task-desc"></div>
         <div class="task-rewards" id="task-rewards"></div>
         <div class="task-drops" id="task-drops-box">
-          <div class="task-drops-title">&#128167; Possible drops</div>
+          <div class="task-drops-title"><span data-lifexp-icon="world.water" data-icon-size="16"></span> Possible drops</div>
           <div class="task-drops-list" id="task-drops"></div>
         </div>
         <div class="side-quest" id="side-quest-box">
           <div class="side-quest-header">
-            <span class="side-quest-icon">&#11088;</span>
+            <span class="side-quest-icon" data-lifexp-icon="world.star" data-icon-size="20"></span>
             <span class="side-quest-title">SIDE QUEST</span>
           </div>
           <div class="side-quest-desc" id="side-quest-desc"></div>
@@ -1224,7 +1224,7 @@ body {
       </div>
     </div>
     <div id="class-change-section" class="hidden">
-      <button class="btn btn-gold mb-8" onclick="showClassChangeModal()">&#11014;&#65039; Change class</button>
+      <button class="btn btn-gold mb-8" onclick="showClassChangeModal()"><span data-lifexp-icon="ui.arrow_up" data-icon-size="16"></span> Change class</button>
     </div>
     <div class="section-title">Stats (Base + Class)</div>
     <div class="stats-grid" id="char-stats-grid"></div>
@@ -1243,9 +1243,9 @@ body {
       <div style="font-size: 12px; color: var(--text-muted);" id="inv-count">0/20</div>
     </div>
     <div style="display: flex; gap: 8px; margin-top: 8px;">
-      <button class="inv-tab btn btn-secondary btn-small active" data-tab="inventory" onclick="switchInventoryTab('inventory')" style="flex: 1;">&#127921; Items</button>
-      <button class="inv-tab btn btn-secondary btn-small" data-tab="stash" onclick="switchInventoryTab('stash')" style="flex: 1;">&#127968; Stash <span id="stash-count" style="font-size: 10px;">0/30</span></button>
-      <button class="inv-tab btn btn-secondary btn-small" data-tab="equipment" onclick="switchInventoryTab('equipment')" style="flex: 1;">&#9876;&#65039; Equipment</button>
+      <button class="inv-tab btn btn-secondary btn-small active" data-tab="inventory" onclick="switchInventoryTab('inventory')" style="flex: 1;"><span data-lifexp-icon="ui.inventory" data-icon-size="16"></span> Items</button>
+      <button class="inv-tab btn btn-secondary btn-small" data-tab="stash" onclick="switchInventoryTab('stash')" style="flex: 1;"><span data-lifexp-icon="ui.home" data-icon-size="16"></span> Stash <span id="stash-count" style="font-size: 10px;">0/30</span></button>
+      <button class="inv-tab btn btn-secondary btn-small" data-tab="equipment" onclick="switchInventoryTab('equipment')" style="flex: 1;"><span data-lifexp-icon="ui.sword" data-icon-size="16"></span> Equipment</button>
     </div>
   </div>
   <div class="content">
@@ -1276,10 +1276,10 @@ body {
   <div class="content">
     <div id="quests-container"></div>
     <div id="quests-empty" class="hidden" style="text-align: center; padding: 40px 20px;">
-      <div style="font-size: 48px; margin-bottom: 12px;">&#128196;</div>
+      <div style="font-size: 48px; margin-bottom: 12px;" data-lifexp-icon="world.scroll" data-icon-size="48"></div>
       <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">No active quests</div>
       <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Accept a quest to start your adventure</div>
-      <button class="btn btn-gold" id="btn-show-available-quests-empty">&#10133; View available quests</button>
+      <button class="btn btn-gold" id="btn-show-available-quests-empty"><span data-lifexp-icon="ui.plus" data-icon-size="16"></span> View available quests</button>
     </div>
   </div>
 </div>
@@ -1310,27 +1310,27 @@ body {
 <!-- NAVIGATION -->
 <nav class="nav">
   <button class="nav-item active" data-screen="hub">
-    <span class="nav-item-icon">&#127984;</span>
+    <span class="nav-item-icon" data-lifexp-icon="ui.guild" data-icon-size="22"></span>
     <span>Hub</span>
   </button>
   <button class="nav-item" data-screen="character">
-    <span class="nav-item-icon">&#128100;</span>
+    <span class="nav-item-icon" data-lifexp-icon="ui.person" data-icon-size="22"></span>
     <span>Character</span>
   </button>
   <button class="nav-item" data-screen="guild">
-    <span class="nav-item-icon">&#9876;&#65039;</span>
+    <span class="nav-item-icon" data-lifexp-icon="ui.sword" data-icon-size="22"></span>
     <span>Guild</span>
   </button>
   <button class="nav-item" data-screen="inventory">
-    <span class="nav-item-icon">&#127921;</span>
+    <span class="nav-item-icon" data-lifexp-icon="ui.inventory" data-icon-size="22"></span>
     <span>Inventory</span>
   </button>
   <button class="nav-item" data-screen="quests">
-    <span class="nav-item-icon">&#128220;</span>
+    <span class="nav-item-icon" data-lifexp-icon="world.scroll" data-icon-size="22"></span>
     <span>Quests</span>
   </button>
   <button class="nav-item" data-screen="settings">
-    <span class="nav-item-icon">&#9881;&#65039;</span>
+    <span class="nav-item-icon" data-lifexp-icon="ui.settings" data-icon-size="22"></span>
     <span>Settings</span>
   </button>
 </nav>
@@ -1342,11 +1342,11 @@ body {
   <div class="complete-subtitle" id="complete-subtitle"></div>
   <div class="complete-rewards" id="complete-rewards"></div>
   <div class="complete-drop hidden" id="complete-drop">
-    <div class="complete-drop-title">&#127873; DROP!</div>
+    <div class="complete-drop-title"><span data-lifexp-icon="ui.gift" data-icon-size="16"></span> DROP!</div>
     <div class="complete-drop-item" id="complete-drop-item"></div>
   </div>
   <div class="side-quest-prompt hidden" id="side-quest-prompt">
-    <div class="side-quest-prompt-title">&#11088; Did you complete the Side Quest?</div>
+    <div class="side-quest-prompt-title"><span data-lifexp-icon="world.star" data-icon-size="16"></span> Did you complete the Side Quest?</div>
     <div class="side-quest-prompt-desc" id="side-quest-prompt-desc"></div>
     <div class="side-quest-prompt-btns">
       <button class="btn btn-gold" id="btn-side-quest-yes">Yes (+50%)</button>
@@ -1370,7 +1370,7 @@ body {
 <div class="modal-backdrop" id="modal-class">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">&#11014;&#65039; Change Class</div>
+    <div class="modal-title"><span data-lifexp-icon="ui.arrow_up" data-icon-size="18"></span> Change Class</div>
     <div id="modal-class-content"></div>
     <button class="btn btn-ghost" onclick="closeModal('modal-class')" style="margin-top: 12px;">Cancel</button>
   </div>
@@ -1383,7 +1383,7 @@ body {
     <div id="modal-item-content"></div>
     <div class="item-modal-actions">
       <button class="btn btn-primary" id="btn-item-action">&#10003;</button>
-      <button class="btn btn-ghost item-modal-close" onclick="closeModal('modal-item')">&#10005;</button>
+      <button class="btn btn-ghost item-modal-close" onclick="closeModal('modal-item')"><span data-lifexp-icon="ui.close" data-icon-size="16"></span></button>
     </div>
   </div>
 </div>
@@ -1392,7 +1392,7 @@ body {
 <div class="modal-backdrop" id="modal-import">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">&#128229; Import save</div>
+    <div class="modal-title"><span data-lifexp-icon="ui.save" data-icon-size="18"></span> Import save</div>
     <textarea id="import-textarea" style="width:100%;height:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:12px;resize:vertical;" placeholder="Paste JSON here..."></textarea>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn btn-gold" onclick="importDataText(document.getElementById('import-textarea').value)">Import</button>
@@ -1481,6 +1481,7 @@ body {
   <button class="btn btn-primary" onclick="endCombatAndReturn()" style="max-width: 280px;">Continue</button>
 </div>
 
+<script src="icon_system.js"></script>
 <script src="classes.js"></script>
 <script src="items.js"></script>
 <script src="enemies.js"></script>

@@ -1,87 +1,82 @@
 // ===========================================================================
 // LifeXP RPG - ui_feedback.js
-// Toasts, level-up effects, haptic feedback, onboarding.
+// Toast, flavor dialog, level-up, haptic y onboarding.
+// Depende de: engine.js.
 // ===========================================================================
 
+
 // ===========================================================================
-// TOASTS
+// UI POLISH: TOAST, ONBOARDING, FEEDBACK
 // ===========================================================================
 
 let toastTimeout = null;
 
 function showFlavorDialog(message, type = 'default') {
-  const existing = document.querySelector('.flavor-dialog');
+  if (!message) return;
+  var existing = document.querySelector('.flavor-dialog');
   if (existing) existing.remove();
-  
-  const dialog = document.createElement('div');
-  dialog.className = `flavor-dialog flavor-${type}`;
-  dialog.innerHTML = `
-    <div class="flavor-dialog-content">
-      <div class="flavor-dialog-message">${message}</div>
-      <button class="flavor-dialog-close" onclick="this.closest('.flavor-dialog').remove()">OK</button>
-    </div>
-  `;
+
+  var dialog = document.createElement('section');
+  dialog.className = 'flavor-dialog ' + type;
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-label', 'Item discovery');
+  dialog.innerHTML = '<div class="flavor-dialog-text"></div>' +
+    '<button class="btn btn-ghost flavor-dialog-dismiss" type="button">Continue</button>';
+  dialog.querySelector('.flavor-dialog-text').textContent = message;
   document.body.appendChild(dialog);
-  
-  // Auto-remove after 8 seconds
-  setTimeout(() => {
-    if (dialog.parentNode) dialog.remove();
-  }, 8000);
+
+  var dismiss = function() {
+    dialog.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  var onKey = function(event) {
+    if (event.key === 'Escape' || event.key === 'Enter') dismiss();
+  };
+  dialog.querySelector('.flavor-dialog-dismiss').addEventListener('click', dismiss);
+  document.addEventListener('keydown', onKey);
+  dialog.querySelector('.flavor-dialog-dismiss').focus();
 }
 
 function showToast(message, type = 'default') {
-  const container = document.getElementById('toast-container');
-  if (!container) return;
+  // Remove existing toast
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
   
+  // Create toast
   const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
+  toast.className = `toast ${type}`;
   toast.textContent = message;
+  document.body.appendChild(toast);
   
-  container.appendChild(toast);
+  // Show
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
   
-  // Trigger animation
-  requestAnimationFrame(() => toast.classList.add('show'));
-  
-  // Remove after 3 seconds
-  setTimeout(() => {
+  // Auto hide
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, 2500);
 }
-
-// ===========================================================================
-// LEVEL UP EFFECT
-// ===========================================================================
 
 function showLevelUpEffect() {
   const effect = document.createElement('div');
   effect.className = 'level-up-effect';
-  effect.innerHTML = `
-    <div class="level-up-content">
-      <div class="level-up-title">LEVEL UP!</div>
-      <div class="level-up-sparkle">✨</div>
-    </div>
-  `;
   document.body.appendChild(effect);
   
-  setTimeout(() => effect.classList.add('show'), 50);
-  setTimeout(() => effect.remove(), 2500);
+  setTimeout(() => effect.remove(), 1000);
 }
 
-// ===========================================================================
-// HAPTIC FEEDBACK
-// ===========================================================================
-
 function triggerHaptic() {
+  // Try vibration API if available
   if (navigator.vibrate) {
     navigator.vibrate(50);
   }
 }
 
-// ===========================================================================
-// ONBOARDING
-// ===========================================================================
-
+// Onboarding
 const onboardingSteps = [
   {
     iconRef: 'ui.sword',
@@ -114,46 +109,45 @@ let currentOnboardingStep = 0;
 
 function showOnboarding() {
   currentOnboardingStep = 0;
-  const overlay = document.createElement('div');
-  overlay.id = 'onboarding-overlay';
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = '<div class="onboarding-modal" id="onboarding-modal"></div>';
-  document.body.appendChild(overlay);
   renderOnboardingStep();
 }
 
 function renderOnboardingStep() {
-  const modal = document.getElementById('onboarding-modal');
-  if (!modal) return;
-  
   const step = onboardingSteps[currentOnboardingStep];
-  const isFirst = currentOnboardingStep === 0;
-  const isLast = currentOnboardingStep === onboardingSteps.length - 1;
   
-  const dotsHtml = onboardingSteps.map((_, i) =>
-    `<span class="onboarding-dot ${i === currentOnboardingStep ? 'active' : ''}"></span>`
-  ).join('');
+  // Remove existing
+  const existing = document.querySelector('.onboarding-overlay');
+  if (existing) existing.remove();
   
-  modal.innerHTML = `
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'onboarding-overlay';
+  
+  // Dots
+  let dotsHtml = '';
+  for (let i = 0; i < onboardingSteps.length; i++) {
+    dotsHtml += `<div class="onboarding-dot ${i === currentOnboardingStep ? 'active' : ''}"></div>`;
+  }
+  
+  overlay.innerHTML = `
     <div class="onboarding-step">
       <div class="onboarding-icon">${LifeXPIcons.renderUI(step.iconRef, { size: 80 })}</div>
       <div class="onboarding-title">${step.title}</div>
       <div class="onboarding-text">${step.text}</div>
       <div class="onboarding-dots">${dotsHtml}</div>
-      <div class="onboarding-buttons">
-        ${!isFirst ? '<button class="btn btn-ghost" onclick="prevOnboardingStep()">Back</button>' : '<div></div>'}
-        ${isLast
-          ? '<button class="btn btn-gold" onclick="finishOnboarding()">Start playing</button>'
-          : '<button class="btn btn-primary" onclick="nextOnboardingStep()">Next</button>'}
-      </div>
-      <button class="onboarding-skip" onclick="skipOnboarding()">Skip</button>
+      <button class="btn btn-gold" onclick="nextOnboardingStep()">${currentOnboardingStep < onboardingSteps.length - 1 ? 'Next' : 'Start playing!'}</button>
+      ${currentOnboardingStep > 0 ? '<button class="btn btn-ghost" style="margin-top: 8px;" onclick="prevOnboardingStep()">Back</button>' : ''}
     </div>
   `;
+  
+  document.body.appendChild(overlay);
 }
 
 function nextOnboardingStep() {
-  if (currentOnboardingStep < onboardingSteps.length - 1) {
-    currentOnboardingStep++;
+  currentOnboardingStep++;
+  if (currentOnboardingStep >= onboardingSteps.length) {
+    finishOnboarding();
+  } else {
     renderOnboardingStep();
   }
 }
@@ -167,10 +161,17 @@ function prevOnboardingStep() {
 
 function finishOnboarding() {
   localStorage.setItem('lifexp_onboarding_done', 'true');
-  document.getElementById('onboarding-overlay')?.remove();
+  const overlay = document.querySelector('.onboarding-overlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 300);
+  }
+  showToast('Welcome, adventurer!', 'gold');
 }
 
 function skipOnboarding() {
-  localStorage.setItem('lifexp_onboarding_done', 'true');
-  document.getElementById('onboarding-overlay')?.remove();
+  finishOnboarding();
 }
+
+// ===========================================================================
+// QUESTS RENDERING

@@ -23,6 +23,7 @@
     'item.key': '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>',
     'world.fire': '<path d="M20 35c-7 0-12-5-12-12 0-5 3-9 8-14 0 5 2 7 4 8-1-6 2-11 5-14 1 6 7 10 7 20 0 7-5 12-12 12z"/><path d="M20 30c-3 0-5-2-5-5 0-2 1-4 3-6 0 2 1 3 2 4 0-3 1-5 3-7 0 3 3 5 3 9 0 3-3 5-6 5z"/>',
     'world.book': '<path d="M8 7h20a3 3 0 0 1 3 3v23H11a3 3 0 0 1-3-3V7z"/><path d="M12 13h13M12 19h13M12 25h9"/>',
+    'world.scroll': '<path d="M10 6h20v28H10a4 4 0 1 1 0-8h17V6"/><path d="M15 13h10M15 19h10M15 25h7"/>',
     'world.map': '<path d="m6 8 9-3 10 3 9-3v27l-9 3-10-3-9 3V8z"/><path d="M15 5v27m10-24v27"/>',
     'world.skull': '<circle cx="20" cy="17" r="11"/><path d="M13 25v7h14v-7M15 16h1m8 0h1M16 22h8"/>',
     'world.lightning': '<path d="m22 4-9 16h7l-2 16 9-16h-7l2-16z"/>',
@@ -31,6 +32,9 @@
     'world.dice': '<rect x="7" y="7" width="26" height="26" rx="4"/><circle cx="14" cy="14" r="1.5"/><circle cx="26" cy="26" r="1.5"/><circle cx="20" cy="20" r="1.5"/>',
     'world.water': '<path d="M20 5c5 7 9 11 9 17a9 9 0 1 1-18 0c0-6 4-10 9-17z"/>',
     'world.star': '<path d="m20 5 4.5 9.1 10 1.5-7.2 7.1 1.7 10-9-4.7-9 4.7 1.7-10-7.2-7.1 10-1.5L20 5z"/>',
+    'ui.home': '<path d="M6 19 20 7l14 12"/><path d="M10 17v17h20V17M16 34V23h8v11"/>',
+    'ui.close': '<path d="m10 10 20 20M30 10 10 30"/>',
+    'ui.pause': '<path d="M13 9h5v22h-5zM22 9h5v22h-5z"/>',
     'ui.person': '<circle cx="20" cy="12" r="6"/><path d="M8 35c1-8 5-12 12-12s11 4 12 12"/>',
     'ui.sword': '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
     'ui.coin': '<circle cx="20" cy="20" r="13"/><path d="M24 14c-1-2-7-2-7 1s7 2 7 5-6 3-8 1M20 11v18"/>',
@@ -43,7 +47,6 @@
     'ui.check': '<path d="m8 21 8 8L32 12"/>',
     'ui.save': '<path d="M8 7h24v26H8z"/><path d="M13 7v9h14V7M14 33v-9h12v9"/>',
     'ui.play': '<path d="m13 7 20 13-20 13V7z"/>',
-    'ui.pause': '<path d="M13 7h5v26h-5zM22 7h5v26h-5z"/>',
     'ui.refresh': '<path d="M32 15a13 13 0 1 0 2 10"/><path d="M32 7v8h-8"/>',
     'ui.trophy': '<path d="M12 7h16v9c0 7-3 11-8 11s-8-4-8-11V7z"/><path d="M12 11H7v3c0 5 3 8 8 8m13-11h5v3c0 5-3 8-8 8M20 27v6M13 35h14"/>',
     'ui.gift': '<rect x="6" y="14" width="28" height="20" rx="2"/><path d="M6 20h28M20 14v20M20 14c-5 0-9-2-8-6 1-3 6-2 8 6zm0 0c5 0 9-2 8-6-1-3-6-2-8 6z"/>',
@@ -51,10 +54,6 @@
     'ui.inventory': '<rect x="7" y="7" width="26" height="26" rx="2"/><path d="M7 14h26M14 7v7m6-7v7m6-7v7"/>',
     'ui.arrow_up': '<path d="M20 33V7m0 0-9 9m9-9 9 9"/>',
     'ui.trash': '<path d="M8 11h24M16 11V7h8v4m-14 0 2 24h16l2-24M17 17v12m6-12v12"/>',
-    'ui.target': '<circle cx="20" cy="20" r="12"/><circle cx="20" cy="20" r="5"/><path d="M20 4v5m0 22v5M4 20h5m22 0h5"/>',
-    'ui.upload': '<path d="M20 27V7m0 0-8 8m8-8 8 8M7 25v7h26v-7"/>',
-    'ui.download': '<path d="M20 5v20m0 0-8-8m8 8 8-8M7 28v5h26v-5"/>',
-    'ui.analytics': '<path d="M8 33V19m8 14V9m8 24V14m8 19V5"/>',
     'class.generic': '<circle cx="20" cy="11" r="6"/><path d="M8 35c1-8 5-12 12-12s11 4 12 12"/><path d="M12 18h16"/>',
     'enemy.generic': '<path d="M8 14 14 7l6 5 6-5 6 7-4 16H12L8 14z"/><path d="M15 20h1m8 0h1M16 26h8"/>',
     'category.generic': '<rect x="7" y="7" width="26" height="26" rx="3"/><path d="M13 14h14M13 20h14M13 26h9"/>',
@@ -133,9 +132,12 @@
       : normalizeLegacy(value) || null;
   }
 
-  function fallbackReference(reference) {
+  function fallbackReference(reference, value) {
     if (FALLBACK_PATHS[reference]) return reference;
     const namespace = String(reference).split('.')[0];
+    if (namespace === 'item' && value && typeof value === 'object' && FALLBACK_PATHS[`item.${value.type}`]) {
+      return `item.${value.type}`;
+    }
     return FALLBACK_PATHS[`${namespace}.generic`] ? `${namespace}.generic` : 'ui.generic';
   }
 
@@ -191,7 +193,7 @@
     const decorative = options.decorative !== false;
     const color = safeColor(options.color || value?.color || DEFAULT_COLOR);
     const packBody = renderPackEntry(packEntries[reference], label, decorative);
-    const fallbackBody = `<svg class="lifexp-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${FALLBACK_PATHS[fallbackReference(reference)]}</g></svg>`;
+    const fallbackBody = `<svg class="lifexp-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${FALLBACK_PATHS[fallbackReference(reference, value)]}</g></svg>`;
     const body = packBody || fallbackBody;
     const accessibility = decorative
       ? 'aria-hidden="true"'

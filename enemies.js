@@ -8,7 +8,7 @@
 const ENEMIES = {
 
   rata_gigante: {
-    id: 'rata_gigante', name: 'Rata Gigante', icon: '\uD83D\uDC00',
+    id: 'rata_gigante', name: 'Rata Gigante', iconRef: 'enemy.rata_gigante',
     type: 'common', level: 1,
     hp: 30, fue: 5, vit: 4, des: 8, int: 2, vol: 3, pre: 1,
     xp: 15, gold: 5,
@@ -21,7 +21,7 @@ const ENEMIES = {
   },
 
   'arana_domestica': {
-    id: 'arana_domestica', name: 'Ara\u00F1a Dom\u00E9stica', icon: '\uD83D\uDD77\uFE0F',
+    id: 'arana_domestica', name: 'Ara\u00F1a Dom\u00E9stica', iconRef: 'enemy.arana_domestica',
     type: 'common', level: 2,
     hp: 25, fue: 4, vit: 3, des: 12, int: 3, vol: 4, pre: 2,
     xp: 18, gold: 6,
@@ -36,7 +36,7 @@ const ENEMIES = {
   },
 
   poltergeist: {
-    id: 'poltergeist', name: 'Poltergeist', icon: '\uD83D\uDC7B',
+    id: 'poltergeist', name: 'Poltergeist', iconRef: 'enemy.poltergeist',
     type: 'elite', level: 8,
     hp: 120, fue: 8, vit: 6, des: 14, int: 15, vol: 12, pre: 10,
     xp: 80, gold: 35,
@@ -52,7 +52,7 @@ const ENEMIES = {
   },
 
   slime_acido: {
-    id: 'slime_acido', name: 'Slime \u00C1cido', icon: '\uD83D\uDFE2',
+    id: 'slime_acido', name: 'Slime \u00C1cido', iconRef: 'enemy.slime_acido',
     type: 'common', level: 3,
     hp: 45, fue: 6, vit: 8, des: 4, int: 5, vol: 6, pre: 1,
     xp: 22, gold: 8,
@@ -67,7 +67,7 @@ const ENEMIES = {
   },
 
   elemental_agua: {
-    id: 'elemental_agua', name: 'Elemental de Agua', icon: '\uD83D\uDCA7',
+    id: 'elemental_agua', name: 'Elemental de Agua', iconRef: 'enemy.elemental_agua',
     type: 'elite', level: 12,
     hp: 180, fue: 10, vit: 14, des: 12, int: 18, vol: 15, pre: 8,
     xp: 120, gold: 55,
@@ -83,7 +83,7 @@ const ENEMIES = {
   },
 
   salamandra: {
-    id: 'salamandra', name: 'Salamandra de Fuego', icon: '\uD83E\uDD8E',
+    id: 'salamandra', name: 'Salamandra de Fuego', iconRef: 'enemy.salamandra',
     type: 'common', level: 4,
     hp: 40, fue: 8, vit: 5, des: 10, int: 8, vol: 6, pre: 3,
     xp: 28, gold: 12,
@@ -98,7 +98,7 @@ const ENEMIES = {
   },
 
   golem_horno: {
-    id: 'golem_horno', name: 'G\u00F3lem del Horno', icon: '\uD83D\uDD25',
+    id: 'golem_horno', name: 'G\u00F3lem del Horno', iconRef: 'enemy.golem_horno',
     type: 'elite', level: 15,
     hp: 250, fue: 20, vit: 22, des: 6, int: 12, vol: 18, pre: 5,
     xp: 150, gold: 70,
@@ -114,7 +114,7 @@ const ENEMIES = {
   },
 
   planta_carnivora: {
-    id: 'planta_carnivora', name: 'Planta Carn\u00EDvora', icon: '\uD83C\uDF3F',
+    id: 'planta_carnivora', name: 'Planta Carn\u00EDvora', iconRef: 'enemy.planta_carnivora',
     type: 'common', level: 3,
     hp: 35, fue: 7, vit: 6, des: 5, int: 4, vol: 8, pre: 2,
     xp: 20, gold: 7,
@@ -129,7 +129,7 @@ const ENEMIES = {
   },
 
   treant: {
-    id: 'treant', name: 'Treant Guardi\u00E1n', icon: '\uD83C\uDF33',
+    id: 'treant', name: 'Treant Guardi\u00E1n', iconRef: 'enemy.treant',
     type: 'elite', level: 18,
     hp: 300, fue: 22, vit: 28, des: 4, int: 14, vol: 20, pre: 12,
     xp: 180, gold: 80,
@@ -145,7 +145,7 @@ const ENEMIES = {
   },
 
   espiritu_bosque: {
-    id: 'espiritu_bosque', name: 'Esp\u00EDritu del Bosque', icon: '\uD83E\uDDDA',
+    id: 'espiritu_bosque', name: 'Esp\u00EDritu del Bosque', iconRef: 'enemy.espiritu_bosque',
     type: 'boss', level: 25,
     hp: 500, fue: 15, vit: 20, des: 25, int: 30, vol: 28, pre: 22,
     xp: 400, gold: 200,
@@ -163,7 +163,7 @@ const ENEMIES = {
   },
 
   lobo_escarcha: {
-    id: 'lobo_escarcha', name: 'Lobo de Escarcha', icon: '\uD83D\uDC3A',
+    id: 'lobo_escarcha', name: 'Lobo de Escarcha', iconRef: 'enemy.lobo_escarcha',
     type: 'common', level: 5,
     hp: 55, fue: 10, vit: 8, des: 12, int: 6, vol: 8, pre: 5,
     xp: 35, gold: 15,
@@ -178,7 +178,7 @@ const ENEMIES = {
   },
 
   elemental_hielo: {
-    id: 'elemental_hielo', name: 'Elemental de Hielo', icon: '\u2744\uFE0F',
+    id: 'elemental_hielo', name: 'Elemental de Hielo', iconRef: 'enemy.elemental_hielo',
     type: 'elite', level: 14,
     hp: 200, fue: 12, vit: 16, des: 10, int: 20, vol: 16, pre: 8,
     xp: 140, gold: 65,
@@ -194,7 +194,7 @@ const ENEMIES = {
   },
 
   halcon_viento: {
-    id: 'halcon_viento', name: 'Halc\u00F3n del Viento', icon: '\uD83E\uDD85',
+    id: 'halcon_viento', name: 'Halc\u00F3n del Viento', iconRef: 'enemy.halcon_viento',
     type: 'common', level: 4,
     hp: 35, fue: 7, vit: 5, des: 16, int: 6, vol: 7, pre: 8,
     xp: 25, gold: 10,
@@ -209,7 +209,7 @@ const ENEMIES = {
   },
 
   grifo: {
-    id: 'grifo', name: 'Grifo', icon: '\uD83E\uDD81',
+    id: 'grifo', name: 'Grifo', iconRef: 'enemy.grifo',
     type: 'elite', level: 20,
     hp: 280, fue: 24, vit: 18, des: 22, int: 14, vol: 16, pre: 18,
     xp: 200, gold: 100,
@@ -225,7 +225,7 @@ const ENEMIES = {
   },
 
   bandido: {
-    id: 'bandido', name: 'Bandido', icon: '\uD83D\uDDE1\uFE0F',
+    id: 'bandido', name: 'Bandido', iconRef: 'enemy.bandido',
     type: 'common', level: 5,
     hp: 60, fue: 12, vit: 10, des: 10, int: 5, vol: 6, pre: 8,
     xp: 30, gold: 25,
@@ -240,7 +240,7 @@ const ENEMIES = {
   },
 
   capitan_bandidos: {
-    id: 'capitan_bandidos', name: 'Capit\u00E1n Bandido', icon: '\u2694\uFE0F',
+    id: 'capitan_bandidos', name: 'Capit\u00E1n Bandido', iconRef: 'enemy.capitan_bandidos',
     type: 'elite', level: 12,
     hp: 180, fue: 18, vit: 15, des: 14, int: 8, vol: 10, pre: 14,
     xp: 110, gold: 80,
@@ -256,7 +256,7 @@ const ENEMIES = {
   },
 
   cangrejo_gigante: {
-    id: 'cangrejo_gigante', name: 'Cangrejo Gigante', icon: '\uD83E\uDD80',
+    id: 'cangrejo_gigante', name: 'Cangrejo Gigante', iconRef: 'enemy.cangrejo_gigante',
     type: 'common', level: 6,
     hp: 70, fue: 14, vit: 16, des: 6, int: 3, vol: 8, pre: 2,
     xp: 40, gold: 18,
@@ -271,7 +271,7 @@ const ENEMIES = {
   },
 
   serpiente_marina: {
-    id: 'serpiente_marina', name: 'Serpiente Marina', icon: '\uD83D\uDC0D',
+    id: 'serpiente_marina', name: 'Serpiente Marina', iconRef: 'enemy.serpiente_marina',
     type: 'elite', level: 16,
     hp: 220, fue: 16, vit: 14, des: 20, int: 12, vol: 14, pre: 10,
     xp: 160, gold: 75,
@@ -287,7 +287,7 @@ const ENEMIES = {
   },
 
   kraken_menor: {
-    id: 'kraken_menor', name: 'Kraken Menor', icon: '\uD83D\uDC19',
+    id: 'kraken_menor', name: 'Kraken Menor', iconRef: 'enemy.kraken_menor',
     type: 'boss', level: 30,
     hp: 600, fue: 28, vit: 25, des: 18, int: 22, vol: 24, pre: 15,
     xp: 500, gold: 250,
@@ -305,7 +305,7 @@ const ENEMIES = {
   },
 
   pesadilla: {
-    id: 'pesadilla', name: 'Pesadilla', icon: '\uD83D\uDE31',
+    id: 'pesadilla', name: 'Pesadilla', iconRef: 'enemy.pesadilla',
     type: 'common', level: 7,
     hp: 50, fue: 5, vit: 6, des: 14, int: 16, vol: 10, pre: 8,
     xp: 45, gold: 20,
@@ -320,7 +320,7 @@ const ENEMIES = {
   },
 
   devorador_suenos: {
-    id: 'devorador_suenos', name: 'Devorador de Sue\u00F1os', icon: '\uD83C\uDF19',
+    id: 'devorador_suenos', name: 'Devorador de Sue\u00F1os', iconRef: 'enemy.devorador_suenos',
     type: 'elite', level: 18,
     hp: 200, fue: 10, vit: 12, des: 16, int: 26, vol: 22, pre: 14,
     xp: 170, gold: 85,
@@ -336,7 +336,7 @@ const ENEMIES = {
   },
 
   oni: {
-    id: 'oni', name: 'Oni', icon: '\uD83D\uDC79',
+    id: 'oni', name: 'Oni', iconRef: 'enemy.oni',
     type: 'common', level: 8,
     hp: 90, fue: 16, vit: 14, des: 10, int: 8, vol: 12, pre: 6,
     xp: 55, gold: 30,
@@ -351,7 +351,7 @@ const ENEMIES = {
   },
 
   kitsune: {
-    id: 'kitsune', name: 'Kitsune', icon: '\uD83E\uDD8A',
+    id: 'kitsune', name: 'Kitsune', iconRef: 'enemy.kitsune',
     type: 'elite', level: 20,
     hp: 180, fue: 12, vit: 14, des: 24, int: 26, vol: 20, pre: 22,
     xp: 190, gold: 95,
@@ -367,7 +367,7 @@ const ENEMIES = {
   },
 
   dragon_oriental: {
-    id: 'dragon_oriental', name: 'Drag\u00F3n Oriental', icon: '\uD83D\uDC32',
+    id: 'dragon_oriental', name: 'Drag\u00F3n Oriental', iconRef: 'enemy.dragon_oriental',
     type: 'boss', level: 40,
     hp: 800, fue: 30, vit: 28, des: 26, int: 35, vol: 32, pre: 28,
     xp: 800, gold: 400,
@@ -385,7 +385,7 @@ const ENEMIES = {
   },
 
   libro_maldito: {
-    id: 'libro_maldito', name: 'Libro Maldito', icon: '\uD83D\uDCD5',
+    id: 'libro_maldito', name: 'Libro Maldito', iconRef: 'enemy.libro_maldito',
     type: 'common', level: 6,
     hp: 40, fue: 3, vit: 5, des: 8, int: 18, vol: 14, pre: 4,
     xp: 38, gold: 15,
@@ -400,7 +400,7 @@ const ENEMIES = {
   },
 
   liche: {
-    id: 'liche', name: 'Liche', icon: '\uD83D\uDC80',
+    id: 'liche', name: 'Liche', iconRef: 'enemy.liche',
     type: 'boss', level: 35,
     hp: 450, fue: 12, vit: 15, des: 14, int: 40, vol: 35, pre: 20,
     xp: 600, gold: 300,
@@ -419,7 +419,7 @@ const ENEMIES = {
   },
 
   mercader_corrupto: {
-    id: 'mercader_corrupto', name: 'Mercader Corrupto', icon: '\uD83C\uDFAD',
+    id: 'mercader_corrupto', name: 'Mercader Corrupto', iconRef: 'enemy.mercader_corrupto',
     type: 'common', level: 5,
     hp: 50, fue: 8, vit: 8, des: 10, int: 12, vol: 10, pre: 16,
     xp: 32, gold: 50,
@@ -434,7 +434,7 @@ const ENEMIES = {
   },
 
   asesino_gremio: {
-    id: 'asesino_gremio', name: 'Asesino del Gremio', icon: '\uD83D\uDDE1\uFE0F',
+    id: 'asesino_gremio', name: 'Asesino del Gremio', iconRef: 'enemy.asesino_gremio',
     type: 'elite', level: 22,
     hp: 180, fue: 18, vit: 12, des: 30, int: 14, vol: 16, pre: 20,
     xp: 220, gold: 110,
@@ -452,7 +452,7 @@ const ENEMIES = {
   },
 
   lobo_alfa: {
-    id: 'lobo_alfa', name: 'Lobo Alfa', icon: '\uD83D\uDC3A',
+    id: 'lobo_alfa', name: 'Lobo Alfa', iconRef: 'enemy.lobo_alfa',
     type: 'boss', level: 15,
     hp: 400, maxHp: 400,
     fue: 20, vit: 18, des: 16, int: 8, vol: 14, pre: 12,
@@ -470,7 +470,7 @@ const ENEMIES = {
   },
 
   espejo_oscuro: {
-    id: 'espejo_oscuro', name: 'Espejo Oscuro', icon: '\uD83E\uDEDE',
+    id: 'espejo_oscuro', name: 'Espejo Oscuro', iconRef: 'enemy.espejo_oscuro',
     type: 'boss', level: 30,
     hp: 650, maxHp: 650,
     fue: 18, vit: 20, des: 20, int: 28, vol: 22, pre: 25,

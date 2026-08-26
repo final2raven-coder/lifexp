@@ -23,7 +23,7 @@
 | Publicacion | GitHub Pages - rama `main`, raiz `/` |
 | URL publica | `https://final2raven-coder.github.io/lifexp/` |
 | Entrada | `index.html` (SPA de una sola pagina) |
-| PWA | `manifest.json` + `sw.js` (cache-first, CACHE_NAME = lifexp-v23, status verificable desde `main.js`, sincronizado con index.html via validador check 10) |
+| PWA | `manifest.json` + `sw.js` (cache-first, CACHE_NAME = lifexp-v24, status verificable desde `main.js`, sincronizado con index.html via validador check 10) |
 
 ---
 
@@ -45,6 +45,8 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 ## 2. Inventario de ficheros
 
 ### 2a. Ficheros de motor y UI
+
+| `icon_system.js` | Contrato central de renderizado de iconos semanticos, fallbacks SVG accesibles, referencias `item.*`, `class.*`, `enemy.*`, `category.*`, `action.*`, `ui.*` y `world.*`, y registro futuro del pack local | `LifeXPIcons.render`, `renderItem`, `renderClass`, `renderEnemy`, `renderCategory`, `renderAction`, `renderUI`, `registerPack`, `hydrateStaticIcons` |
 
 | Fichero | Bytes | Responsabilidad principal | Exports / globals clave |
 |---|---:|---|---|
@@ -92,7 +94,7 @@ Los ficheros `expansion_*.js` exponen instaladores declarativos y `update2_conte
 | Fichero | Bytes | Responsabilidad |
 |---|---:|---|
 | `manifest.json` | 530 | Metadatos PWA e iconos |
-| `sw.js` | 2312 | Service Worker cache-first; `CACHE_NAME = lifexp-v23`; responde al estado de caché mediante MessageChannel |
+| `sw.js` | 2312 | Service Worker cache-first; `CACHE_NAME = lifexp-v24`; responde al estado de caché mediante MessageChannel |
 | `emergency-save.html` | 5646 | Herramienta de recuperacion manual del save |
 | `icon-192.png` | 1447 | Icono PWA 192 px |
 | `icon-512.png` | 3708 | Icono PWA 512 px |
@@ -429,8 +431,12 @@ Las entradas legacy del inventario pasan por `LifeXPInventory.repair()` al arran
 
 ---
 
-## 8. Changelog del mapa
+## 8. Changelog
 
+- 2026-08-26 - `refactor/icon-rendering-contract` (fase 1): se anade `icon_system.js`, se migra `ui_hub.js` al contrato semantico y se carga el contrato antes de datos y UI en `index.html`. No se modifican reglas, contenido ni persistencia.
+ del mapa
+
+- **2026-08-26 - `refactor/icon-rendering-contract` (Fase 1B local):** `index.html` carga `icon_system.js` antes de los catalogos y la UI; `sw.js` pasa a `lifexp-v24` y precachea el contrato. El paquete local conserva los datos del juego, la persistencia y la estrategia cache-first.
 - **2026-08-26 - `refactor/icon-rendering-contract` (Fase 1A):** `inventory_system.js` expone `LifeXPIcons` con resolucion de referencia, tipo seguro, renderizado de item y fallback SVG por tipo; el renderizador existente se conserva como adaptador para no cambiar la interfaz, el save, el inventario ni el comportamiento. La incorporacion de assets locales de Game-icons.net queda para una fase funcional independiente.
 - **2026-08-26 - `fix/ui-language-complete` (Fase 1):** `engine.js` usa `Adventurer` como nombre predeterminado, migra de forma determinista el valor heredado `Aventurero` solo cuando coincide exactamente y muestra el mensaje de subida de nivel en inglés, preservando nombres personalizados y el progreso; `ui_quests.js` traduce las etiquetas dinamicas restantes de quests y recompensas. No se modifican mecanicas, contenido, IDs ni el resto del save.
 - **2026-08-25 - `feat/combat-formations-target-selection` (Fase 4B.2, Opcion A):** `combat.js` activa el uso jugable de `formation.members` con IDs de instancia unicos y desambiguacion determinista de colisiones; `executePlayerAction()` propaga y valida `targetInstanceId`; `executeEnemyTurn()` procesa todos los miembros vivos; `ui_combat.js` renderiza la lista completa y permite seleccionar objetivos; `index.html` incorpora los estilos y la estructura multiobjetivo. Se mantiene el alias `combatState.enemy`, la compatibilidad con combates individuales y la politica de recompensas agregadas. No se modifican la generacion aleatoria de grupos, la persistencia de combates interrumpidos ni `enemies.js`.

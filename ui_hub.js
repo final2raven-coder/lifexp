@@ -124,7 +124,7 @@ function renderCharacter() {
         <div style="font-size: 11px; color: var(--text-muted);">HP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--blue);">${LifeXPIcons.renderUI('ui.mana', { size: 24 })} ${resources.mp}</div>
+        <div style="font-size: 24px; color: var(--blue);">\uD83D\uDCA7 ${resources.mp}</div>
         <div style="font-size: 11px; color: var(--text-muted);">MP</div>
       </div>
       <div style="text-align: center;">
@@ -132,7 +132,7 @@ function renderCharacter() {
         <div style="font-size: 11px; color: var(--text-muted);">SP</div>
       </div>
       <div style="text-align: center;">
-        <div style="font-size: 24px; color: var(--purple);">${LifeXPIcons.renderUI('ui.target', { size: 24 })} ${resources.focusMax}</div>
+        <div style="font-size: 24px; color: var(--purple);">\uD83C\uDFAF ${resources.focusMax}</div>
         <div style="font-size: 11px; color: var(--text-muted);">Focus Max</div>
       </div>
     </div>
@@ -259,7 +259,7 @@ function showLegacyItemModal(slotIndex) {
   const used = Boolean(slot.recoveryUsed);
   document.getElementById('modal-item-content').innerHTML = `
     <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:48px;">${LifeXPIcons.renderUI('ui.generic', { size: 48 })}</div>
+      <div style="font-size:48px;">❔</div>
       <div style="font-size:18px;font-weight:700;color:var(--orange);">Unreadable reward</div>
       <div style="font-size:12px;color:var(--text-muted);">${oldName}</div>
     </div>
@@ -267,7 +267,7 @@ function showLegacyItemModal(slotIndex) {
     <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">Emergency reroll is a data-recovery tool, not a normal mechanic.</div>
   `;
   const actionBtn = document.getElementById('btn-item-action');
-  actionBtn.innerHTML = used ? 'Recovery already used' : `${LifeXPIcons.renderUI('ui.refresh', { size: 16 })} Rebuild reward`;
+  actionBtn.textContent = used ? 'Recovery already used' : '\uD83D\uDD04 Rebuild reward';
   actionBtn.disabled = used;
   actionBtn.onclick = () => {
     if (used || typeof emergencyRerollLegacyItem !== 'function') return;
@@ -386,9 +386,9 @@ function renderSettings() {
   content.innerHTML = `
     <div class="section-title">Datos</div>
     <div class="card">
-      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">${LifeXPIcons.renderUI('ui.refresh', { size: 16 })} Update version</button>
-      <button class="btn btn-secondary mb-8" onclick="exportData()">${LifeXPIcons.renderUI('ui.upload', { size: 16 })} Export save</button>
-      <button class="btn btn-secondary mb-8" onclick="showImportModal()">${LifeXPIcons.renderUI('ui.download', { size: 16 })} Import save</button>
+      <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Update version</button>
+      <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Export save</button>
+      <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Import save</button>
       <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">${LifeXPIcons.renderUI('ui.trash', { size: 16 })} Resetear progreso</button>
     </div>
     
@@ -397,7 +397,7 @@ function renderSettings() {
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
         Export a snapshot with usage metrics and suggestions to plan content updates with your Langdock agent.
       </p>
-      <button class="btn btn-gold" onclick="exportSnapshot()">${LifeXPIcons.renderUI('ui.analytics', { size: 16 })} Export snapshot for agent</button>
+      <button class="btn btn-gold" onclick="exportSnapshot()">\uD83D\uDCCA Export snapshot for agent</button>
     </div>
     
     <div class="section-title">Info</div>
