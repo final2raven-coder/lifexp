@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LifeXP icon pack selection manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["packId", "version", "source", "entries"],
+  "properties": {
+    "packId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "license", "licenseUrl"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "license": { "type": "string", "minLength": 1 },
+        "licenseUrl": { "type": "string", "format": "uri" },
+        "licenseFiles": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "entries": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^(item|class|enemy|category|action|ui|world)\\.[a-z0-9_-]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourcePath", "title", "author", "license", "licenseUrl", "sourceUrl"],
+        "properties": {
+          "sourcePath": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "author": { "type": "string", "minLength": 1 },
+          "license": { "type": "string", "minLength": 1 },
+          "licenseUrl": { "type": "string", "format": "uri" },
+          "sourceUrl": { "type": "string", "format": "uri" }
+        }
+      }
+    }
+  }
+}
