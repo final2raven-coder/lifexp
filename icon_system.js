@@ -43,6 +43,7 @@
     'ui.check': '<path d="m8 21 8 8L32 12"/>',
     'ui.save': '<path d="M8 7h24v26H8z"/><path d="M13 7v9h14V7M14 33v-9h12v9"/>',
     'ui.play': '<path d="m13 7 20 13-20 13V7z"/>',
+    'ui.pause': '<path d="M13 7h5v26h-5zM22 7h5v26h-5z"/>',
     'ui.refresh': '<path d="M32 15a13 13 0 1 0 2 10"/><path d="M32 7v8h-8"/>',
     'ui.trophy': '<path d="M12 7h16v9c0 7-3 11-8 11s-8-4-8-11V7z"/><path d="M12 11H7v3c0 5 3 8 8 8m13-11h5v3c0 5-3 8-8 8M20 27v6M13 35h14"/>',
     'ui.gift': '<rect x="6" y="14" width="28" height="20" rx="2"/><path d="M6 20h28M20 14v20M20 14c-5 0-9-2-8-6 1-3 6-2 8 6zm0 0c5 0 9-2 8-6-1-3-6-2-8 6z"/>',
