@@ -31,7 +31,7 @@ function renderQuests() {
         <div style="font-size: 32px; margin-bottom: 12px;">\uD83D\uDCDC</div>
         <div style="color: var(--text-muted);">No active quests</div>
         <button class="btn btn-primary" style="margin-top: 16px;" onclick="showAvailableQuests()">
-          Ver quests disponibles
+          View available quests
         </button>
       </div>
     `;
@@ -162,9 +162,9 @@ function showQuestDetail(questId) {
     }))
   ];
   const statusLabel = status => status === 'granted'
-    ? 'concedida'
+    ? 'granted'
     : status === 'pending'
-      ? 'pendiente de espacio'
+      ? 'pending - not enough space'
       : 'requires recovery';
   const recoveryApplications = rewardApplications.filter(application => application.status !== 'granted');
   const rewardStatusHtml = rewardApplications.length

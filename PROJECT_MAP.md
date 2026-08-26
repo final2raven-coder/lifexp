@@ -12,9 +12,9 @@
 | Campo | Valor |
 |---|---|
 | Fecha de generacion | 2026-07-30 |
-| Ultima actualizacion | 2026-08-25 (`fix/combat-difficulty-readable` -- dificultad de encuentros individuales; `feat/combat-formations-foundation` -- modelo interno versionado de formaciones; `feat/combat-formations-target-selection` -- formaciones jugables y seleccion segura de objetivos; `fix/visible-labels-consistency` -- contrato de presentacion en ingles para objetos, recompensas y tareas) |
+| Ultima actualizacion | 2026-08-26 (`fix/ui-language-complete` -- nombre predeterminado y etiquetas dinamicas de quests en ingles, con migracion segura para el valor heredado) |
 | Branch de produccion | `main` |
-| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation`, `fix/visible-labels-consistency` , `fix/visible-labels-5a2-3` |
+| Branches existentes verificados | `main`, `backup/pre-sanitation-2026-07-30`, `feat/task-catalog-refresh`, `fix/consistent-skill-requirements`, `fix/combat-difficulty-readable`, `feat/combat-formations-foundation`, `fix/visible-labels-consistency` , `fix/visible-labels-5a2-3`, `fix/ui-language-complete` |
 | Tags de backup existentes verificados | Ninguno visible en el repositorio; la copia de seguridad disponible es la rama `backup/pre-sanitation-2026-07-30` |
 | Ramas historicas citadas | Las ramas de PR integradas o eliminadas se conservan unicamente en el changelog; no son ramas activas |
 | Commit de `main` verificado | `e6274500713e542c2a260f6192d25a7cea3bcae5` |
@@ -443,6 +443,7 @@ Estados verificados contra `main` y la historia de PRs disponible el 2026-08-18.
 
 ## 8. Changelog del mapa
 
+- **2026-08-26 - `fix/ui-language-complete` (Fase 1):** `engine.js` usa `Adventurer` como nombre predeterminado, migra de forma determinista el valor heredado `Aventurero` solo cuando coincide exactamente y muestra el mensaje de subida de nivel en inglés, preservando nombres personalizados y el progreso; `ui_quests.js` traduce las etiquetas dinamicas restantes de quests y recompensas. No se modifican mecanicas, contenido, IDs ni el resto del save.
 - **2026-08-25 - `feat/combat-formations-target-selection` (Fase 4B.2, Opcion A):** `combat.js` activa el uso jugable de `formation.members` con IDs de instancia unicos y desambiguacion determinista de colisiones; `executePlayerAction()` propaga y valida `targetInstanceId`; `executeEnemyTurn()` procesa todos los miembros vivos; `ui_combat.js` renderiza la lista completa y permite seleccionar objetivos; `index.html` incorpora los estilos y la estructura multiobjetivo. Se mantiene el alias `combatState.enemy`, la compatibilidad con combates individuales y la politica de recompensas agregadas. No se modifican la generacion aleatoria de grupos, la persistencia de combates interrumpidos ni `enemies.js`.
 - **2026-08-25 - `fix/combat-difficulty-readable` (Fase 4B.1):** se anade una politica declarativa de dificultad para encuentros individuales: comunes desde nivel 1, elite desde nivel 5 y bosses desde nivel 15; la seleccion prioriza tema y banda segura, el fallback elige el enemigo mas cercano disponible, el escalado queda acotado y la amenaza se comunica antes y durante el combate. `initCombat()` conserva metadatos transitorios del encuentro; no hay migracion de save ni regeneracion de combates ya iniciados. No se modifica el catalogo de enemigos ni se incluyen grupos de combate, que quedan para una rama independiente.
 - **2026-08-24 - `fix/consistent-skill-requirements-clean`:** se añade el estado explicito de habilidades y una unica resolucion de autorizacion para combate. La partida actual y una partida nueva siguen la misma regla; no se añaden excepciones para saves antiguos ni por ID.

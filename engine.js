@@ -11,7 +11,7 @@
 
 const DEFAULT_GAME_STATE = {
   // Player
-  name: 'Aventurero',
+  name: 'Adventurer',
   level: 1,
   xp: 0,
   gold: 0,
@@ -145,7 +145,7 @@ function addXp(amount) {
     // Trigger level up effects
     if (typeof showLevelUpEffect === 'function') showLevelUpEffect();
     if (typeof triggerHaptic === 'function') triggerHaptic();
-    if (typeof showToast === 'function') showToast(`¡Nivel ${gameState.level}!`, 'gold');
+    if (typeof showToast === 'function') showToast(`Level ${gameState.level}!`, 'gold');
   }
   return leveledUp;
 }
@@ -1002,6 +1002,7 @@ function migrateV2ToV3(state, context = {}) {
 }
 
 function migrateV4ToCurrent(state) {
+  if (state.name === 'Aventurero') state.name = 'Adventurer';
   return state;
 }
 
@@ -1047,6 +1048,7 @@ function runMigrations(parsed, from, warnings) {
     version = migration.to;
   }
   candidate = applySchemaDefaults(candidate, warnings);
+  candidate = migrateV4ToCurrent(candidate);
   candidate.saveVersion = CURRENT_SAVE_VERSION;
   return candidate;
 }
