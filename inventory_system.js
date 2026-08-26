@@ -41,7 +41,7 @@
       if (aliases[normalized]) return aliases[normalized];
       const byName = Object.entries(ITEMS).find(([id, item]) => text(item?.name) === normalized);
       if (byName) return byName[0];
-      const byId = Object.keys(ITEMS).find(id => text(id) === normalized || text(id.replaceAll('_', ' ')) === normalized);
+      const byId = Object.keys(ITEMS).find(id => text(id) === normalized);
       if (byId) return byId;
     }
     return null;
@@ -49,201 +49,118 @@
 
   function normalize(entry) {
     const id = resolve(entry);
-    if (!id) return null;
-    if (typeof entry === 'string') return { id, qty: 1 };
-    return { ...entry, id, qty: Math.max(1, Number(entry.qty ?? entry.quantity ?? 1) || 1) };
+    if (!id || typeof ITEMS === 'undefined') return null;
+    const item = ITEMS[id];
+    const quantity = Math.max(1, Number(entry?.qty ?? entry?.quantity ?? 1) || 1);
+    return { id, qty: quantity, item };
   }
 
-  const presentationLabels = {
-    categories: {
-      casa: 'Home',
-      cuerpo: 'Body',
-      gestiones: 'Errands',
-      social: 'Social',
-      personal: 'Personal'
-    },
-    frequencies: {
-      daily: 'Daily',
-      weekly: 'Weekly',
-      fortnightly: 'Every two weeks',
-      biweekly: 'Every two weeks',
-      monthly: 'Monthly',
-      quarterly: 'Every three months',
-      halfyearly: 'Every six months',
-      yearly: 'Yearly',
-      annual: 'Yearly',
-      once: 'One time'
-    },
-    itemTypes: {
-      weapon: 'Weapon',
-      armor: 'Armor',
-      accessory: 'Accessory',
-      artifact: 'Artifact',
-      consumable: 'Consumable',
-      material: 'Material',
-      skill: 'Skill',
-      key: 'Key item'
-    },
-    rarities: {
-      common: 'Common',
-      uncommon: 'Uncommon',
-      rare: 'Rare',
-      epic: 'Epic',
-      legendary: 'Legendary'
-    },
-    statuses: {
-      available: 'Available',
-      completed: 'Completed',
-      cooldown: 'On cooldown',
-      archived: 'Archived',
-      needs_review: 'Needs review',
-      granted: 'Granted',
-      pending: 'Recovery available',
-      rejected: 'Unresolved reward'
+  function listEntries(list) {
+    return Array.isArray(list) ? list : [];
+  }
+
+  function repairList(list) {
+    let changed = false;
+    const result = [];
+    for (const entry of listEntries(list)) {
+      const normalized = normalize(entry);
+      if (!normalized) {
+        result.push(entry);
+        continue;
+      }
+      const currentId = entry?.id;
+      const currentQty = Number(entry?.qty ?? entry?.quantity ?? 1) || 1;
+      if (currentId !== normalized.id || currentQty !== normalized.qty || entry?.quantity != null) changed = true;
+      result.push({ ...entry, id: normalized.id, qty: normalized.qty, quantity: undefined });
+      if (result[result.length - 1].quantity === undefined) delete result[result.length - 1].quantity;
     }
-  };
-
-  function getPresentationLabel(group, key, fallback) {
-    if (key == null || key === '') return fallback;
-    return presentationLabels[group]?.[String(key).toLowerCase()] || fallback;
+    return { list: result, changed };
   }
 
-  function getItemPresentation(entry) {
-    const id = resolve(entry);
-    const item = id ? ITEMS[id] : null;
-    if (!item) {
-      return {
-        id: null,
-        name: 'Unresolved item',
-        description: 'This item could not be identified. Recovery is available.',
-        typeLabel: 'Item',
-        rarityLabel: null,
-        unresolved: true,
-        reference: typeof entry === 'string'
-          ? entry
-          : (entry?.itemId || entry?.id || entry?.name || null)
-      };
-    }
-    return {
-      id,
-      name: item.name || 'Unnamed item',
-      description: item.desc || item.description || '',
-      typeLabel: getPresentationLabel('itemTypes', item.type, 'Item'),
-      rarityLabel: getPresentationLabel('rarities', item.rarity, 'Unknown rarity'),
-      unresolved: false,
-      item
-    };
+  function normalizeRewardEntry(entry) {
+    if (entry == null) return null;
+    if (typeof entry === 'string') return entry;
+    if (typeof entry === 'object') return entry.itemId || entry.itemID || entry.id || entry.itemKey || entry.key || entry.name || entry.itemName || null;
+    return null;
   }
 
-  function getRewardPresentation(entry) {
-    return getItemPresentation(entry);
+  function getRewardInput(entry) {
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) return normalizeRewardEntry(entry);
+    return entry;
   }
 
-  function getTaskPresentation(task) {
-    return {
-      categoryLabel: getPresentationLabel('categories', task?.cat, 'Adventure'),
-      frequencyLabel: getPresentationLabel('frequencies', task?.freq, 'Schedule not specified')
-    };
+  function getRewardQuantity(entry, options = {}) {
+    const candidate = options.quantity ?? entry?.quantity ?? entry?.qty ?? 1;
+    const quantity = Number(candidate);
+    return Number.isFinite(quantity) && quantity > 0 ? Math.floor(quantity) : 1;
   }
 
-  function getStatusPresentation(status, fallback = 'Unknown status') {
-    return presentationLabels.statuses[String(status || '').toLowerCase()] || fallback;
+  function rewardResult(status, details = {}) {
+    return { status, ...details };
   }
-
-  window.LifeXPPresentation = {
-    getItem: getItemPresentation,
-    getReward: getRewardPresentation,
-    getTask: getTaskPresentation,
-    getCategoryLabel: key => getPresentationLabel('categories', key, 'Adventure'),
-    getFrequencyLabel: key => getPresentationLabel('frequencies', key, 'Schedule not specified'),
-    getItemTypeLabel: key => getPresentationLabel('itemTypes', key, 'Item'),
-    getRarityLabel: key => getPresentationLabel('rarities', key, 'Unknown rarity'),
-    getStatusLabel: getStatusPresentation
-  };
 
   function ensurePendingLootState() {
-    if (typeof gameState === 'undefined') return null;
-    if (typeof normalizePendingLootState === 'function') {
-      const normalized = normalizePendingLootState(gameState.pendingLoot, []);
-      if (JSON.stringify(normalized) !== JSON.stringify(gameState.pendingLoot)) gameState.pendingLoot = normalized;
-      return gameState.pendingLoot;
-    }
-    if (!gameState.pendingLoot || !Array.isArray(gameState.pendingLoot.entries)) {
-      gameState.pendingLoot = { version: 1, entries: [] };
-    }
+    if (typeof gameState === 'undefined') return [];
+    if (!Array.isArray(gameState.pendingLoot)) gameState.pendingLoot = [];
     return gameState.pendingLoot;
   }
 
   function ensureRewardLedger() {
-    if (typeof gameState === 'undefined') return null;
-    if (!gameState.rewardLedger || typeof gameState.rewardLedger !== 'object' || Array.isArray(gameState.rewardLedger)) {
-      gameState.rewardLedger = {};
-    }
+    if (typeof gameState === 'undefined') return {};
+    if (!gameState.rewardLedger || typeof gameState.rewardLedger !== 'object' || Array.isArray(gameState.rewardLedger)) gameState.rewardLedger = {};
     return gameState.rewardLedger;
   }
 
-  function getRewardInput(entry) {
-    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-      return entry.itemId ?? entry.id ?? entry.requestedItem ?? entry.name ?? entry.itemName ?? null;
+  function getClaimKeyPart(value) {
+    if (value == null) return '';
+    if (typeof value === 'object') {
+      try { return JSON.stringify(value); } catch (_) { return String(value); }
     }
-    return entry;
+    return String(value);
   }
-
-  function getRewardQuantity(entry, options) {
-    const value = options.quantity ?? entry?.quantity ?? entry?.qty ?? 1;
-    const quantity = Number(value);
-    return Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1;
-  }
-
-  let generatedClaimSequence = 0;
 
   function getRewardClaimId(entry, options, source, input) {
-    if (typeof options.claimId === 'string' && options.claimId) return options.claimId;
-    if (entry && typeof entry === 'object' && typeof entry.claimId === 'string' && entry.claimId) return entry.claimId;
-    generatedClaimSequence += 1;
-    return `reward:${source || 'unknown'}:${Date.now()}:${generatedClaimSequence}`;
+    return options.claimId || entry?.claimId || [source, getClaimKeyPart(input), getRewardQuantity(entry, options)].join('|');
   }
 
-  function getPendingEntryIndex(queue, claimId) {
-    return queue.entries.findIndex(entry => entry && entry.claimId === claimId);
+  function createPendingEntry({ claimId, input, itemId, quantity, source, reason, status, metadata }) {
+    return {
+      claimId,
+      input,
+      itemId,
+      quantity,
+      source,
+      reason,
+      status,
+      displayName: typeof input === 'string' ? input : (input?.name || input?.itemName || input?.itemId || 'Unknown item'),
+      metadata: metadata || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
   }
 
   function upsertPendingEntry(queue, entry) {
-    const index = getPendingEntryIndex(queue, entry.claimId);
-    if (index === -1) queue.entries.push(entry);
-    else queue.entries[index] = { ...queue.entries[index], ...entry };
+    const index = queue.findIndex(item => item?.claimId === entry.claimId);
+    if (index >= 0) queue[index] = { ...queue[index], ...entry, updatedAt: new Date().toISOString() };
+    else queue.push(entry);
   }
 
   function removePendingEntry(queue, claimId) {
-    const index = getPendingEntryIndex(queue, claimId);
-    if (index !== -1) queue.entries.splice(index, 1);
+    const index = queue.findIndex(item => item?.claimId === claimId);
+    if (index >= 0) queue.splice(index, 1);
   }
 
   function persistRewardState() {
     if (typeof saveGame === 'function') saveGame();
   }
 
-  function createPendingEntry({ claimId, input, itemId, quantity, source, reason, status, metadata }) {
-    const item = itemId && typeof ITEMS !== 'undefined' ? ITEMS[itemId] : null;
-    const displayName = typeof input === 'object' && input !== null
-      ? (input.displayName || input.name || input.itemName || item?.name || itemId || null)
-      : (item?.name || (typeof input === 'string' ? input : null));
-    return {
-      claimId,
-      itemId: itemId || (typeof input === 'string' ? input : null),
-      requestedItem: typeof input === 'object' && input !== null ? (input.requestedItem || input.itemId || input.id || input.name || null) : input,
-      quantity,
-      displayName,
-      source,
-      reason,
-      status,
-      createdAt: new Date().toISOString(),
-      metadata: typeof input === 'object' && input !== null && input.metadata ? { ...input.metadata, ...(metadata || {}) } : { ...(metadata || {}) }
-    };
-  }
-
-  function rewardResult(status, details = {}) {
-    return { status, granted: status === 'granted', pending: status === 'pending', rejected: status === 'rejected', ...details };
+  function addToContainer(id, containerName, quantity) {
+    if (typeof gameState === 'undefined') return { success: false, reason: 'game_state_unavailable' };
+    if (!Array.isArray(gameState[containerName])) gameState[containerName] = [];
+    const existing = gameState[containerName].find(entry => entry?.id === id);
+    if (existing) existing.qty = Number(existing.qty || 0) + quantity;
+    else gameState[containerName].push({ id, qty: quantity });
+    return { success: true, id, quantity };
   }
 
   function deliverReward(entry, options = {}) {
@@ -282,48 +199,24 @@
       removePendingEntry(queue, claimId);
       ledger[claimId] = { status: 'granted', itemId: resolvedId, quantity, source, updatedAt: new Date().toISOString() };
       persistRewardState();
-      return rewardResult('granted', { claimId, itemId: resolvedId, quantity, duplicate: false, stacked: insertion?.stacked === true });
+      return rewardResult('granted', { claimId, itemId: resolvedId, quantity });
     }
 
-    const reason = insertion?.reason || 'inventory_rejected';
-    const status = reason === 'full' ? 'pending' : 'rejected';
-    const pending = createPendingEntry({ claimId, input: entry, itemId: resolvedId, quantity, source, reason, status, metadata: options.metadata });
+    const pending = createPendingEntry({ claimId, input: entry, itemId: resolvedId, quantity, source, reason: insertion?.reason || 'inventory_insert_failed', status: 'pending', metadata: options.metadata });
     upsertPendingEntry(queue, pending);
-    ledger[claimId] = { status, itemId: resolvedId, quantity, source, reason, updatedAt: new Date().toISOString() };
+    ledger[claimId] = { status: 'pending', itemId: resolvedId, quantity, source, reason: pending.reason, updatedAt: new Date().toISOString() };
     persistRewardState();
-    return rewardResult(status, { claimId, itemId: resolvedId, quantity, reason, recoverable: true, pending: true, displayName: pending.displayName });
+    return rewardResult('pending', { claimId, itemId: resolvedId, quantity, reason: pending.reason, recoverable: true, pending: true });
   }
 
   function getPendingLoot() {
-    const queue = ensurePendingLootState();
-    return queue ? queue.entries.map(entry => ({ ...entry, metadata: { ...(entry.metadata || {}) } })) : [];
+    return ensurePendingLootState().slice();
   }
 
-  function retryPendingLoot() {
-    const queue = ensurePendingLootState();
-    if (!queue) return [];
-    return [...queue.entries].map(entry => deliverReward(entry, {
-      claimId: entry.claimId,
-      source: entry.source,
-      retryRejected: true,
-      metadata: entry.metadata
-    }));
-  }
-
-  function repairList(list) {
-    if (!Array.isArray(list)) return { list: [], changed: false };
-    let changed = false;
-    const result = list.map(entry => {
-      const normalized = normalize(entry);
-      if (!normalized) return entry;
-      const clean = { ...normalized };
-      delete clean.itemId; delete clean.itemID; delete clean.itemKey; delete clean.key;
-      delete clean.name; delete clean.legacyName; delete clean.itemName;
-      clean.recoveredAtBuild = clean.recoveredAtBuild || BUILD;
-      if (JSON.stringify(clean) !== JSON.stringify(entry)) changed = true;
-      return clean;
-    });
-    return { list: result, changed };
+  function retryPendingLoot(claimId) {
+    const pending = ensurePendingLootState().find(entry => entry?.claimId === claimId);
+    if (!pending) return rewardResult('rejected', { claimId, reason: 'pending_not_found', recoverable: false });
+    return deliverReward(pending.input, { claimId, source: pending.source, quantity: pending.quantity, retryRejected: true, metadata: pending.metadata });
   }
 
   function repair() {
@@ -373,38 +266,64 @@
     return recoveredLegacy;
   }
 
-  function icon(item, size) {
-    const type = item?.type || 'material';
-    const color = RARITY[item?.rarity]?.color || '#c9c5bb';
-    const paths = {
-      weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
-      armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
-      accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
-      artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
-      consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
-      material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
-      skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
-      key: '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>'
-    };
-    return `<svg class="item-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true" style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[type] || paths.material}</g></svg>`;
+  // Icon contract: current type-based SVGs remain the fallback until the
+  // local Game-icons pack is installed in the next phase. Keeping this
+  // contract here lets every renderer migrate without touching save data.
+  const ICON_FALLBACK_PATHS = Object.freeze({
+    weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
+    armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
+    accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
+    artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
+    consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
+    material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
+    skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
+    key: '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>'
+  });
+
+  function resolveIconType(item) {
+    const type = item?.type;
+    return type && ICON_FALLBACK_PATHS[type] ? type : 'material';
   }
 
-  function render(listId, emptyId, container, openFn) {
-    const grid = document.getElementById(listId);
-    const empty = document.getElementById(emptyId);
-    if (!grid || typeof gameState === 'undefined') return;
-    repair();
-    const list = Array.isArray(gameState[container]) ? gameState[container] : [];
-    empty?.classList.toggle('hidden', list.length > 0);
-    grid.innerHTML = list.map((entry, index) => {
-      const id = resolve(entry);
-      const item = id ? ITEMS[id] : null;
-      if (!item) return `<div class="inv-slot inv-slot-recovery" role="button" tabindex="0" onclick="showLegacyItemModal(${index})"><div class="recovery-icon">?</div><div>Unresolved item</div><small>Recovery available</small></div>`;
+  function resolveIconReference(item) {
+    if (!item || typeof item !== 'object') return null;
+    return item.iconRef || item.icon || ITEM_TYPE[item.type]?.icon || resolveIconType(item);
+  }
+
+  function escapeIconLabel(value) {
+    return String(value ?? 'Item').replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
+  }
+
+  function renderItemIcon(item, size = 40, options = {}) {
+    const type = resolveIconType(item);
+    const color = options.color || RARITY[item?.rarity]?.color || '#c9c5bb';
+    const numericSize = Number.isFinite(Number(size)) ? Math.max(12, Number(size)) : 40;
+    const decorative = options.decorative !== false;
+    const accessibility = decorative
+      ? 'aria-hidden="true"'
+      : `role="img" aria-label="${escapeIconLabel(options.label || item?.name || ITEM_TYPE[type]?.name || 'Item')}"`;
+    return `<svg class="item-icon-svg" width="${numericSize}" height="${numericSize}" viewBox="0 0 40 40" ${accessibility} style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_FALLBACK_PATHS[type]}</g></svg>`;
+  }
+
+  function icon(item, size) {
+    return renderItemIcon(item, size);
+  }
+
+  function renderInventory(targetId = 'inventory-grid', source = 'inventory') {
+    const target = document.getElementById(targetId);
+    if (!target || typeof gameState === 'undefined') return;
+    const entries = Array.isArray(gameState[source]) ? gameState[source] : [];
+    target.innerHTML = '';
+    entries.forEach((entry, index) => {
+      const item = ITEMS[entry?.id];
+      const qty = Number(entry?.qty || 1);
+      if (!item) return;
       const rarity = RARITY[item.rarity] || RARITY.common;
-      const qty = Number(entry.qty || entry.quantity || 1);
-      const action = `${openFn}('${id}')`;
-      return `<div class="inv-slot item-card" role="button" tabindex="0" aria-label="Open ${String(item.name).replace(/"/g, '&quot;')}" onclick="${action}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${action}}" style="border-color:${rarity.color}"><div class="item-card-icon">${icon(item, 40)}</div><div class="item-card-name" style="color:${rarity.color}">${String(item.name).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>${qty > 1 ? `<div class="item-card-qty">x${qty}</div>` : ''}</div>`;
-    }).join('');
+      const action = source === 'stash' ? `showStashItemModal(${index})` : `showItemModal(${index})`;
+      target.innerHTML += `<div class="inv-slot item-card" role="button" tabindex="0" aria-label="Open ${String(item.name).replace(/"/g, '&quot;')}" onclick="${action}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${action}}" style="border-color:${rarity.color}"><div class="item-card-icon">${icon(item, 40)}</div><div class="item-card-name" style="color:${rarity.color}">${String(item.name).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>${qty > 1 ? `<div class="item-card-qty">x${qty}</div>` : ''}</div>`;
+    });
   }
 
   window.LifeXPInventory = {
@@ -417,52 +336,15 @@
     getPendingLoot,
     retryPendingLoot
   };
-  window.renderCanonicalInventory = function () { render('inventory-grid', 'inventory-empty', 'inventory', 'showItemModal'); };
-  window.renderCanonicalStash = function () { render('stash-grid', 'stash-empty', 'stash', 'showStashItemModal'); };
+  window.LifeXPIcons = Object.freeze({
+    version: '1.0',
+    resolveType: resolveIconType,
+    resolveReference: resolveIconReference,
+    renderItem: renderItemIcon,
+    getFallbackPaths: () => ({ ...ICON_FALLBACK_PATHS })
+  });
+
   window.normalizeItemText = text;
-  window.migrateLegacyAshbrand = migrateLegacyAshbrand;
-
-  window.emergencyRerollLegacyItem = function (slotIndex) {
-    if (typeof gameState === 'undefined' || !Array.isArray(gameState.inventory)) {
-      return { success: false, reason: 'inventory_unavailable' };
-    }
-    const original = gameState.inventory[slotIndex];
-    if (original == null) return { success: false, reason: 'slot_unavailable' };
-    if (original.recoveryUsed) return { success: false, reason: 'recovery_already_used' };
-    try {
-      const raw = localStorage.getItem('lifexp_save');
-      if (raw && !localStorage.getItem('lifexp_recovery_backup_v15')) {
-        localStorage.setItem('lifexp_recovery_backup_v15', raw);
-      }
-    } catch (e) { console.warn('Recovery backup unavailable:', e); }
-    const resolved = resolve(original);
-    if (!resolved) return { success: false, reason: 'item_unresolvable' };
-    const slot = typeof original === 'string'
-      ? { id: resolved, qty: 1 }
-      : { ...original, id: resolved, qty: Math.max(1, Number(original.qty ?? original.quantity ?? 1) || 1) };
-    delete slot.itemId; delete slot.itemID; delete slot.itemKey; delete slot.key;
-    delete slot.name; delete slot.legacyName; delete slot.itemName;
-    slot.recoveryUsed = true;
-    slot.recoveredAtBuild = BUILD;
-    gameState.inventory[slotIndex] = slot;
-    if (typeof saveGame === 'function') saveGame();
-    return { success: true, method: 'canonical_id', id: resolved };
-  };
-
-  window.renderInventory = function () {
-    repair();
-    const capacity = typeof getInventoryCapacity === 'function' ? getInventoryCapacity() : 20;
-    const count = (gameState.inventory || []).reduce((sum, entry) => sum + Number(entry.qty || entry.quantity || 1), 0);
-    document.getElementById('inv-count')?.replaceChildren(document.createTextNode(`${count}/${capacity}`));
-    const stashCount = (gameState.stash || []).reduce((sum, entry) => sum + Number(entry.qty || entry.quantity || 1), 0);
-    document.getElementById('stash-count')?.replaceChildren(document.createTextNode(`${stashCount}/${gameState.stashCapacity || 30}`));
-    if (typeof currentInventoryTab !== 'undefined' && currentInventoryTab === 'stash') render('stash-grid', 'stash-empty', 'stash', 'showStashItemModal');
-    else if (typeof currentInventoryTab !== 'undefined' && currentInventoryTab === 'equipment' && typeof renderEquipment === 'function') renderEquipment();
-    else render('inventory-grid', 'inventory-empty', 'inventory', 'showItemModal');
-  };
-
-  document.addEventListener('DOMContentLoaded', function () {
-    repair();
-    if (typeof window.renderInventory === 'function') window.renderInventory();
-  }, { once: true });
+  window.emergencyRerollLegacyItem = recoverItemIfLost;
+  window.renderInventory = renderInventory;
 })();
