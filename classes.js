@@ -5,219 +5,136 @@
 const CLASS_TREE = {
   // ══════════ GUERRERO ══════════
   guerrero: {
-    name: 'Guerrero', icon: '⚔️', tier: 1, reqLevel: 10,
+    name: 'Guerrero', iconRef: 'class.guerrero', tier: 1, reqLevel: 10,
     stats: { fue: 3, vit: 2 }, desc: 'Maestro del combate cuerpo a cuerpo.',
     branches: ['espadachin', 'berserker', 'caballero']
   },
-  espadachin: { name: 'Espadachín', icon: '🗡️', tier: 2, reqLevel: 30, parent: 'guerrero', stats: { fue: 2, des: 2, vit: 1 }, desc: 'Equilibrio entre ataque y defensa.', branches: ['duelista', 'maestro_armas'] },
-  berserker: { name: 'Berserker', icon: '🪓', tier: 2, reqLevel: 30, parent: 'guerrero', stats: { fue: 4, vol: 1 }, desc: 'Furia desatada.', branches: ['devastador', 'campeon_sangriento'] },
-  caballero: { name: 'Caballero', icon: '🛡️', tier: 2, reqLevel: 30, parent: 'guerrero', stats: { vit: 3, pre: 2 }, desc: 'Protector y líder.', branches: ['paladin', 'senor_guerra'] },
-  duelista: { name: 'Duelista', icon: '🤺', tier: 3, reqLevel: 60, parent: 'espadachin', stats: { des: 3, fue: 2 }, desc: 'Maestro del 1v1.', branches: ['campeon_arena'] },
-  maestro_armas: { name: 'Maestro de Armas', icon: '⚔️', tier: 3, reqLevel: 60, parent: 'espadachin', stats: { fue: 2, des: 2, int: 1 }, desc: 'Domina todas las armas.', branches: ['leyenda_acero'] },
-  devastador: { name: 'Devastador', icon: '💥', tier: 3, reqLevel: 60, parent: 'berserker', stats: { fue: 5 }, desc: 'Destrucción pura.', branches: ['avatar_destruccion'] },
-  campeon_sangriento: { name: 'Campeón Sangriento', icon: '🩸', tier: 3, reqLevel: 60, parent: 'berserker', stats: { fue: 3, vit: 2 }, desc: 'Lifesteal.', branches: ['senor_carmesi'] },
-  paladin: { name: 'Paladín', icon: '✨', tier: 3, reqLevel: 60, parent: 'caballero', stats: { vit: 3, vol: 2 }, desc: 'Tanque sagrado.', branches: ['caballero_sagrado'] },
-  senor_guerra: { name: 'Señor de la Guerra', icon: '🏰', tier: 3, reqLevel: 60, parent: 'caballero', stats: { vit: 2, pre: 3 }, desc: 'Líder nato.', branches: ['conquistador'] },
-  campeon_arena: { name: 'Campeón de la Arena', icon: '🏆', tier: 4, reqLevel: 100, parent: 'duelista', stats: { des: 4, fue: 2 }, desc: 'Invicto en combate singular.' },
-  leyenda_acero: { name: 'Leyenda del Acero', icon: '⚔️', tier: 4, reqLevel: 100, parent: 'maestro_armas', stats: { fue: 3, des: 3 }, desc: 'Sinónimo de victoria.' },
-  avatar_destruccion: { name: 'Avatar de la Destrucción', icon: '🔥', tier: 4, reqLevel: 100, parent: 'devastador', stats: { fue: 6 }, desc: 'Encarnación del caos.' },
-  senor_carmesi: { name: 'Señor Carmesí', icon: '🩸', tier: 4, reqLevel: 100, parent: 'campeon_sangriento', stats: { fue: 4, vit: 2 }, desc: 'La sangre es poder.' },
-  caballero_sagrado: { name: 'Caballero Sagrado', icon: '👼', tier: 4, reqLevel: 100, parent: 'paladin', stats: { vit: 4, vol: 2 }, desc: 'Bendecido por la luz.' },
-  conquistador: { name: 'Conquistador', icon: '👑', tier: 4, reqLevel: 100, parent: 'senor_guerra', stats: { vit: 3, pre: 3 }, desc: 'Forjador de imperios.' },
-
-  // ══════════ ARQUERO ══════════
-  arquero: {
-    name: 'Arquero', icon: '🏹', tier: 1, reqLevel: 10,
-    stats: { des: 3, fue: 2 }, desc: 'Precisión letal a distancia.',
-    branches: ['cazador', 'tirador', 'explorador']
-  },
-  cazador: { name: 'Cazador', icon: '🐺', tier: 2, reqLevel: 30, parent: 'arquero', stats: { des: 2, int: 2, vit: 1 }, desc: 'Trampas y bestias.', branches: ['maestro_bestias', 'trampero'] },
-  tirador: { name: 'Tirador', icon: '🎯', tier: 2, reqLevel: 30, parent: 'arquero', stats: { des: 4, fue: 1 }, desc: 'Un disparo, un muerto.', branches: ['francotirador', 'artillero'] },
-  explorador: { name: 'Explorador', icon: '🧭', tier: 2, reqLevel: 30, parent: 'arquero', stats: { des: 3, vol: 2 }, desc: 'Velocidad y sigilo.', branches: ['sabueso', 'corredor_viento'] },
-  maestro_bestias: { name: 'Maestro de Bestias', icon: '🦁', tier: 3, reqLevel: 60, parent: 'cazador', stats: { des: 2, pre: 2, int: 1 }, desc: 'Múltiples compañeros.', branches: ['senor_jauria'] },
-  trampero: { name: 'Trampero', icon: '🪤', tier: 3, reqLevel: 60, parent: 'cazador', stats: { int: 3, des: 2 }, desc: 'Control mortal.', branches: ['arquitecto_muerte'] },
-  francotirador: { name: 'Francotirador', icon: '🔭', tier: 3, reqLevel: 60, parent: 'tirador', stats: { des: 5 }, desc: 'El disparo perfecto.', branches: ['ojo_halcon'] },
-  artillero: { name: 'Artillero', icon: '💣', tier: 3, reqLevel: 60, parent: 'tirador', stats: { des: 3, fue: 2 }, desc: 'Daño en área.', branches: ['devastador_cielo'] },
-  sabueso: { name: 'Sabueso', icon: '🐕', tier: 3, reqLevel: 60, parent: 'explorador', stats: { des: 3, int: 2 }, desc: 'Rastreo.', branches: ['cazador_sombras'] },
-  corredor_viento: { name: 'Corredor del Viento', icon: '💨', tier: 3, reqLevel: 60, parent: 'explorador', stats: { des: 4, vol: 1 }, desc: 'Inalcanzable.', branches: ['fantasma_bosque'] },
-  senor_jauria: { name: 'Señor de la Jauría', icon: '🐺', tier: 4, reqLevel: 100, parent: 'maestro_bestias', stats: { des: 3, pre: 3 }, desc: 'El pack obedece.' },
-  arquitecto_muerte: { name: 'Arquitecto de la Muerte', icon: '☠️', tier: 4, reqLevel: 100, parent: 'trampero', stats: { int: 4, des: 2 }, desc: 'Todo terreno es mortal.' },
-  ojo_halcon: { name: 'Ojo de Halcón', icon: '🦅', tier: 4, reqLevel: 100, parent: 'francotirador', stats: { des: 6 }, desc: 'Nunca falla.' },
-  devastador_cielo: { name: 'Devastador del Cielo', icon: '🌩️', tier: 4, reqLevel: 100, parent: 'artillero', stats: { des: 4, fue: 2 }, desc: 'Lluvia de destrucción.' },
-  cazador_sombras: { name: 'Cazador de Sombras', icon: '🌑', tier: 4, reqLevel: 100, parent: 'sabueso', stats: { des: 4, int: 2 }, desc: 'Aparece y desaparece.' },
-  fantasma_bosque: { name: 'Fantasma del Bosque', icon: '👻', tier: 4, reqLevel: 100, parent: 'corredor_viento', stats: { des: 5, vol: 1 }, desc: 'Nadie lo ve venir.' },
+  espadachin: { name: 'Espadachín', iconRef: 'class.espadachin', tier: 2, reqLevel: 30, parent: 'guerrero', stats: { fue: 2, des: 2, vit: 1 }, desc: 'Equilibrio entre ataque y defensa.', branches: ['duelista', 'maestro_armas'] },
+  berserker: { name: 'Berserker', iconRef: 'class.berserker', tier: 2, reqLevel: 30, parent: 'guerrero', stats: { fue: 4, vol: 1 }, desc: 'Furia desatada.', branches: ['devastador', 'campeon_sangriento'] },
+  caballero: { name: 'Caballero', iconRef: 'class.caballero', tier: 2, reqLevel: 30, parent: 'guerrero', stats: { vit: 3, pre: 2 }, desc: 'Protector y líder.', branches: ['paladin', 'senor_guerra'] },
+  duelista: { name: 'Duelista', iconRef: 'class.duelista', tier: 3, reqLevel: 60, parent: 'espadachin', stats: { des: 3, fue: 2 }, desc: 'Maestro del 1v1.', branches: ['campeon_arena'] },
+  maestro_armas: { name: 'Maestro de Armas', iconRef: 'class.maestro_armas', tier: 3, reqLevel: 60, parent: 'espadachin', stats: { fue: 2, des: 2, int: 1 }, desc: 'Domina todas las armas.', branches: ['leyenda_acero'] },
+  devastador: { name: 'Devastador', iconRef: 'class.devastador', tier: 3, reqLevel: 60, parent: 'berserker', stats: { fue: 5 }, desc: 'Destrucción pura.', branches: ['avatar_destruccion'] },
+  campeon_sangriento: { name: 'Campeón Sangriento', iconRef: 'class.campeon_sangriento', tier: 3, reqLevel: 60, parent: 'berserker', stats: { fue: 3, vit: 2 }, desc: 'Lifesteal.', branches: ['senor_carmesi'] },
+  paladin: { name: 'Paladín', iconRef: 'class.paladin', tier: 3, reqLevel: 60, parent: 'caballero', stats: { vit: 3, vol: 2 }, desc: 'Tanque sagrado.', branches: ['caballero_sagrado'] },
+  senor_guerra: { name: 'Señor de la Guerra', iconRef: 'class.senor_guerra', tier: 3, reqLevel: 60, parent: 'caballero', stats: { vit: 2, pre: 3 }, desc: 'Líder nato.', branches: ['conquistador'] },
+  campeon_arena: { name: 'Campeón de la Arena', iconRef: 'class.campeon_arena', tier: 4, reqLevel: 100, parent: 'duelista', stats: { des: 4, fue: 3 }, desc: 'Invencible en duelo.', branches: [] },
+  leyenda_acero: { name: 'Leyenda de Acero', iconRef: 'class.leyenda_acero', tier: 4, reqLevel: 100, parent: 'maestro_armas', stats: { fue: 4, des: 2, vit: 2 }, desc: 'Arma viviente.', branches: [] },
+  avatar_destruccion: { name: 'Avatar de Destrucción', iconRef: 'class.avatar_destruccion', tier: 4, reqLevel: 100, parent: 'devastador', stats: { fue: 6 }, desc: 'Fuerza imparable.', branches: [] },
+  senor_carmesi: { name: 'Señor Carmesí', iconRef: 'class.senor_carmesi', tier: 4, reqLevel: 100, parent: 'campeon_sangriento', stats: { fue: 4, vit: 4 }, desc: 'Eternal warrior.', branches: [] },
+  caballero_sagrado: { name: 'Caballero Sagrado', iconRef: 'class.caballero_sagrado', tier: 4, reqLevel: 100, parent: 'paladin', stats: { vit: 5, vol: 3 }, desc: 'Luz encarnada.', branches: [] },
+  conquistador: { name: 'Conquistador', iconRef: 'class.conquistador', tier: 4, reqLevel: 100, parent: 'senor_guerra', stats: { vit: 3, pre: 5 }, desc: 'Domina todo.', branches: [] },
 
   // ══════════ MAGO ══════════
   mago: {
-    name: 'Mago', icon: '🔮', tier: 1, reqLevel: 10,
-    stats: { int: 3, vol: 2 }, desc: 'Canaliza las fuerzas arcanas.',
-    branches: ['elementalista', 'arcanista', 'brujo']
+    name: 'Mago', iconRef: 'class.mago', tier: 1, reqLevel: 10,
+    stats: { int: 3, vol: 2 }, desc: 'Canalizador de energías arcanas.',
+    branches: ['elementalista', 'ilusionista', 'alquimista']
   },
-  elementalista: { name: 'Elementalista', icon: '🌀', tier: 2, reqLevel: 30, parent: 'mago', stats: { int: 3, des: 2 }, desc: 'Domina los elementos.', branches: ['piromante', 'criomante', 'electromante'] },
-  arcanista: { name: 'Arcanista', icon: '✨', tier: 2, reqLevel: 30, parent: 'mago', stats: { int: 4, vol: 1 }, desc: 'Magia pura.', branches: ['cronomante', 'archimago'] },
-  brujo: { name: 'Brujo', icon: '🌙', tier: 2, reqLevel: 30, parent: 'mago', stats: { int: 2, vol: 3 }, desc: 'Pactos oscuros.', branches: ['nigromante', 'demonologo'] },
-  piromante: { name: 'Piromante', icon: '🔥', tier: 3, reqLevel: 60, parent: 'elementalista', stats: { int: 4, fue: 1 }, desc: 'Fuego.', branches: ['senor_infierno'] },
-  criomante: { name: 'Criomante', icon: '❄️', tier: 3, reqLevel: 60, parent: 'elementalista', stats: { int: 4, vit: 1 }, desc: 'Hielo.', branches: ['corazon_hielo'] },
-  electromante: { name: 'Electromante', icon: '⚡', tier: 3, reqLevel: 60, parent: 'elementalista', stats: { int: 3, des: 2 }, desc: 'Rayo.', branches: ['heraldo_tormenta'] },
-  cronomante: { name: 'Cronomante', icon: '⏳', tier: 3, reqLevel: 60, parent: 'arcanista', stats: { int: 3, vol: 2 }, desc: 'Tiempo.', branches: ['tejedor_tiempo'] },
-  archimago: { name: 'Archimago', icon: '📚', tier: 3, reqLevel: 60, parent: 'arcanista', stats: { int: 5 }, desc: 'Todas las escuelas.', branches: ['gran_sabio'] },
-  nigromante: { name: 'Nigromante', icon: '💀', tier: 3, reqLevel: 60, parent: 'brujo', stats: { int: 3, vol: 2 }, desc: 'No-muertos.', branches: ['liche'] },
-  demonologo: { name: 'Demonólogo', icon: '👿', tier: 3, reqLevel: 60, parent: 'brujo', stats: { int: 2, vol: 3 }, desc: 'Invocaciones.', branches: ['senor_pactos'] },
-  senor_infierno: { name: 'Señor del Infierno', icon: '🔥', tier: 4, reqLevel: 100, parent: 'piromante', stats: { int: 5, fue: 1 }, desc: 'Fuego eterno.' },
-  corazon_hielo: { name: 'Corazón de Hielo', icon: '💎', tier: 4, reqLevel: 100, parent: 'criomante', stats: { int: 5, vit: 1 }, desc: 'Inmutable.' },
-  heraldo_tormenta: { name: 'Heraldo de la Tormenta', icon: '🌩️', tier: 4, reqLevel: 100, parent: 'electromante', stats: { int: 4, des: 2 }, desc: 'El rayo obedece.' },
-  tejedor_tiempo: { name: 'Tejedor del Tiempo', icon: '🕰️', tier: 4, reqLevel: 100, parent: 'cronomante', stats: { int: 4, vol: 2 }, desc: 'El tiempo es suyo.' },
-  gran_sabio: { name: 'Gran Sabio', icon: '🧙', tier: 4, reqLevel: 100, parent: 'archimago', stats: { int: 6 }, desc: 'Conocimiento absoluto.' },
-  liche: { name: 'Liche', icon: '☠️', tier: 4, reqLevel: 100, parent: 'nigromante', stats: { int: 4, vol: 2 }, desc: 'Más allá de la muerte.' },
-  senor_pactos: { name: 'Señor de los Pactos', icon: '📜', tier: 4, reqLevel: 100, parent: 'demonologo', stats: { int: 3, vol: 3 }, desc: 'Todo tiene un precio.' },
+  elementalista: { name: 'Elementalista', iconRef: 'class.elementalista', tier: 2, reqLevel: 30, parent: 'mago', stats: { int: 4, vol: 1 }, desc: 'Control de elementos.', branches: ['piromante', 'criomante'] },
+  ilusionista: { name: 'Ilusionista', iconRef: 'class.ilusionista', tier: 2, reqLevel: 30, parent: 'mago', stats: { int: 3, pre: 2 }, desc: 'Maestro del engaño.', branches: ['psionico', 'hipnotista'] },
+  alquimista: { name: 'Alquimista', iconRef: 'class.alquimista', tier: 2, reqLevel: 30, parent: 'mago', stats: { int: 2, pre: 3 }, desc: 'Ciencia y pociones.', branches: ['transmutador', 'maestro_pociones'] },
+  piromante: { name: 'Piromante', iconRef: 'class.piromante', tier: 3, reqLevel: 60, parent: 'elementalista', stats: { int: 5 }, desc: 'Fuego devastador.', branches: ['archimago_fuego'] },
+  criomante: { name: 'Criomante', iconRef: 'class.criomante', tier: 3, reqLevel: 60, parent: 'elementalista', stats: { int: 4, vol: 2 }, desc: 'Hielo y control.', branches: ['archimago_hielo'] },
+  psionico: { name: 'Psiónico', iconRef: 'class.psionico', tier: 3, reqLevel: 60, parent: 'ilusionista', stats: { int: 4, pre: 2 }, desc: 'Poder mental.', branches: ['mente_suprema'] },
+  hipnotista: { name: 'Hipnotista', iconRef: 'class.hipnotista', tier: 3, reqLevel: 60, parent: 'ilusionista', stats: { pre: 4, int: 2 }, desc: 'Control de voluntades.', branches: ['marionetista'] },
+  transmutador: { name: 'Transmutador', iconRef: 'class.transmutador', tier: 3, reqLevel: 60, parent: 'alquimista', stats: { int: 3, pre: 3 }, desc: 'Cambiar la materia.', branches: ['filosofo_piedra'] },
+  maestro_pociones: { name: 'Maestro de Pociones', iconRef: 'class.maestro_pociones', tier: 3, reqLevel: 60, parent: 'alquimista', stats: { int: 2, pre: 4 }, desc: 'Elixir perfecto.', branches: ['elixir_inmortal'] },
+  archimago_fuego: { name: 'Archimago de Fuego', iconRef: 'class.archimago_fuego', tier: 4, reqLevel: 100, parent: 'piromante', stats: { int: 7 }, desc: 'Fuego primordial.', branches: [] },
+  archimago_hielo: { name: 'Archimago de Hielo', iconRef: 'class.archimago_hielo', tier: 4, reqLevel: 100, parent: 'criomante', stats: { int: 6, vol: 3 }, desc: 'Invierno eterno.', branches: [] },
+  mente_suprema: { name: 'Mente Suprema', iconRef: 'class.mente_suprema', tier: 4, reqLevel: 100, parent: 'psionico', stats: { int: 6, pre: 3 }, desc: 'Omnisciencia.', branches: [] },
+  marionetista: { name: 'Marionetista', iconRef: 'class.marionetista', tier: 4, reqLevel: 100, parent: 'hipnotista', stats: { pre: 7 }, desc: 'Todos son títeres.', branches: [] },
+  filosofo_piedra: { name: 'Filósofo de la Piedra', iconRef: 'class.filosofo_piedra', tier: 4, reqLevel: 100, parent: 'transmutador', stats: { int: 5, pre: 4 }, desc: 'Materia absoluta.', branches: [] },
+  elixir_inmortal: { name: 'Elixir Inmortal', iconRef: 'class.elixir_inmortal', tier: 4, reqLevel: 100, parent: 'maestro_pociones', stats: { int: 4, pre: 5 }, desc: 'Vida eterna.', branches: [] },
 
-  // ══════════ CLÉRIGO ══════════
-  clerigo: {
-    name: 'Clérigo', icon: '✝️', tier: 1, reqLevel: 10,
-    stats: { vol: 3, pre: 2 }, desc: 'Canal de la luz divina.',
-    branches: ['sacerdote', 'oraculo', 'inquisidor']
+  // ══════════ EXPLORADOR ══════════
+  explorador: {
+    name: 'Explorador', iconRef: 'class.explorador', tier: 1, reqLevel: 10,
+    stats: { des: 3, pre: 2 }, desc: 'Atención y adaptación.',
+    branches: ['ranger', 'cazador', 'superviviente']
   },
-  sacerdote: { name: 'Sacerdote', icon: '💚', tier: 2, reqLevel: 30, parent: 'clerigo', stats: { vol: 3, int: 2 }, desc: 'Curación pura.', branches: ['sumo_sacerdote', 'monje_sanador'] },
-  oraculo: { name: 'Oráculo', icon: '👁️', tier: 2, reqLevel: 30, parent: 'clerigo', stats: { vol: 2, pre: 3 }, desc: 'Ve más allá.', branches: ['profeta', 'mistico'] },
-  inquisidor: { name: 'Inquisidor', icon: '⚖️', tier: 2, reqLevel: 30, parent: 'clerigo', stats: { vol: 2, fue: 2, vit: 1 }, desc: 'Justicia ofensiva.', branches: ['templario', 'exorcista'] },
-  sumo_sacerdote: { name: 'Sumo Sacerdote', icon: '🏛️', tier: 3, reqLevel: 60, parent: 'sacerdote', stats: { vol: 4, int: 1 }, desc: 'Curación masiva.', branches: ['santo'] },
-  monje_sanador: { name: 'Monje Sanador', icon: '🙏', tier: 3, reqLevel: 60, parent: 'sacerdote', stats: { vol: 2, des: 2, vit: 1 }, desc: 'Cura y lucha.', branches: ['puno_divino'] },
-  profeta: { name: 'Profeta', icon: '🌟', tier: 3, reqLevel: 60, parent: 'oraculo', stats: { pre: 4, vol: 1 }, desc: 'Buffs extremos.', branches: ['vidente_celestial'] },
-  mistico: { name: 'Místico', icon: '🔯', tier: 3, reqLevel: 60, parent: 'oraculo', stats: { vol: 3, int: 2 }, desc: 'Magia divina.', branches: ['avatar_luz'] },
-  templario: { name: 'Templario', icon: '🛡️', tier: 3, reqLevel: 60, parent: 'inquisidor', stats: { vit: 3, vol: 2 }, desc: 'Tanque sagrado.', branches: ['juez_sagrado'] },
-  exorcista: { name: 'Exorcista', icon: '✨', tier: 3, reqLevel: 60, parent: 'inquisidor', stats: { vol: 4, int: 1 }, desc: 'Destruye lo impuro.', branches: ['purificador'] },
-  santo: { name: 'Santo', icon: '😇', tier: 4, reqLevel: 100, parent: 'sumo_sacerdote', stats: { vol: 5, int: 1 }, desc: 'Tocado por lo divino.' },
-  puno_divino: { name: 'Puño Divino', icon: '👊', tier: 4, reqLevel: 100, parent: 'monje_sanador', stats: { vol: 3, des: 2, vit: 1 }, desc: 'Sanación en cada golpe.' },
-  vidente_celestial: { name: 'Vidente Celestial', icon: '🌌', tier: 4, reqLevel: 100, parent: 'profeta', stats: { pre: 5, vol: 1 }, desc: 'Ve todos los futuros.' },
-  avatar_luz: { name: 'Avatar de la Luz', icon: '☀️', tier: 4, reqLevel: 100, parent: 'mistico', stats: { vol: 4, int: 2 }, desc: 'La luz encarnada.' },
-  juez_sagrado: { name: 'Juez Sagrado', icon: '⚖️', tier: 4, reqLevel: 100, parent: 'templario', stats: { vit: 4, vol: 2 }, desc: 'Su juicio es ley.' },
-  purificador: { name: 'Purificador', icon: '🔥', tier: 4, reqLevel: 100, parent: 'exorcista', stats: { vol: 5, int: 1 }, desc: 'Limpia toda corrupción.' },
+  ranger: { name: 'Ranger', iconRef: 'class.ranger', tier: 2, reqLevel: 30, parent: 'explorador', stats: { des: 4, pre: 1 }, desc: 'Maestro del entorno.', branches: ['arquero'] },
+  cazador: { name: 'Cazador', iconRef: 'class.cazador', tier: 2, reqLevel: 30, parent: 'explorador', stats: { des: 3, fue: 2 }, desc: 'Persigue objetivos.', branches: ['cazador_jefe'] },
+  superviviente: { name: 'Superviviente', iconRef: 'class.superviviente', tier: 2, reqLevel: 30, parent: 'explorador', stats: { vit: 3, des: 2 }, desc: 'Resiste lo imposible.', branches: ['indomable'] },
+  arquero: { name: 'Arquero', iconRef: 'class.arquero', tier: 3, reqLevel: 60, parent: 'ranger', stats: { des: 5, pre: 2 }, desc: 'Precisión letal.', branches: ['maestro_arco'] },
+  cazador_jefe: { name: 'Cazador Jefe', iconRef: 'class.cazador_jefe', tier: 3, reqLevel: 60, parent: 'cazador', stats: { des: 4, fue: 3 }, desc: 'Caza de élite.', branches: ['depredador_supremo'] },
+  indomable: { name: 'Indomable', iconRef: 'class.indomable', tier: 3, reqLevel: 60, parent: 'superviviente', stats: { vit: 5 }, desc: 'Nunca cae.', branches: ['fuerza_naturaleza'] },
+  maestro_arco: { name: 'Maestro del Arco', iconRef: 'class.maestro_arco', tier: 4, reqLevel: 100, parent: 'arquero', stats: { des: 7, pre: 3 }, desc: 'Flecha perfecta.', branches: [] },
+  depredador_supremo: { name: 'Depredador Supremo', iconRef: 'class.depredador_supremo', tier: 4, reqLevel: 100, parent: 'cazador_jefe', stats: { des: 6, fue: 4 }, desc: 'Cima de la cadena.', branches: [] },
+  fuerza_naturaleza: { name: 'Fuerza de la Naturaleza', iconRef: 'class.fuerza_naturaleza', tier: 4, reqLevel: 100, parent: 'indomable', stats: { vit: 7, des: 3 }, desc: 'Uno con el mundo.', branches: [] },
 
-  // ══════════ PÍCARO ══════════
-  picaro: {
-    name: 'Pícaro', icon: '🗡️', tier: 1, reqLevel: 10,
-    stats: { des: 3, pre: 2 }, desc: 'Sigilo y golpes letales.',
-    branches: ['asesino', 'ladron', 'duelista_sombrio']
+  // ══════════ DIPLOMÁTICO ══════════
+  diplomatico: {
+    name: 'Diplomático', iconRef: 'class.diplomatico', tier: 1, reqLevel: 10,
+    stats: { pre: 3, vol: 2 }, desc: 'Conecta y convence.',
+    branches: ['lider', 'negociador', 'mentor']
   },
-  asesino: { name: 'Asesino', icon: '🔪', tier: 2, reqLevel: 30, parent: 'picaro', stats: { des: 4, fue: 1 }, desc: 'Un golpe, una muerte.', branches: ['sicario', 'sombra_letal'] },
-  ladron: { name: 'Ladrón', icon: '💰', tier: 2, reqLevel: 30, parent: 'picaro', stats: { des: 2, pre: 3 }, desc: 'Lo tuyo es mío.', branches: ['maestro_ladron', 'contrabandista'] },
-  duelista_sombrio: { name: 'Duelista Sombrío', icon: '🌑', tier: 2, reqLevel: 30, parent: 'picaro', stats: { des: 3, vol: 2 }, desc: 'Evasión y contraataques.', branches: ['bailarin_sombras', 'acechador'] },
-  sicario: { name: 'Sicario', icon: '💀', tier: 3, reqLevel: 60, parent: 'asesino', stats: { des: 4, fue: 1 }, desc: 'Eliminación profesional.', branches: ['mano_muerte'] },
-  sombra_letal: { name: 'Sombra Letal', icon: '🦂', tier: 3, reqLevel: 60, parent: 'asesino', stats: { des: 3, int: 2 }, desc: 'Venenos.', branches: ['susurro_venenoso'] },
-  maestro_ladron: { name: 'Maestro Ladrón', icon: '🎭', tier: 3, reqLevel: 60, parent: 'ladron', stats: { des: 3, pre: 2 }, desc: 'Roba lo imposible.', branches: ['rey_ladrones'] },
-  contrabandista: { name: 'Contrabandista', icon: '📦', tier: 3, reqLevel: 60, parent: 'ladron', stats: { pre: 4, int: 1 }, desc: 'Negocios turbios.', branches: ['baron_bajomundo'] },
-  bailarin_sombras: { name: 'Bailarín de Sombras', icon: '💃', tier: 3, reqLevel: 60, parent: 'duelista_sombrio', stats: { des: 5 }, desc: 'Imposible de tocar.', branches: ['espejismo'] },
-  acechador: { name: 'Acechador', icon: '🐆', tier: 3, reqLevel: 60, parent: 'duelista_sombrio', stats: { des: 3, vol: 2 }, desc: 'Emboscadas.', branches: ['depredador_silente'] },
-  mano_muerte: { name: 'Mano de la Muerte', icon: '✋', tier: 4, reqLevel: 100, parent: 'sicario', stats: { des: 5, fue: 1 }, desc: 'Su toque es letal.' },
-  susurro_venenoso: { name: 'Susurro Venenoso', icon: '🐍', tier: 4, reqLevel: 100, parent: 'sombra_letal', stats: { des: 4, int: 2 }, desc: 'El veneno perfecto.' },
-  rey_ladrones: { name: 'Rey de los Ladrones', icon: '👑', tier: 4, reqLevel: 100, parent: 'maestro_ladron', stats: { des: 4, pre: 2 }, desc: 'Todo le pertenece.' },
-  baron_bajomundo: { name: 'Barón del Bajo Mundo', icon: '🎩', tier: 4, reqLevel: 100, parent: 'contrabandista', stats: { pre: 5, int: 1 }, desc: 'Controla los bajos fondos.' },
-  espejismo: { name: 'Espejismo', icon: '🌫️', tier: 4, reqLevel: 100, parent: 'bailarin_sombras', stats: { des: 6 }, desc: 'Solo una sombra.' },
-  depredador_silente: { name: 'Depredador Silente', icon: '🦇', tier: 4, reqLevel: 100, parent: 'acechador', stats: { des: 4, vol: 2 }, desc: 'Caza en silencio.' },
+  lider: { name: 'Líder', iconRef: 'class.lider', tier: 2, reqLevel: 30, parent: 'diplomatico', stats: { pre: 3, vol: 3 }, desc: 'Guía a los demás.', branches: ['comandante'] },
+  negociador: { name: 'Negociador', iconRef: 'class.negociador', tier: 2, reqLevel: 30, parent: 'diplomatico', stats: { pre: 4, int: 2 }, desc: 'Siempre consigue un sí.', branches: ['maestro_tratos'] },
+  mentor: { name: 'Mentor', iconRef: 'class.mentor', tier: 2, reqLevel: 30, parent: 'diplomatico', stats: { vol: 4, pre: 2 }, desc: 'Eleva a otros.', branches: ['sabio'] },
+  comandante: { name: 'Comandante', iconRef: 'class.comandante', tier: 3, reqLevel: 60, parent: 'lider', stats: { pre: 5, vol: 3 }, desc: 'Liderazgo estratégico.', branches: ['gran_estratega'] },
+  maestro_tratos: { name: 'Maestro de Tratos', iconRef: 'class.maestro_tratos', tier: 3, reqLevel: 60, parent: 'negociador', stats: { pre: 6, int: 2 }, desc: 'Todo es posible.', branches: ['rey_comercio'] },
+  sabio: { name: 'Sabio', iconRef: 'class.sabio', tier: 3, reqLevel: 60, parent: 'mentor', stats: { vol: 5, int: 2 }, desc: 'Conocimiento compartido.', branches: ['oraculo'] },
+  gran_estratega: { name: 'Gran Estratega', iconRef: 'class.gran_estratega', tier: 4, reqLevel: 100, parent: 'comandante', stats: { pre: 7, int: 3 }, desc: 'Ve diez movimientos adelante.', branches: [] },
+  rey_comercio: { name: 'Rey del Comercio', iconRef: 'class.rey_comercio', tier: 4, reqLevel: 100, parent: 'maestro_tratos', stats: { pre: 8, int: 2 }, desc: 'Riqueza sin límites.', branches: [] },
+  oraculo: { name: 'Oráculo', iconRef: 'class.oraculo', tier: 4, reqLevel: 100, parent: 'sabio', stats: { vol: 7, int: 3 }, desc: 'Conoce el futuro.', branches: [] },
 
-  // ══════════ MONJE ══════════
-  monje: {
-    name: 'Monje', icon: '🥋', tier: 1, reqLevel: 10,
-    stats: { des: 2, vol: 3 }, desc: 'Cuerpo y mente en armonía.',
-    branches: ['luchador', 'asceta', 'artista_marcial']
+  // ══════════ ARTESANO ══════════
+  artesano: {
+    name: 'Artesano', iconRef: 'class.artesano', tier: 1, reqLevel: 10,
+    stats: { int: 2, pre: 3 }, desc: 'Crea y construye.',
+    branches: ['herrero', 'ingeniero', 'cocinero']
   },
-  luchador: { name: 'Luchador', icon: '👊', tier: 2, reqLevel: 30, parent: 'monje', stats: { fue: 3, des: 2 }, desc: 'Combos devastadores.', branches: ['maestro_puno', 'gladiador'] },
-  asceta: { name: 'Asceta', icon: '🧘', tier: 2, reqLevel: 30, parent: 'monje', stats: { vol: 4, vit: 1 }, desc: 'Resistencia sobrenatural.', branches: ['ermitano', 'iluminado'] },
-  artista_marcial: { name: 'Artista Marcial', icon: '🥊', tier: 2, reqLevel: 30, parent: 'monje', stats: { des: 3, fue: 1, vol: 1 }, desc: 'Técnicas refinadas.', branches: ['maestro_dragon', 'maestro_tigre'] },
-  maestro_puno: { name: 'Maestro del Puño', icon: '✊', tier: 3, reqLevel: 60, parent: 'luchador', stats: { fue: 4, des: 1 }, desc: 'Puños como martillos.', branches: ['puno_cielo'] },
-  gladiador: { name: 'Gladiador', icon: '🏟️', tier: 3, reqLevel: 60, parent: 'luchador', stats: { fue: 2, des: 2, vit: 1 }, desc: 'Versátil.', branches: ['campeon_eterno'] },
-  ermitano: { name: 'Ermitaño', icon: '🏔️', tier: 3, reqLevel: 60, parent: 'asceta', stats: { vol: 4, vit: 1 }, desc: 'Casi inmortal.', branches: ['uno_vacio'] },
-  iluminado: { name: 'Iluminado', icon: '💡', tier: 3, reqLevel: 60, parent: 'asceta', stats: { vol: 3, int: 2 }, desc: 'Ki ofensivo y defensivo.', branches: ['trascendido'] },
-  maestro_dragon: { name: 'Maestro del Dragón', icon: '🐉', tier: 3, reqLevel: 60, parent: 'artista_marcial', stats: { des: 2, int: 2, fue: 1 }, desc: 'Ataques elementales.', branches: ['dragon_ascendido'] },
-  maestro_tigre: { name: 'Maestro del Tigre', icon: '🐅', tier: 3, reqLevel: 60, parent: 'artista_marcial', stats: { fue: 3, des: 2 }, desc: 'Fuerza bruta.', branches: ['tigre_blanco'] },
-  puno_cielo: { name: 'Puño del Cielo', icon: '☁️', tier: 4, reqLevel: 100, parent: 'maestro_puno', stats: { fue: 5, des: 1 }, desc: 'Rompe el cielo.' },
-  campeon_eterno: { name: 'Campeón Eterno', icon: '🏆', tier: 4, reqLevel: 100, parent: 'gladiador', stats: { fue: 3, des: 2, vit: 1 }, desc: 'Nunca derrotado.' },
-  uno_vacio: { name: 'Uno con el Vacío', icon: '🕳️', tier: 4, reqLevel: 100, parent: 'ermitano', stats: { vol: 5, vit: 1 }, desc: 'Trasciende lo físico.' },
-  trascendido: { name: 'Trascendido', icon: '🌟', tier: 4, reqLevel: 100, parent: 'iluminado', stats: { vol: 4, int: 2 }, desc: 'Más allá.' },
-  dragon_ascendido: { name: 'Dragón Ascendido', icon: '🐲', tier: 4, reqLevel: 100, parent: 'maestro_dragon', stats: { des: 3, int: 2, fue: 1 }, desc: 'El dragón interior.' },
-  tigre_blanco: { name: 'Tigre Blanco', icon: '🐯', tier: 4, reqLevel: 100, parent: 'maestro_tigre', stats: { fue: 4, des: 2 }, desc: 'Rey de las bestias.' },
-
-  // ══════════ HIDDEN CLASSES ══════════
-  ninja: { name: 'Ninja', icon: '🥷', tier: 4, reqLevel: 60, hidden: true, stats: { des: 3, vol: 2, int: 1 }, desc: 'Híbrido Pícaro/Monje.' },
-  samurai: { name: 'Samurái', icon: '⚔️', tier: 4, reqLevel: 60, hidden: true, stats: { fue: 3, vol: 2, des: 1 }, desc: 'Híbrido Guerrero/Monje.' },
-  bardo: { name: 'Bardo', icon: '🎵', tier: 4, reqLevel: 60, hidden: true, stats: { pre: 4, vol: 2 }, desc: 'Híbrido Clérigo/Pícaro.' },
-  alquimista: { name: 'Alquimista', icon: '⚗️', tier: 4, reqLevel: 60, hidden: true, stats: { int: 3, des: 2, vol: 1 }, desc: 'Crafteo y pociones.' }
+  herrero: { name: 'Herrero', iconRef: 'class.herrero', tier: 2, reqLevel: 30, parent: 'artesano', stats: { fue: 3, pre: 2 }, desc: 'Forja equipo.', branches: ['maestro_forja'] },
+  ingeniero: { name: 'Ingeniero', iconRef: 'class.ingeniero', tier: 2, reqLevel: 30, parent: 'artesano', stats: { int: 4, pre: 1 }, desc: 'Diseña soluciones.', branches: ['inventor'] },
+  cocinero: { name: 'Cocinero', iconRef: 'class.cocinero', tier: 2, reqLevel: 30, parent: 'artesano', stats: { pre: 3, vit: 2 }, desc: 'Nutre y potencia.', branches: ['chef'] },
+  maestro_forja: { name: 'Maestro de la Forja', iconRef: 'class.maestro_forja', tier: 3, reqLevel: 60, parent: 'herrero', stats: { fue: 4, pre: 3 }, desc: 'Metal legendario.', branches: ['forjador_leyendas'] },
+  inventor: { name: 'Inventor', iconRef: 'class.inventor', tier: 3, reqLevel: 60, parent: 'ingeniero', stats: { int: 5, pre: 2 }, desc: 'Crea lo imposible.', branches: ['genio_mecanico'] },
+  chef: { name: 'Chef', iconRef: 'class.chef', tier: 3, reqLevel: 60, parent: 'cocinero', stats: { pre: 4, vit: 3 }, desc: 'Arte culinario.', branches: ['maestro_gastronomo'] },
+  forjador_leyendas: { name: 'Forjador de Leyendas', iconRef: 'class.forjador_leyendas', tier: 4, reqLevel: 100, parent: 'maestro_forja', stats: { fue: 7, pre: 3 }, desc: 'Armas eternas.', branches: [] },
+  genio_mecanico: { name: 'Genio Mecánico', iconRef: 'class.genio_mecanico', tier: 4, reqLevel: 100, parent: 'inventor', stats: { int: 8, pre: 2 }, desc: 'Tecnología avanzada.', branches: [] },
+  maestro_gastronomo: { name: 'Maestro Gastronómo', iconRef: 'class.maestro_gastronomo', tier: 4, reqLevel: 100, parent: 'chef', stats: { pre: 6, vit: 5 }, desc: 'Cada bocado transforma.', branches: [] }
 };
 
-const BASE_CLASSES = ['guerrero', 'arquero', 'mago', 'clerigo', 'picaro', 'monje'];
-
-// ═══════════════════════════════════════════════════════════════════════════
-// XP / LEVEL FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-function xpForLevel(level) {
-  return (level * (level - 1) / 2) * 100;
+function getClassById(classId) {
+  return CLASS_TREE[classId] || CLASS_TREE.novato;
 }
 
-function levelFromXp(xp) {
-  return Math.floor((1 + Math.sqrt(1 + 8 * xp / 100)) / 2);
+function getClassTier(classId) {
+  return CLASS_TREE[classId]?.tier || 0;
 }
 
-function xpToNextLevel(currentXp) {
-  const currentLevel = levelFromXp(currentXp);
-  return xpForLevel(currentLevel + 1) - currentXp;
+function getAvailableClassChanges(currentClassId, level) {
+  return Object.entries(CLASS_TREE)
+    .filter(([id, cls]) => {
+      if (id === 'novato') return false;
+      if (cls.reqLevel > level) return false;
+      if (!currentClassId) return cls.tier === 1;
+      return cls.parent === currentClassId;
+    })
+    .map(([id]) => id);
 }
 
-function xpProgressInLevel(currentXp) {
-  const currentLevel = levelFromXp(currentXp);
-  const thisLevelXp = xpForLevel(currentLevel);
-  const nextLevelXp = xpForLevel(currentLevel + 1);
-  return Math.min(1, Math.max(0, (currentXp - thisLevelXp) / (nextLevelXp - thisLevelXp)));
+function getClassRequirementsText(cls) {
+  if (!cls) return '';
+  const reqs = [`Level ${cls.reqLevel}`];
+  if (cls.parent) reqs.push(`Requires: ${CLASS_TREE[cls.parent]?.name || cls.parent}`);
+  return reqs.join(' • ');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STAT CALCULATIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-function calculateDerivedStats(baseStats, classId) {
-  const derived = { ...baseStats };
-  let currentClass = classId;
-  while (currentClass && CLASS_TREE[currentClass]) {
-    const cls = CLASS_TREE[currentClass];
-    for (const [stat, value] of Object.entries(cls.stats || {})) {
-      derived[stat] = (derived[stat] || 0) + value;
-    }
-    currentClass = cls.parent;
-  }
-  return derived;
+function calculateClassBonus(classId) {
+  const cls = getClassById(classId);
+  return cls.stats || {};
 }
 
-function calculateResources(stats) {
+function getClassDisplayInfo(classId) {
+  const cls = getClassById(classId);
   return {
-    hp: 100 + (stats.vit || 0) * 15,
-    mp: 50 + (stats.int || 0) * 10,
-    sp: 50 + Math.floor(((stats.fue || 0) + (stats.des || 0)) / 2) * 5,
-    focusMax: 100
+    id: classId,
+    name: cls.name,
+    iconRef: cls.iconRef || 'class.generic',
+    tier: cls.tier,
+    description: cls.desc,
+    color: cls.color || 'var(--accent)'
   };
-}
-
-function getAvailableClassChanges(currentClass, level) {
-  if (!currentClass) {
-    return level >= 10 ? BASE_CLASSES : [];
-  }
-  const cls = CLASS_TREE[currentClass];
-  if (!cls || !cls.branches) return [];
-  return cls.branches.filter(branchId => {
-    const branch = CLASS_TREE[branchId];
-    return branch && level >= branch.reqLevel;
-  });
-}
-
-function getClassChain(classId) {
-  const chain = [];
-  let current = classId;
-  while (current && CLASS_TREE[current]) {
-    chain.unshift(current);
-    current = CLASS_TREE[current].parent;
-  }
-  return chain;
-}
-
-function getTierName(tier) {
-  return ['', 'Base', 'Avanzada', 'Transcendente', 'Ascendida'][tier] || '';
 }
