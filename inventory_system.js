@@ -266,49 +266,20 @@
     return recoveredLegacy;
   }
 
-  // Icon contract: current type-based SVGs remain the fallback until the
-  // local Game-icons pack is installed in the next phase. Keeping this
-  // contract here lets every renderer migrate without touching save data.
-  const ICON_FALLBACK_PATHS = Object.freeze({
-    weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
-    armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
-    accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
-    artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
-    consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
-    material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
-    skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
-    key: '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>'
-  });
-
-  function resolveIconType(item) {
-    const type = item?.type;
-    return type && ICON_FALLBACK_PATHS[type] ? type : 'material';
-  }
-
-  function resolveIconReference(item) {
-    if (!item || typeof item !== 'object') return null;
-    return item.iconRef || item.icon || ITEM_TYPE[item.type]?.icon || resolveIconType(item);
-  }
-
-  function escapeIconLabel(value) {
-    return String(value ?? 'Item').replace(/[&<>"']/g, character => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[character]));
-  }
-
-  function renderItemIcon(item, size = 40, options = {}) {
-    const type = resolveIconType(item);
-    const color = options.color || RARITY[item?.rarity]?.color || '#c9c5bb';
-    const numericSize = Number.isFinite(Number(size)) ? Math.max(12, Number(size)) : 40;
-    const decorative = options.decorative !== false;
-    const accessibility = decorative
-      ? 'aria-hidden="true"'
-      : `role="img" aria-label="${escapeIconLabel(options.label || item?.name || ITEM_TYPE[type]?.name || 'Item')}"`;
-    return `<svg class="item-icon-svg" width="${numericSize}" height="${numericSize}" viewBox="0 0 40 40" ${accessibility} style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_FALLBACK_PATHS[type]}</g></svg>`;
-  }
-
   function icon(item, size) {
-    return renderItemIcon(item, size);
+    const type = item?.type || 'material';
+    const color = RARITY[item?.rarity]?.color || '#c9c5bb';
+    const paths = {
+      weapon: '<path d="M10 31 28 7l4 4-18 24H10z"/><path d="m8 33 8-2M25 10l4 4"/>',
+      armor: '<path d="M12 7c3 3 9 3 12 0l5 5-3 18H10L7 12l5-5z"/><path d="M16 10v17m4-17v17"/>',
+      accessory: '<circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/>',
+      artifact: '<path d="m20 5 5 9-5 15-5-15 5-9z"/><path d="M9 20h22M12 13h16"/>',
+      consumable: '<path d="M14 6h12M16 6v6l-5 14c-.5 2 1 4 3 4h12c2 0 3.5-2 3-4l-5-14V6"/><path d="M13 21h14"/>',
+      material: '<path d="m20 5 11 7-11 17L9 12 20 5z"/><path d="m9 12 11 7 11-7"/>',
+      skill: '<path d="M10 5h20v30H10z"/><path d="M15 12h10M15 18h10M15 24h7"/>',
+      key: '<circle cx="13" cy="25" r="6"/><path d="m18 21 13-13M25 12l4 4M21 16l4 4"/>'
+    };
+    return `<svg class="item-icon-svg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true" style="color:${color}"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[type] || paths.material}</g></svg>`;
   }
 
   function renderInventory(targetId = 'inventory-grid', source = 'inventory') {
@@ -336,13 +307,6 @@
     getPendingLoot,
     retryPendingLoot
   };
-  window.LifeXPIcons = Object.freeze({
-    version: '1.0',
-    resolveType: resolveIconType,
-    resolveReference: resolveIconReference,
-    renderItem: renderItemIcon,
-    getFallbackPaths: () => ({ ...ICON_FALLBACK_PATHS })
-  });
 
   window.normalizeItemText = text;
   window.emergencyRerollLegacyItem = recoverItemIfLost;
