@@ -226,17 +226,6 @@ function completeTaskFromCategory(taskId) {
   resetTimer();
 }
 
-function getTaskDropPresentation(dropDefinition) {
-  const drop = dropDefinition || {};
-  const items = Array.isArray(drop.items) ? drop.items : [];
-  const names = items.map(entry => {
-    if (typeof LifeXPPresentation === 'undefined') return null;
-    return LifeXPPresentation.getReward(entry).name;
-  }).filter(Boolean);
-  if (names.length > 0) return names.join(', ');
-  return drop.theme ? 'Reward pool available' : 'No item reward specified';
-}
-
 function renderTaskScreen() {
   const task = currentTask;
   const cat = CATEGORIES[task.cat];
@@ -267,16 +256,6 @@ function renderTaskScreen() {
   
   // Overflow state is kept on the existing task card; the base HTML has no banner.
   card.dataset.overflow = currentIsOverflow ? 'true' : 'false';
-  
-  // Drops
-  const dropsBox = document.getElementById('task-drops-box');
-  const dropsList = document.getElementById('task-drops');
-  if (task.drops && dropsList) {
-    dropsBox.classList.remove('hidden');
-    dropsList.textContent = getTaskDropPresentation(task.drops);
-  } else {
-    dropsBox.classList.add('hidden');
-  }
   
   // Side quest
   const sqBox = document.getElementById('side-quest-box');
