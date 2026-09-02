@@ -488,14 +488,8 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
   const totalXp = Math.round(baseXp + sideXp);
   const goldEarned = Math.max(1, Math.floor(totalXp / 4));
 
-  addXp(totalXp);
+  const leveledUp = addXp(totalXp);
   gameState.gold += goldEarned;
-  let leveledUp = false;
-  while (gameState.xp >= getXpForNextLevel()) {
-    gameState.xp -= getXpForNextLevel();
-    gameState.level++;
-    leveledUp = true;
-  }
 
   for (const [stat, pct] of Object.entries(task.stats)) {
     const points = Math.max(1, Math.floor(pct / 10));

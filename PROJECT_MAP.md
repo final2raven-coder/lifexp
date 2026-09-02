@@ -479,9 +479,9 @@ Mapa compacto fusionado en main; Actions confirmado manualmente como desbloquead
 
 F1
 
-Parcial
+En curso
 
-Hay catalogo por categorias y flujo de resultado, pero debe verificarse el flujo canonico extremo a extremo
+Se confirma y corrige la excepcion que impedia llegar al resultado: finalizeCompletion() usaba getXpForNextLevel(), inexistente en main. Pendiente verificar el estado visual del boton y probar como jugador el recorrido desde categoria
 
 F2
 
@@ -728,6 +728,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 14. Changelog operativo
+
+2026-09-02 - F1: se confirma el fallo de presentacion del resultado por una llamada a getXpForNextLevel() que no existe en main. La correccion usa el resultado de addXp() como unica fuente de subida de nivel. F1 queda en curso hasta verificar el boton de completado y la prueba de jugador.
 
 2026-09-02 - F0: mapa reducido a estado operativo. Se corrige el commit de main, se actualizan las ramas existentes, se retira historial redundante, se registra el GDD independiente, se marca Actions como desbloqueado y se deja la descompresion/catalogacion del ZIP para F13.
 
