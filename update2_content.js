@@ -133,59 +133,27 @@ function runUpdate(harness) {
   if (harness.registeredInstallers.length !== 1) {
     throw new Error(`Expected one registered installer, received ${harness.registeredInstallers.length}.`);
   }
-  // The production bootstrap runs this only after loadGame() succeeds.
-  harness.registeredInstallers[0]();
-  harness.registeredInstallers.length = 0;
-}
 
-function runUpdateWithoutExecuting(harness) {
-  vm.runInContext(update2Source, harness.context, { filename: 'update2_content.js' });
-}
+  function patchQuests() {
+    if (typeof QUESTS === 'undefined') return;
+    for (const [id, patch] of Object.entries(QUEST_PATCHES)) {
+      if (!QUESTS[id]) continue;
+      Object.assign(QUESTS[id], patch);
+    }
+  }
 
-function snapshot(harness) {
-  const { context } = harness;
-  return JSON.stringify({
-    ITEMS: context.ITEMS,
-    ENEMIES: context.ENEMIES,
-    QUESTS: context.QUESTS,
-    DEFAULT_TASKS: context.DEFAULT_TASKS,
-    DROP_TABLES: context.DROP_TABLES,
-    THEME_ENEMIES: context.THEME_ENEMIES,
-    EXPANSION_ITEMS_V1: context.EXPANSION_ITEMS_V1,
-    EXPANSION_DROP_TABLES_V1: context.EXPANSION_DROP_TABLES_V1,
-    EXPANSION_ENEMIES_V1: context.EXPANSION_ENEMIES_V1,
-    EXPANSION_QUESTS_V1: context.EXPANSION_QUESTS_V1,
-    EXPANSION_TASKS_V1: context.EXPANSION_TASKS_V1,
-    gameState: context.gameState
-  });
-}
-
-function makeSuccessfulInstallers(harness) {
-  const { context } = harness;
-  context.installExpansionEnemies = () => {
-    Object.assign(context.ENEMIES, context.EXPANSION_ENEMIES_V1);
-  };
-  context.renderQuests = () => {};
-}
-
-function testInstallerWaitsForSaveLoadBarrier() {
-  const harness = createContext({ writeSave: true });
-  runUpdateWithoutExecuting(harness);
-  assert.equal(harness.registeredInstallers.length, 1);
-  assert.equal(harness.saveCalls.length, 0);
-  assert.equal(harness.context.ITEMS.update_item, undefined);
-  assert.equal(harness.storage.getItem('lifexp_save'), '{"player":"before"}');
-  harness.registeredInstallers[0]();
-  assert.equal(harness.context.ITEMS.update_item.id, 'update_item');
-  assert.equal(harness.saveCalls.length, 1);
-}
-
-function testSuccessfulInstallationAndIdempotence() {
-  const harness = createContext({ writeSave: true });
-  const calls = [];
-  for (const name of ['installExpansionItems', 'installExpansionEnemies', 'installExpansionQuests', 'installExpansionTasks']) {
-    const original = harness.context[name];
-    harness.context[name] = () => { calls.push(name); original(); };
+  function commitSave() {
+    if (typeof gameState === 'undefined' || typeof saveGame !== 'function') {
+      throw new Error('Update 2 save commit is unavailable before save loading.');
+    }
+    gameState.__lifexpUpdate2 = UPDATE_ID;
+    if (!saveGame()) throw new Error('Update 2 save commit could not be written.');
+    const persisted = localStorage.getItem('lifexp_save');
+    if (!persisted) throw new Error('Update 2 save commit is missing from storage.');
+    const parsed = JSON.parse(persisted);
+    if (parsed.__lifexpUpdate2 !== UPDATE_ID) {
+      throw new Error('Update 2 save commit could not be verified.');
+    }
   }
 
   runUpdate(harness);
@@ -277,11 +245,12 @@ function testRewardReferenceValidationRollsBackEveryDropShape() {
     assert.match(harness.errors[0], /Reward reference validation failed/, contextLabel);
     assert.match(harness.errors[0], /missing_item/, contextLabel);
   }
-}
 
-testInstallerWaitsForSaveLoadBarrier();
-testSuccessfulInstallationAndIdempotence();
-testInstallerFailureRollsBackAndCanRetry();
-testPostInstallFailureRollsBack();
-testRewardReferenceValidationRollsBackEveryDropShape();
-console.log('Update 2 transaction fixtures: PASS (success, reward reference validation, four installers, save commit, rollback, retry, idempotence)');
+  // Register during script loading. main.js runs the installer only after loadGame() succeeds.
+  if (typeof registerLifeXPContentInstaller !== 'function') {
+    reportInstallFailure(new Error('Save loading barrier is unavailable.'));
+  } else {
+    try { registerLifeXPContentInstaller(install); }
+    catch (error) { reportInstallFailure(error); }
+  }
+})();

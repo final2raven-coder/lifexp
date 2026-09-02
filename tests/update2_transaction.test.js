@@ -32,6 +32,7 @@ function createContext(options = {}) {
   const storage = new MemoryStorage({ lifexp_save: options.rawSave || '{"player":"before"}' });
   const errors = [];
   const saveCalls = [];
+  const registeredInstallers = [];
   const context = {
     localStorage: storage,
     document: createDocument(),
@@ -72,10 +73,15 @@ function createContext(options = {}) {
     }
   };
   context.globalThis = context;
+  context.registerLifeXPContentInstaller = installer => {
+    if (typeof installer !== 'function') throw new Error('Test installer must be a function.');
+    registeredInstallers.push(installer);
+  };
   context.saveGame = () => {
     saveCalls.push(true);
-    if (!options.writeSave) return;
+    if (!options.writeSave) return false;
     context.localStorage.setItem('lifexp_save', JSON.stringify(context.gameState));
+    return true;
   };
   context.installExpansionItems = () => {
     Object.assign(context.ITEMS, context.EXPANSION_ITEMS_V1);
@@ -119,10 +125,20 @@ function createContext(options = {}) {
   }
 
   vm.createContext(context);
-  return { context, storage, errors, saveCalls };
+  return { context, storage, errors, saveCalls, registeredInstallers };
 }
 
 function runUpdate(harness) {
+  vm.runInContext(update2Source, harness.context, { filename: 'update2_content.js' });
+  if (harness.registeredInstallers.length !== 1) {
+    throw new Error(`Expected one registered installer, received ${harness.registeredInstallers.length}.`);
+  }
+  // The production bootstrap runs this only after loadGame() succeeds.
+  harness.registeredInstallers[0]();
+  harness.registeredInstallers.length = 0;
+}
+
+function runUpdateWithoutExecuting(harness) {
   vm.runInContext(update2Source, harness.context, { filename: 'update2_content.js' });
 }
 
@@ -150,6 +166,18 @@ function makeSuccessfulInstallers(harness) {
     Object.assign(context.ENEMIES, context.EXPANSION_ENEMIES_V1);
   };
   context.renderQuests = () => {};
+}
+
+function testInstallerWaitsForSaveLoadBarrier() {
+  const harness = createContext({ writeSave: true });
+  runUpdateWithoutExecuting(harness);
+  assert.equal(harness.registeredInstallers.length, 1);
+  assert.equal(harness.saveCalls.length, 0);
+  assert.equal(harness.context.ITEMS.update_item, undefined);
+  assert.equal(harness.storage.getItem('lifexp_save'), '{"player":"before"}');
+  harness.registeredInstallers[0]();
+  assert.equal(harness.context.ITEMS.update_item.id, 'update_item');
+  assert.equal(harness.saveCalls.length, 1);
 }
 
 function testSuccessfulInstallationAndIdempotence() {
@@ -251,6 +279,7 @@ function testRewardReferenceValidationRollsBackEveryDropShape() {
   }
 }
 
+testInstallerWaitsForSaveLoadBarrier();
 testSuccessfulInstallationAndIdempotence();
 testInstallerFailureRollsBackAndCanRetry();
 testPostInstallFailureRollsBack();
