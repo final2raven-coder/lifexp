@@ -383,6 +383,19 @@ function createTaskHistoryEntry(task, values = {}) {
   };
 }
 
+function createTaskCompletionId(task, date = todayStr(), sequence = null) {
+  const taskId = task && typeof task.id === 'string' && task.id ? task.id : null;
+  const completionDate = isValidTaskDate(date) ? date : todayStr();
+  if (!taskId) throw new Error('Cannot create a completion ID without a task ID.');
+
+  const history = Array.isArray(gameState.taskHistory) ? gameState.taskHistory : [];
+  const nextSequence = Number.isInteger(sequence) && sequence >= 0
+    ? sequence
+    : history.filter(entry => entry && entry.taskId === taskId && entry.date === completionDate).length;
+
+  return `task:${taskId}:${completionDate}:${nextSequence}`;
+}
+
 function isTaskDue(task, referenceDate = todayStr()) {
   return getTaskAvailability(task, referenceDate).available;
 }
