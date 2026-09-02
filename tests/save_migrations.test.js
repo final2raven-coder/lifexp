@@ -306,13 +306,20 @@ function testSnapshotRetention() {
   assert.equal(loaded.storage.getItem('lifexp_premigration_v3_100'), null);
 }
 
-function testNoUndefinedExpansionInstallerCalls() {
+function testDeclarativeContentInstallerContract() {
   assert.equal(/if\s*\(\s*typeof\s+installExpansion[A-Za-z]+\s*===\s*'function'\s*\)/.test(update2Source), false);
-  assert.match(update2Source, /assertExpansionLoadOrder/);
-  assert.match(update2Source, /assertExpansionInstalled/);
-  for (const installer of ['installExpansionItems', 'installExpansionEnemies', 'installExpansionQuests', 'installExpansionTasks']) {
-    assert.match(update2Source, new RegExp(`${installer}\\(\\)`));
-  }
+  assert.match(update2Source, /const UPDATE2_MANIFEST = \{/);
+  assert.match(update2Source, /requiredCatalogs:/);
+  assert.match(update2Source, /requiredInstallers:/);
+  assert.match(update2Source, /type: 'invoke'/);
+  assert.match(update2Source, /type: 'ensureEntries'/);
+  assert.match(update2Source, /type: 'patchEntries'/);
+  assert.match(update2Source, /function installManifest\(manifest\)/);
+  assert.match(update2Source, /globalThis\.LifeXPContent/);
+  assert.match(update2Source, /assertManifestInstalled/);
+  assert.match(update2Source, /assertRewardReferences/);
+  assert.match(update2Source, /restoreTransactionSnapshot/);
+  assert.match(update2Source, /__lifexpUpdate2/);
 }
 
 
@@ -447,10 +454,10 @@ testUnknownCanonicalQuestRemainsRecoverable();
 testV3AndLegacyEquipmentId();
 testCorruptedSaveDoesNotChangeOriginal();
 testSnapshotRetention();
-testNoUndefinedExpansionInstallerCalls();
+testDeclarativeContentInstallerContract();
 testTaskModelMigrationAndIdempotence();
 testTaskAvailabilityFrequencies();
 testRepeatableAndNonRepeatablePolicies();
 testLegacyTaskWithoutFrequencyNeedsReview();
 testHistoryEntryCapturesScheduleSnapshot();
-console.log('Save migration fixtures: PASS (v0-v4, quest recovery, task history preservation, periodic availability, repeatable/non-repeatable policies, archived tasks, legacy task review, idempotence, corruption, snapshots, DT-17 static assertion)');
+console.log('Save migration fixtures: PASS (v0-v4, quest recovery, task history preservation, periodic availability, repeatable/non-repeatable policies, archived tasks, legacy task review, idempotence, corruption, snapshots, declarative content installer contract assertion)');

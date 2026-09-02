@@ -1,43 +1,165 @@
-// LifeXP Update 2 - additive, idempotent content installation.
+// LifeXP Update 2 - declarative, additive, idempotent content installation.
 (function () {
   'use strict';
 
-  const UPDATE_ID = 'lifexp_update2_ashbrand_quests';
-  const ASHBRAND_ID = 'cuchilla_llameante';
-
-  const ASHBRAND = {
-    id: ASHBRAND_ID,
-    name: 'Ashbrand',
-    type: 'weapon',
-    rarity: 'rare',
-    icon: 'FIRE',
-    desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
-    lore: 'Ashbrand remembers a fire that refused to become a ruin.',
-    stats: {},
-    value: 120,
-    themes: ['fuego', 'fuego_comida', 'ash'],
-    effects: [
-      { id: 'burning_edge', name: 'Burning Edge', trigger: 'passive', unlockStage: 1, description: 'Attacks can apply Burn for 3 turns.' },
-      { id: 'pressure', name: 'Pressure', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'A burning target can receive another, shorter Burn.' }
+  const UPDATE2_MANIFEST = {
+    id: 'lifexp_update2_ashbrand_quests',
+    marker: '__lifexpUpdate2',
+    requiredCatalogs: [
+      'EXPANSION_ITEMS_V1',
+      'EXPANSION_DROP_TABLES_V1',
+      'EXPANSION_ENEMIES_V1',
+      'EXPANSION_QUESTS_V1',
+      'EXPANSION_TASKS_V1'
     ],
-    attunement: {
-      required: true,
-      max: 3,
-      minimumStage: 1,
-      themes: ['fuego', 'fuego_comida', 'ash'],
-      stages: ['The grip is cold.', 'The edge holds its heat.', 'The old fire answers your hand.']
-    }
+    requiredInstallers: [
+      'installExpansionItems',
+      'installExpansionEnemies',
+      'installExpansionQuests',
+      'installExpansionTasks'
+    ],
+    requiredEntries: [
+      { target: 'ITEMS', ids: ['cuchilla_llameante'] },
+      { target: 'QUESTS', ids: ['daily_any_3'] }
+    ],
+    assertions: [
+      { type: 'sourceInstalled', source: 'EXPANSION_DROP_TABLES_V1', target: 'DROP_TABLES' }
+    ],
+    operations: [
+      {
+        type: 'invoke',
+        functionName: 'installExpansionItems',
+        source: 'EXPANSION_ITEMS_V1',
+        target: 'ITEMS'
+      },
+      {
+        type: 'ensureEntries',
+        target: 'ITEMS',
+        onConflict: 'preserve',
+        entries: [
+          {
+            id: 'cuchilla_llameante',
+            name: 'Ashbrand',
+            type: 'weapon',
+            rarity: 'rare',
+            icon: 'FIRE',
+            desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
+            lore: 'Ashbrand remembers a fire that refused to become a ruin.',
+            stats: {},
+            value: 120,
+            themes: ['fuego', 'fuego_comida', 'ash'],
+            effects: [
+              { id: 'burning_edge', name: 'Burning Edge', trigger: 'passive', unlockStage: 1, description: 'Attacks can apply Burn for 3 turns.' },
+              { id: 'pressure', name: 'Pressure', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'A burning target can receive another, shorter Burn.' }
+            ],
+            attunement: {
+              required: true,
+              max: 3,
+              minimumStage: 1,
+              themes: ['fuego', 'fuego_comida', 'ash'],
+              stages: ['The grip is cold.', 'The edge holds its heat.', 'The old fire answers your hand.']
+            }
+          }
+        ]
+      },
+      {
+        type: 'invoke',
+        functionName: 'installExpansionEnemies',
+        source: 'EXPANSION_ENEMIES_V1',
+        target: 'ENEMIES'
+      },
+      {
+        type: 'invoke',
+        functionName: 'installExpansionQuests',
+        source: 'EXPANSION_QUESTS_V1',
+        target: 'QUESTS'
+      },
+      {
+        type: 'patchEntries',
+        target: 'QUESTS',
+        missing: 'skip',
+        entries: [
+          {
+            id: 'daily_any_3',
+            patch: {
+              name: 'The Threefold Ember',
+              desc: 'Three small flames must answer before the watch can begin.',
+              setting: 'The refuge keeps one ember alive for every path you tend.',
+              lore: 'Old wardens never spoke of grand victories. They counted the lights that remained lit.'
+            }
+          },
+          {
+            id: 'daily_casa_2',
+            patch: {
+              name: 'The Quiet Hearth',
+              desc: 'Restore two corners of the refuge before the evening bell.',
+              setting: 'Dust gathers where the refuge walls meet, hiding marks left by former keepers.',
+              lore: 'A clean hearth is not empty. It is a promise that someone intends to return.'
+            }
+          },
+          {
+            id: 'daily_cuerpo_2',
+            patch: {
+              name: 'The Travellers Readiness',
+              desc: 'Strengthen the body before the road asks for its price.',
+              setting: 'Beyond the refuge, the road begins with the body you bring to it.',
+              lore: 'The old route-makers measured readiness by what could be carried without complaint.'
+            }
+          }
+        ]
+      },
+      {
+        type: 'invoke',
+        functionName: 'installExpansionTasks',
+        source: 'EXPANSION_TASKS_V1',
+        target: 'DEFAULT_TASKS'
+      }
+    ],
+    refreshFunctions: ['renderQuests', 'renderInventory']
   };
 
-  const QUEST_PATCHES = {
-    daily_any_3: { name: 'The Threefold Ember', desc: 'Three small flames must answer before the watch can begin.', setting: 'The refuge keeps one ember alive for every path you tend.', lore: 'Old wardens never spoke of grand victories. They counted the lights that remained lit.' },
-    daily_casa_2: { name: 'The Quiet Hearth', desc: 'Restore two corners of the refuge before the evening bell.', setting: 'Dust gathers where the refuge walls meet, hiding marks left by former keepers.', lore: 'A clean hearth is not empty. It is a promise that someone intends to return.' },
-    daily_cuerpo_2: { name: 'The Travellers Readiness', desc: 'Strengthen the body before the road asks for its price.', setting: 'Beyond the refuge, the road begins with the body you bring to it.', lore: 'The old route-makers measured readiness by what could be carried without complaint.' }
+  const CATALOG_GETTERS = {
+    ITEMS: () => typeof ITEMS !== 'undefined' ? ITEMS : undefined,
+    ENEMIES: () => typeof ENEMIES !== 'undefined' ? ENEMIES : undefined,
+    QUESTS: () => typeof QUESTS !== 'undefined' ? QUESTS : undefined,
+    DEFAULT_TASKS: () => typeof DEFAULT_TASKS !== 'undefined' ? DEFAULT_TASKS : undefined,
+    DROP_TABLES: () => typeof DROP_TABLES !== 'undefined' ? DROP_TABLES : undefined,
+    THEME_ENEMIES: () => typeof THEME_ENEMIES !== 'undefined' ? THEME_ENEMIES : undefined,
+    EXPANSION_ITEMS_V1: () => typeof EXPANSION_ITEMS_V1 !== 'undefined' ? EXPANSION_ITEMS_V1 : undefined,
+    EXPANSION_DROP_TABLES_V1: () => typeof EXPANSION_DROP_TABLES_V1 !== 'undefined' ? EXPANSION_DROP_TABLES_V1 : undefined,
+    EXPANSION_ENEMIES_V1: () => typeof EXPANSION_ENEMIES_V1 !== 'undefined' ? EXPANSION_ENEMIES_V1 : undefined,
+    EXPANSION_QUESTS_V1: () => typeof EXPANSION_QUESTS_V1 !== 'undefined' ? EXPANSION_QUESTS_V1 : undefined,
+    EXPANSION_TASKS_V1: () => typeof EXPANSION_TASKS_V1 !== 'undefined' ? EXPANSION_TASKS_V1 : undefined
   };
+
+  const FUNCTION_GETTERS = {
+    installExpansionItems: () => typeof installExpansionItems === 'function' ? installExpansionItems : undefined,
+    installExpansionEnemies: () => typeof installExpansionEnemies === 'function' ? installExpansionEnemies : undefined,
+    installExpansionQuests: () => typeof installExpansionQuests === 'function' ? installExpansionQuests : undefined,
+    installExpansionTasks: () => typeof installExpansionTasks === 'function' ? installExpansionTasks : undefined,
+    renderQuests: () => typeof renderQuests === 'function' ? renderQuests : undefined,
+    renderInventory: () => typeof renderInventory === 'function' ? renderInventory : undefined,
+    saveGame: () => typeof saveGame === 'function' ? saveGame : undefined,
+    showToast: () => typeof showToast === 'function' ? showToast : undefined
+  };
+
+  function getCatalog(name) {
+    const getter = CATALOG_GETTERS[name];
+    return getter ? getter() : undefined;
+  }
+
+  function getRuntimeFunction(name) {
+    const getter = FUNCTION_GETTERS[name];
+    return getter ? getter() : undefined;
+  }
 
   function cloneValue(value) {
     if (value === undefined) return undefined;
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function valuesEqual(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
   }
 
   function captureMutableTarget(snapshots, name, target) {
@@ -46,17 +168,7 @@
 
   function captureTransactionSnapshot() {
     const snapshots = [];
-    if (typeof ITEMS !== 'undefined') captureMutableTarget(snapshots, 'ITEMS', ITEMS);
-    if (typeof ENEMIES !== 'undefined') captureMutableTarget(snapshots, 'ENEMIES', ENEMIES);
-    if (typeof QUESTS !== 'undefined') captureMutableTarget(snapshots, 'QUESTS', QUESTS);
-    if (typeof DEFAULT_TASKS !== 'undefined') captureMutableTarget(snapshots, 'DEFAULT_TASKS', DEFAULT_TASKS);
-    if (typeof DROP_TABLES !== 'undefined') captureMutableTarget(snapshots, 'DROP_TABLES', DROP_TABLES);
-    if (typeof THEME_ENEMIES !== 'undefined') captureMutableTarget(snapshots, 'THEME_ENEMIES', THEME_ENEMIES);
-    if (typeof EXPANSION_ITEMS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_ITEMS_V1', EXPANSION_ITEMS_V1);
-    if (typeof EXPANSION_DROP_TABLES_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_DROP_TABLES_V1', EXPANSION_DROP_TABLES_V1);
-    if (typeof EXPANSION_ENEMIES_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_ENEMIES_V1', EXPANSION_ENEMIES_V1);
-    if (typeof EXPANSION_QUESTS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_QUESTS_V1', EXPANSION_QUESTS_V1);
-    if (typeof EXPANSION_TASKS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_TASKS_V1', EXPANSION_TASKS_V1);
+    Object.entries(CATALOG_GETTERS).forEach(([name, getter]) => captureMutableTarget(snapshots, name, getter()));
     return {
       rawSave: localStorage.getItem('lifexp_save'),
       snapshots,
@@ -89,48 +201,153 @@
     if (rawSave !== null && rawSave !== undefined) localStorage.setItem('lifexp_update2_backup', rawSave);
   }
 
-  function assertExpansionLoadOrder() {
-    const missing = [
-      ['EXPANSION_ITEMS_V1', typeof EXPANSION_ITEMS_V1 !== 'undefined' && EXPANSION_ITEMS_V1 && typeof EXPANSION_ITEMS_V1 === 'object'],
-      ['EXPANSION_DROP_TABLES_V1', typeof EXPANSION_DROP_TABLES_V1 !== 'undefined' && EXPANSION_DROP_TABLES_V1 && typeof EXPANSION_DROP_TABLES_V1 === 'object'],
-      ['EXPANSION_ENEMIES_V1', typeof EXPANSION_ENEMIES_V1 !== 'undefined' && EXPANSION_ENEMIES_V1 && typeof EXPANSION_ENEMIES_V1 === 'object'],
-      ['EXPANSION_QUESTS_V1', typeof EXPANSION_QUESTS_V1 !== 'undefined' && EXPANSION_QUESTS_V1 && typeof EXPANSION_QUESTS_V1 === 'object'],
-      ['EXPANSION_TASKS_V1', typeof EXPANSION_TASKS_V1 !== 'undefined' && Array.isArray(EXPANSION_TASKS_V1)]
-    ].filter(([, available]) => !available);
-
-    if (missing.length > 0) throw new Error(`Expansion load order incomplete: ${missing.map(([name]) => name).join(', ')}`);
-  }
-
-  function assertExpansionInstalled() {
-    const missing = [
-      ['ITEMS', ASHBRAND_ID, typeof ITEMS !== 'undefined' && ITEMS],
-      ['QUESTS', 'daily_any_3', typeof QUESTS !== 'undefined' && QUESTS]
-    ].filter(([, id, catalog]) => !catalog || !Object.prototype.hasOwnProperty.call(catalog, id));
-
-    const missingItems = Object.keys(EXPANSION_ITEMS_V1).filter(id => !Object.prototype.hasOwnProperty.call(ITEMS, id));
-    const missingDropTables = Object.keys(EXPANSION_DROP_TABLES_V1).filter(theme => !Object.prototype.hasOwnProperty.call(DROP_TABLES, theme));
-    const missingEnemies = Object.keys(EXPANSION_ENEMIES_V1).filter(id => !Object.prototype.hasOwnProperty.call(ENEMIES, id));
-    const missingQuests = Object.keys(EXPANSION_QUESTS_V1).filter(id => !Object.prototype.hasOwnProperty.call(QUESTS, id));
-    const missingTasks = EXPANSION_TASKS_V1.filter(task => !DEFAULT_TASKS.some(existing => existing.id === task.id));
-
-    if (missing.length || missingItems.length || missingDropTables.length || missingEnemies.length || missingQuests.length || missingTasks.length) {
+  function assertRequiredResources(manifest) {
+    const missingCatalogs = manifest.requiredCatalogs.filter(name => {
+      const value = getCatalog(name);
+      return !value || typeof value !== 'object';
+    });
+    const missingFunctions = manifest.requiredInstallers.filter(name => !getRuntimeFunction(name));
+    if (missingCatalogs.length || missingFunctions.length) {
       throw new Error([
-        ...missing.map(([catalog, id]) => `${catalog}: ${id}`),
-        missingItems.length > 0 ? `items: ${missingItems.join(', ')}` : '',
-        missingDropTables.length > 0 ? `drop tables: ${missingDropTables.join(', ')}` : '',
-        missingEnemies.length > 0 ? `enemies: ${missingEnemies.join(', ')}` : '',
-        missingQuests.length > 0 ? `quests: ${missingQuests.join(', ')}` : '',
-        missingTasks.length > 0 ? `tasks: ${missingTasks.map(task => task.id).join(', ')}` : ''
+        missingCatalogs.length ? `catalogs: ${missingCatalogs.join(', ')}` : '',
+        missingFunctions.length ? `installers: ${missingFunctions.join(', ')}` : ''
       ].filter(Boolean).join('; '));
     }
+  }
+
+  function getEntryId(entry) {
+    return entry && typeof entry === 'object' ? entry.id : undefined;
+  }
+
+  function hasCatalogEntry(target, id) {
+    if (Array.isArray(target)) return target.some(entry => getEntryId(entry) === id);
+    return Object.prototype.hasOwnProperty.call(target, id);
+  }
+
+  function getCatalogEntry(target, id) {
+    if (Array.isArray(target)) return target.find(entry => getEntryId(entry) === id);
+    return target[id];
+  }
+
+  function assertCatalogEntry(target, id, context) {
+    if (!hasCatalogEntry(target, id)) throw new Error(`${context}: missing entry "${id}".`);
+  }
+
+  function assertSourceInstalled(source, target, context) {
+    if (Array.isArray(source)) {
+      source.forEach((entry, index) => {
+        const id = getEntryId(entry);
+        if (id === undefined) throw new Error(`${context}[${index}] has no id.`);
+        assertCatalogEntry(target, id, context);
+      });
+      return;
+    }
+    Object.keys(source).forEach(id => assertCatalogEntry(target, id, context));
+  }
+
+  function ensureEntries(target, entries, onConflict, context) {
+    if (!target || typeof target !== 'object') throw new Error(`${context}: target catalog is unavailable.`);
+    if (!Array.isArray(entries)) throw new Error(`${context}: entries must be an array.`);
+
+    entries.forEach((entry, index) => {
+      const id = getEntryId(entry);
+      if (typeof id !== 'string' || !id) throw new Error(`${context}[${index}] has no valid id.`);
+      const current = getCatalogEntry(target, id);
+      if (current === undefined) {
+        if (Array.isArray(target)) target.push(cloneValue(entry));
+        else target[id] = cloneValue(entry);
+        return;
+      }
+      if (onConflict === 'preserve') return;
+      if (!valuesEqual(current, entry)) throw new Error(`${context}: conflicting entry "${id}".`);
+    });
+  }
+
+  function patchEntries(target, entries, missingPolicy, context) {
+    if (!target || typeof target !== 'object') throw new Error(`${context}: target catalog is unavailable.`);
+    if (!Array.isArray(entries)) throw new Error(`${context}: entries must be an array.`);
+
+    entries.forEach((operation, index) => {
+      const id = operation && operation.id;
+      const current = getCatalogEntry(target, id);
+      if (current === undefined) {
+        if (missingPolicy === 'skip') return;
+        throw new Error(`${context}[${index}]: missing entry "${id}".`);
+      }
+      if (!operation.patch || typeof operation.patch !== 'object') {
+        throw new Error(`${context}[${index}]: patch must be an object.`);
+      }
+      Object.assign(current, cloneValue(operation.patch));
+    });
+  }
+
+  function assertManifestAssertions(manifest) {
+    (manifest.requiredEntries || []).forEach((requirement, index) => {
+      const target = getCatalog(requirement.target);
+      if (!target) throw new Error(`requiredEntries[${index}]: target catalog is unavailable.`);
+      (requirement.ids || []).forEach((id, idIndex) => {
+        assertCatalogEntry(target, id, `requiredEntries[${index}].ids[${idIndex}]`);
+      });
+    });
+    (manifest.assertions || []).forEach((assertion, index) => {
+      if (assertion.type !== 'sourceInstalled') {
+        throw new Error(`assertions[${index}]: unsupported assertion type "${assertion.type}".`);
+      }
+      const source = getCatalog(assertion.source);
+      const target = getCatalog(assertion.target);
+      if (!source || !target) throw new Error(`assertions[${index}]: source or target catalog is unavailable.`);
+      assertSourceInstalled(source, target, `assertions[${index}]`);
+    });
+  }
+
+  function assertManifestInstalled(manifest) {
+    assertManifestAssertions(manifest);
+    manifest.operations.forEach((operation, index) => {
+      const context = `operation[${index}]`;
+      if (operation.type === 'invoke') {
+        const source = getCatalog(operation.source);
+        const target = getCatalog(operation.target);
+        if (!source || !target) throw new Error(`${context}: source or target catalog is unavailable.`);
+        assertSourceInstalled(source, target, context);
+        return;
+      }
+      if (operation.type === 'ensureEntries') {
+        const target = getCatalog(operation.target);
+        if (!target) throw new Error(`${context}: target catalog is unavailable.`);
+        operation.entries.forEach((entry, entryIndex) => {
+          const id = getEntryId(entry);
+          assertCatalogEntry(target, id, `${context}.entries[${entryIndex}]`);
+          if (operation.onConflict !== 'preserve' && !valuesEqual(getCatalogEntry(target, id), entry)) {
+            throw new Error(`${context}: entry "${id}" differs.`);
+          }
+        });
+        return;
+      }
+      if (operation.type === 'patchEntries') {
+        const target = getCatalog(operation.target);
+        if (!target) throw new Error(`${context}: target catalog is unavailable.`);
+        operation.entries.forEach((entry, entryIndex) => {
+          const current = getCatalogEntry(target, entry.id);
+          if (current === undefined && operation.missing === 'skip') return;
+          if (current === undefined) throw new Error(`${context}.entries[${entryIndex}]: entry is missing.`);
+          Object.entries(entry.patch || {}).forEach(([key, value]) => {
+            if (!valuesEqual(current[key], value)) throw new Error(`${context}: patch "${entry.id}.${key}" differs.`);
+          });
+        });
+        return;
+      }
+      throw new Error(`${context}: unsupported operation type "${operation.type}".`);
+    });
   }
 
   const CANONICAL_ITEM_ID_RE = /^[a-z0-9_]+$/;
 
   function hasCanonicalItem(itemId) {
+    const items = getCatalog('ITEMS');
     return typeof itemId === 'string'
       && CANONICAL_ITEM_ID_RE.test(itemId)
-      && Object.prototype.hasOwnProperty.call(ITEMS, itemId);
+      && items
+      && Object.prototype.hasOwnProperty.call(items, itemId);
   }
 
   function inspectItemReference(errors, context, itemId) {
@@ -194,16 +411,20 @@
 
   function assertRewardReferences() {
     const errors = [];
+    const dropTables = getCatalog('DROP_TABLES');
+    const enemies = getCatalog('ENEMIES');
+    const tasks = getCatalog('DEFAULT_TASKS');
+    const quests = getCatalog('QUESTS');
 
-    for (const [theme, pool] of Object.entries(DROP_TABLES)) {
+    for (const [theme, pool] of Object.entries(dropTables)) {
       if (Array.isArray(pool)) inspectItemList(errors, `DROP_TABLES["${theme}"]`, pool);
     }
 
-    for (const [enemyId, enemy] of Object.entries(ENEMIES)) {
+    for (const [enemyId, enemy] of Object.entries(enemies)) {
       inspectEnemyDrops(errors, enemyId, enemy && enemy.drops);
     }
 
-    for (const task of DEFAULT_TASKS) {
+    for (const task of tasks) {
       const taskId = task && task.id ? task.id : '<unknown>';
       if (task && task.drops !== undefined) inspectDropPayload(errors, `TASKS["${taskId}"].drops`, task.drops);
       if (task && task.sideQuest && task.sideQuest.drops !== undefined) {
@@ -211,7 +432,7 @@
       }
     }
 
-    for (const [questId, quest] of Object.entries(QUESTS)) {
+    for (const [questId, quest] of Object.entries(quests)) {
       if (!quest || typeof quest !== 'object') continue;
       inspectQuestReward(errors, `QUESTS["${questId}"].reward`, quest.reward);
       inspectQuestReward(errors, `QUESTS["${questId}"].rewards`, quest.rewards);
@@ -224,76 +445,81 @@
       }
     }
 
-    if (errors.length > 0) {
-      throw new Error(`Reward reference validation failed: ${errors.join(' ')}`);
-    }
+    if (errors.length > 0) throw new Error(`Reward reference validation failed: ${errors.join(' ')}`);
   }
 
   function reportInstallFailure(error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (typeof showToast === 'function') showToast(`Update 2 no instalado: ${message}`);
+    const showToast = getRuntimeFunction('showToast');
+    if (showToast) showToast(`Update 2 not installed: ${message}`);
     if (typeof console !== 'undefined' && console.error) console.error('[LifeXP] Update 2 rollback:', message);
   }
 
-  function restoreAshbrand() {
-    if (typeof ITEMS === 'undefined') return;
-    const current = ITEMS[ASHBRAND_ID];
-    if (!current || current.id !== ASHBRAND_ID) ITEMS[ASHBRAND_ID] = cloneValue(ASHBRAND);
-  }
-
-  function patchQuests() {
-    if (typeof QUESTS === 'undefined') return;
-    for (const [id, patch] of Object.entries(QUEST_PATCHES)) {
-      if (!QUESTS[id]) continue;
-      Object.assign(QUESTS[id], patch);
-    }
-  }
-
-  function commitSave() {
-    if (typeof gameState === 'undefined' || typeof saveGame !== 'function') {
-      throw new Error('Update 2 save commit is unavailable before save loading.');
-    }
-    gameState.__lifexpUpdate2 = UPDATE_ID;
-    if (!saveGame()) throw new Error('Update 2 save commit could not be written.');
+  function commitSave(manifest) {
+    if (typeof gameState === 'undefined') throw new Error('Content save commit is unavailable before save loading.');
+    const save = getRuntimeFunction('saveGame');
+    if (!save) throw new Error('Content save commit is unavailable before save loading.');
+    gameState[manifest.marker] = manifest.id;
+    if (!save()) throw new Error('Content save commit could not be written.');
     const persisted = localStorage.getItem('lifexp_save');
-    if (!persisted) throw new Error('Update 2 save commit is missing from storage.');
+    if (!persisted) throw new Error('Content save commit is missing from storage.');
     const parsed = JSON.parse(persisted);
-    if (parsed.__lifexpUpdate2 !== UPDATE_ID) {
-      throw new Error('Update 2 save commit could not be verified.');
-    }
+    if (parsed[manifest.marker] !== manifest.id) throw new Error('Content save commit could not be verified.');
   }
 
-  function install() {
-    if (typeof gameState !== 'undefined' && gameState.__lifexpUpdate2 === UPDATE_ID) return;
+  function refreshAfterInstall(manifest) {
+    manifest.refreshFunctions.forEach(name => {
+      const refresh = getRuntimeFunction(name);
+      if (refresh) refresh();
+    });
+  }
+
+  function installManifest(manifest) {
+    if (!manifest || typeof manifest !== 'object') throw new Error('Content manifest is unavailable.');
+    if (typeof gameState !== 'undefined' && gameState[manifest.marker] === manifest.id) return;
 
     const transaction = captureTransactionSnapshot();
     writeBackup(transaction.rawSave);
 
     try {
-      assertExpansionLoadOrder();
-      installExpansionItems();
-      restoreAshbrand();
-      installExpansionEnemies();
-      installExpansionQuests();
-      patchQuests();
-      installExpansionTasks();
-      assertExpansionInstalled();
+      assertRequiredResources(manifest);
+      manifest.operations.forEach((operation, index) => {
+        const context = `operation[${index}]`;
+        if (operation.type === 'invoke') {
+          const installer = getRuntimeFunction(operation.functionName);
+          if (!installer) throw new Error(`${context}: installer "${operation.functionName}" is unavailable.`);
+          installer();
+        } else if (operation.type === 'ensureEntries') {
+          ensureEntries(getCatalog(operation.target), operation.entries, context);
+        } else if (operation.type === 'patchEntries') {
+          patchEntries(getCatalog(operation.target), operation.entries, operation.missing, context);
+        } else {
+          throw new Error(`${context}: unsupported operation type "${operation.type}".`);
+        }
+      });
+      assertManifestInstalled(manifest);
       assertRewardReferences();
-      restoreAshbrand();
-      if (typeof renderQuests === 'function') renderQuests();
-      if (typeof renderInventory === 'function') renderInventory();
-      commitSave();
+      refreshAfterInstall(manifest);
+      commitSave(manifest);
     } catch (error) {
       restoreTransactionSnapshot(transaction);
       reportInstallFailure(error);
     }
   }
 
+  const api = typeof globalThis !== 'undefined' ? globalThis.LifeXPContent || {} : {};
+  api.installManifest = installManifest;
+  if (typeof globalThis !== 'undefined') globalThis.LifeXPContent = api;
+
+  function installUpdate2() {
+    return installManifest(UPDATE2_MANIFEST);
+  }
+
   // Register during script loading. main.js runs the installer only after loadGame() succeeds.
   if (typeof registerLifeXPContentInstaller !== 'function') {
     reportInstallFailure(new Error('Save loading barrier is unavailable.'));
   } else {
-    try { registerLifeXPContentInstaller(install); }
+    try { registerLifeXPContentInstaller(installUpdate2); }
     catch (error) { reportInstallFailure(error); }
   }
 })();
