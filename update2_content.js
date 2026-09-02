@@ -250,9 +250,15 @@
   }
 
   function commitSave() {
-    if (typeof gameState !== 'undefined') gameState.__lifexpUpdate2 = UPDATE_ID;
-    if (typeof saveGame === 'function') saveGame();
-    if (typeof gameState !== 'undefined' && gameState.__lifexpUpdate2 !== UPDATE_ID) {
+    if (typeof gameState === 'undefined' || typeof saveGame !== 'function') {
+      throw new Error('Update 2 save commit is unavailable before save loading.');
+    }
+    gameState.__lifexpUpdate2 = UPDATE_ID;
+    if (!saveGame()) throw new Error('Update 2 save commit could not be written.');
+    const persisted = localStorage.getItem('lifexp_save');
+    if (!persisted) throw new Error('Update 2 save commit is missing from storage.');
+    const parsed = JSON.parse(persisted);
+    if (parsed.__lifexpUpdate2 !== UPDATE_ID) {
       throw new Error('Update 2 save commit could not be verified.');
     }
   }
@@ -283,7 +289,11 @@
     }
   }
 
-  // DT-11 resolved: window.LifeXPUpdate2 global removed. install() auto-runs via DOMContentLoaded.
-  if (typeof document !== 'undefined' && document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
-  else install();
+  // Register during script loading. main.js runs the installer only after loadGame() succeeds.
+  if (typeof registerLifeXPContentInstaller !== 'function') {
+    reportInstallFailure(new Error('Save loading barrier is unavailable.'));
+  } else {
+    try { registerLifeXPContentInstaller(install); }
+    catch (error) { reportInstallFailure(error); }
+  }
 })();
