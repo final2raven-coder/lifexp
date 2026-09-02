@@ -247,7 +247,7 @@ Expansion declarativa de tareas
 
 update2_content.js
 
-Instalacion transaccional de contenido y rollback
+API declarativa de manifiestos para instalacion idempotente, validacion, persistencia y rollback
 
 validate_content.js
 
@@ -320,6 +320,16 @@ Ejecutar node --check y las pruebas de CI.
 Save y persistencia
 
 gameState es el unico estado mutable del juego. Se persiste en localStorage bajo lifexp_save.
+
+API de contenido declarativo
+
+LifeXPContent.installManifest(manifest) es la frontera generica para instalar contenido despues de cargar el save. Un manifiesto declara catalogos y recursos requeridos, aserciones, operaciones y funciones de refresco; no contiene el flujo transaccional ni la logica de persistencia.
+
+Operaciones soportadas: invoke para adaptadores de instaladores declarativos existentes, ensureEntries para altas aditivas y patchEntries para cambios declarativos sobre entradas existentes. Las colisiones deben declarar su politica; la politica por defecto bloquea una entrada distinta y preserve conserva explicitamente una entrada historica compatible.
+
+La frontera captura catalogos mutables, gameState y los bytes originales del save; valida la instalacion y las referencias de recompensas; persiste la marca del manifiesto de forma idempotente; y restaura memoria y save ante cualquier fallo. La marca historica __lifexpUpdate2 se conserva para no repetir Update 2 ni duplicar contenido.
+
+Update 2 usa esta API mediante un manifiesto compatible. Sus funciones installExpansion* permanecen como adaptadores existentes y no se amplian con nuevos parches por ID.
 
 Campos criticos:
 
@@ -447,7 +457,7 @@ Los IDs de contenido son unicos, estables y snake_case ASCII.
 
 Las expansiones son aditivas e idempotentes y no deben sobreescribir silenciosamente entradas existentes.
 
-update2_content.js es transaccional y hace rollback ante fallos.
+update2_content.js expone la frontera declarativa de instalacion y hace rollback ante fallos.
 
 taskHistory es append-only.
 
@@ -587,12 +597,6 @@ Falta guard generico de colisiones en expansiones
 
 Disenar comprobacion declarativa antes de modificar instaladores
 
-DT-08
-
-update2_content.js contiene patches por IDs concretos
-
-Evaluar API declarativa en refactor independiente
-
 DT-10
 
 Algunos items legacy requieren normalizacion edge
@@ -728,6 +732,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-02 - Bloque 2: update2_content.js migra a una frontera generica basada en manifiestos declarativos. Se conservan la marca historica, los IDs, la instalacion aditiva, la validacion de recompensas, el backup y el rollback; las funciones installExpansion* quedan como adaptadores de compatibilidad y no se anaden nuevos parches por ID.
 
 2026-09-02 - Save guard: la carga del save se convierte en barrera obligatoria antes de ejecutar instaladores de contenido. saveGame() bloquea escrituras prematuras, verifica la escritura y los instaladores se ejecutan desde main.js solo tras una carga valida.
 2026-09-02 - Save guard test: update2_transaction.test.js se adapta al contrato de registro y ejecucion posterior a la barrera de carga. El test comprueba que no hay instalacion ni guardado antes de autorizar el instalador y conserva las pruebas de rollback, reintento e idempotencia.
