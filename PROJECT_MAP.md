@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-ee9f479c19f1eceb43ac6b59d0f1035e937f0a75
+89bd3a3840ce641c289fd1e58d10c478f19cf6af
 
 Build efectiva
 
@@ -473,9 +473,9 @@ Nota operativa
 
 F0
 
-En curso
+Completada
 
-Este mapa compacto cierra la reconciliacion documental cuando se coloque en main; queda registrar la comprobacion manual de Actions
+Mapa compacto fusionado en main; Actions confirmado manualmente como desbloqueado; la revision del ZIP queda para F13
 
 F1
 
