@@ -99,6 +99,28 @@ const DEFAULT_GAME_STATE = {
 
 let gameState = cloneSaveState(DEFAULT_GAME_STATE);
 
+// Save loading is a mandatory barrier before content installers may persist.
+let lifeXPSaveLoadState = 'not_started';
+const lifeXPContentInstallers = [];
+let lifeXPContentInstallersRun = false;
+
+function isLifeXPSaveReady() {
+  return lifeXPSaveLoadState === 'ready';
+}
+
+function registerLifeXPContentInstaller(installer) {
+  if (typeof installer !== 'function') throw new Error('Content installer must be a function.');
+  if (lifeXPContentInstallersRun) throw new Error('Content installer registered after the installation phase.');
+  lifeXPContentInstallers.push(installer);
+}
+
+function runLifeXPContentInstallers() {
+  if (!isLifeXPSaveReady()) throw new Error('Cannot install content before the save is loaded successfully.');
+  if (lifeXPContentInstallersRun) return;
+  lifeXPContentInstallersRun = true;
+  for (const installer of lifeXPContentInstallers) installer();
+}
+
 // Current task being viewed
 let currentTask = null;
 let currentIsOverflow = false;
@@ -1067,9 +1089,13 @@ function runMigrations(parsed, from, warnings) {
 }
 
 function saveGame() {
+  if (!isLifeXPSaveReady()) {
+    console.warn('Save blocked until the current save has finished loading.');
+    return false;
+  }
   try {
     localStorage.setItem('lifexp_save', JSON.stringify(gameState));
-    return true;
+    return localStorage.getItem('lifexp_save') === JSON.stringify(gameState);
   } catch (e) {
     console.warn('Could not save game:', e);
     return false;
@@ -1098,11 +1124,19 @@ function finalizeLoadedState() {
 }
 
 function loadGame() {
+  lifeXPSaveLoadState = 'loading';
   const raw = localStorage.getItem('lifexp_save');
   if (!raw) {
-    gameState = cloneSaveState(DEFAULT_GAME_STATE);
-    finalizeLoadedState();
-    return true;
+    try {
+      gameState = cloneSaveState(DEFAULT_GAME_STATE);
+      finalizeLoadedState();
+      lifeXPSaveLoadState = 'ready';
+      return true;
+    } catch (error) {
+      lifeXPSaveLoadState = 'failed';
+      showSaveLoadError(error instanceof Error ? error.message : String(error));
+      return false;
+    }
   }
 
   const warnings = [];
@@ -1123,6 +1157,7 @@ function loadGame() {
     saveWasCommitted = true;
     gameState = migrated;
     finalizeLoadedState();
+    lifeXPSaveLoadState = 'ready';
     return true;
   } catch (error) {
     // A failure after the commit is still recoverable: restore the exact raw save.
@@ -1131,6 +1166,7 @@ function loadGame() {
       try { localStorage.setItem('lifexp_save', raw); }
       catch (restoreError) { console.error('Could not restore the original save:', restoreError); }
     }
+    lifeXPSaveLoadState = 'failed';
     showSaveLoadError(error instanceof Error ? error.message : String(error));
     return false;
   }

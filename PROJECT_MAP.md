@@ -3,7 +3,7 @@ PROJECT_MAP - LifeXP RPG
 Mapa operativo vigente para el Game Master y el mantenimiento del proyecto.
 Este fichero describe el estado real que debe usarse para trabajar. Los detalles de PRs cerrados, ramas eliminadas y decisiones ya integradas viven en el historial de GitHub y no se duplican aqui.
 
-0. Proposito y reglas de uso
+Proposito y reglas de uso
 
 Leer este mapa antes de abrir codigo.
 
@@ -21,7 +21,7 @@ Entregar los cambios localmente; no subir ficheros mediante la integracion de Gi
 
 Actualizar este mapa en el mismo PR cuando cambien estructura, simbolos, modelos, invariantes, fases o procedimientos.
 
-1. Foto actual de produccion
+Foto actual de produccion
 
 Campo
 
@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-2a968e1d8123064728fc8d7b22d22b51232f1de6
+5c6215056dde6a0b38d60200740ed648bcbb4c8a
 
 Build efectiva
 
@@ -89,7 +89,7 @@ No verificado en main; el procesamiento/descompresion del ZIP queda pendiente pa
 
 La declaracion de build efectiva esta en data_tasks.js. El commit anterior registrado en versiones antiguas del mapa no debe utilizarse como referencia.
 
-2. Ramas existentes y decision operativa
+Ramas existentes y decision operativa
 
 Solo estas ramas estaban visibles en la auditoria de F0:
 
@@ -135,7 +135,7 @@ No fusionar directamente; revisar solo cuando llegue F13
 
 Las ramas de PRs ya fusionados o eliminados no son ramas activas y no deben aparecer en esta tabla. Su historia se conserva en GitHub.
 
-3. Arquitectura vigente
+Arquitectura vigente
 
 LifeXP es una SPA vanilla JS/PWA. index.html contiene el HTML y CSS de las pantallas; los scripts se cargan como globals al final del documento.
 
@@ -275,7 +275,7 @@ Recuperacion manual del save
 
 game.js no existe. engine.js es el motor canonico.
 
-4. Orden de carga
+Orden de carga
 
 El orden de index.html es contractual:
 
@@ -317,7 +317,7 @@ Actualizar este mapa.
 
 Ejecutar node --check y las pruebas de CI.
 
-5. Save y persistencia
+Save y persistencia
 
 gameState es el unico estado mutable del juego. Se persiste en localStorage bajo lifexp_save.
 
@@ -358,7 +358,7 @@ Ante un fallo se restaura el save y el estado en memoria.
 
 No se reinicia localStorage, inventario, equipo, stash, quests, lore, acclimation ni rituales.
 
-6. Contratos de dominio
+Contratos de dominio
 
 6.1 Tareas
 
@@ -429,7 +429,7 @@ Los objetivos se identifican por instanceId; solo se pueden seleccionar miembros
 
 La victoria requiere derrotar a todos los miembros vivos de la formacion.
 
-7. Invariantes de producto
+Invariantes de producto
 
 Todo contenido visible del juego esta en ingles. La conversacion con Angel puede ser en espanol.
 
@@ -461,7 +461,7 @@ La actualizacion distingue recarga de interfaz, cache activada y build ejecutada
 
 No se pierde progreso ni se reinicia el save para resolver un bug.
 
-8. Estado de fases F0-F14
+Estado de fases F0-F14
 
 Estados: completada, ya estaba hecho, parcial, pendiente, bloqueada.
 
@@ -485,9 +485,9 @@ El flujo canonico de completado existe en ui_tasks.js y llama a createTaskComple
 
 F2
 
-En curso
+Completada
 
-La previsualizacion de drops posibles se retira de la pantalla canonica y se conserva la revelacion posterior al completado. Pendiente verificacion como jugador
+La previsualizacion de drops posibles se retiro de la pantalla canonica y se conserva la revelacion posterior al completado. Verificacion como jugador realizada por Angel
 
 F3
 
@@ -561,7 +561,7 @@ Pendiente
 
 QA final solo despues de cerrar las fases anteriores
 
-9. Deuda tecnica abierta
+Deuda tecnica abierta
 
 ID
 
@@ -631,7 +631,7 @@ Revisar ruta, script, Node, artefacto y validacion cuando toque F13
 
 No se considera deuda abierta la cola de GitHub Actions: Angel ha confirmado que ese bloqueo esta resuelto.
 
-10. Decisiones pendientes
+Decisiones pendientes
 
 Decision
 
@@ -663,7 +663,7 @@ F0
 
 Resuelta: LifeXP_RPG_GDD_v2.md existe
 
-11. Validacion obligatoria
+Validacion obligatoria
 
 Antes de un PR que toque JavaScript de produccion:
 
@@ -699,7 +699,7 @@ node validate_content.js
 
 El validador debe tener salida limpia antes de fusionar. Los errores baseline conocidos de referencias legacy no se maquillan ni se ignoran: se resuelven en su fase correspondiente.
 
-12. Verificacion como jugador
+Verificacion como jugador
 
 Toda entrega debe explicar tres pruebas sin leer codigo. Como minimo:
 
@@ -709,7 +709,7 @@ Ejecutar la accion afectada y confirmar el resultado visible, la persistencia y 
 
 Recargar, volver atras o repetir la accion segun el cambio, confirmando que no se pierde progreso ni se duplica la recompensa.
 
-13. Historial y alcance del mapa
+Historial y alcance del mapa
 
 El historial detallado de PRs, commits, ramas eliminadas, cambios de saneamiento y resultados antiguos de validadores se conserva en GitHub. Este mapa solo conserva:
 
@@ -727,9 +727,10 @@ procedimientos reproducibles;
 
 cambios recientes que afectan al trabajo futuro.
 
-14. Changelog operativo
+Changelog operativo
 
-2026-09-02 - F2: se retira de la pantalla canonica la previsualizacion de posibles drops, incluyendo el renderizado de nombres y el bloque visual correspondiente. La revelacion posterior al completado, la resolucion de drops, las entregas y la persistencia no se modifican. F2 queda en curso hasta verificarlo como jugador.
+2026-09-02 - Save guard: la carga del save se convierte en barrera obligatoria antes de ejecutar instaladores de contenido. saveGame() bloquea escrituras prematuras, verifica la escritura y los instaladores se ejecutan desde main.js solo tras una carga valida.
+2026-09-02 - Save guard test: update2_transaction.test.js se adapta al contrato de registro y ejecucion posterior a la barrera de carga. El test comprueba que no hay instalacion ni guardado antes de autorizar el instalador y conserva las pruebas de rollback, reintento e idempotencia.
 2026-09-02 - F1: se incorpora en engine.js la autoridad canonica createTaskCompletionId(), llamada por el flujo unico de completado de ui_tasks.js. El identificador es determinista por tarea, fecha y secuencia del mismo dia; no se crean caminos alternativos ni se modifican recompensas o contenido. F1 queda en curso hasta verificar el recorrido completo como jugador.
 
 2026-09-02 - F1: se confirma el fallo de presentacion del resultado por una llamada a getXpForNextLevel() que no existe en main. La correccion usa el resultado de addXp() como unica fuente de subida de nivel. Ademas, se elimina la llamada inexistente a handleEmergencyDataRoute() en main.js, que abortaba el registro de todos los listeners durante el arranque y dejaba Complete sin accion. F1 queda en curso hasta verificar el recorrido completo como jugador.
