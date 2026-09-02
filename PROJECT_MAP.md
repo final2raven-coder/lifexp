@@ -481,7 +481,7 @@ F1
 
 En curso
 
-Se corrige la excepcion de finalizeCompletion() y el bloqueo de inicializacion causado por la llamada inexistente a handleEmergencyDataRoute() en main.js. Pendiente verificar como jugador el completado, el resultado y la persistencia
+El flujo canonico de completado existe en ui_tasks.js y llama a createTaskCompletionId(), cuya autoridad se incorpora en engine.js. El arreglo no crea un camino alternativo ni modifica drops, quests o balance. Pendiente verificar como jugador el completado, el resultado y la persistencia
 
 F2
 
@@ -728,6 +728,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 14. Changelog operativo
+
+2026-09-02 - F1: se incorpora en engine.js la autoridad canonica createTaskCompletionId(), llamada por el flujo unico de completado de ui_tasks.js. El identificador es determinista por tarea, fecha y secuencia del mismo dia; no se crean caminos alternativos ni se modifican recompensas o contenido. F1 queda en curso hasta verificar el recorrido completo como jugador.
 
 2026-09-02 - F1: se confirma el fallo de presentacion del resultado por una llamada a getXpForNextLevel() que no existe en main. La correccion usa el resultado de addXp() como unica fuente de subida de nivel. Ademas, se elimina la llamada inexistente a handleEmergencyDataRoute() en main.js, que abortaba el registro de todos los listeners durante el arranque y dejaba Complete sin accion. F1 queda en curso hasta verificar el recorrido completo como jugador.
 
