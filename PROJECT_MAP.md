@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-2a968e1d8123064728fc8d7b22d22b51232f1de6
+5c6215056dde6a0b38d60200740ed648bcbb4c8a
 
 Build efectiva
 
@@ -479,15 +479,15 @@ Mapa compacto fusionado en main; Actions confirmado manualmente como desbloquead
 
 F1
 
-Completada
+En curso
 
-El flujo canonico de completado existe en ui_tasks.js y llama a createTaskCompletionId(), cuya autoridad vive en engine.js. El arreglo no crea un camino alternativo ni modifica drops, quests o balance. PR #61 fusionado; verificacion funcional realizada por Angel
+El flujo canonico de completado existe en ui_tasks.js y llama a createTaskCompletionId(), cuya autoridad se incorpora en engine.js. El arreglo no crea un camino alternativo ni modifica drops, quests o balance. Pendiente verificar como jugador el completado, el resultado y la persistencia
 
 F2
 
-En curso
+Completada
 
-La previsualizacion de drops posibles se retira de la pantalla canonica y se conserva la revelacion posterior al completado. Pendiente verificacion como jugador
+La previsualizacion de drops posibles se retiro de la pantalla canonica y se conserva la revelacion posterior al completado. Verificacion como jugador realizada por Angel
 
 F3
 
@@ -729,7 +729,6 @@ cambios recientes que afectan al trabajo futuro.
 
 14. Changelog operativo
 
-2026-09-02 - F2: se retira de la pantalla canonica la previsualizacion de posibles drops, incluyendo el renderizado de nombres y el bloque visual correspondiente. La revelacion posterior al completado, la resolucion de drops, las entregas y la persistencia no se modifican. F2 queda en curso hasta verificarlo como jugador.
 2026-09-02 - F1: se incorpora en engine.js la autoridad canonica createTaskCompletionId(), llamada por el flujo unico de completado de ui_tasks.js. El identificador es determinista por tarea, fecha y secuencia del mismo dia; no se crean caminos alternativos ni se modifican recompensas o contenido. F1 queda en curso hasta verificar el recorrido completo como jugador.
 
 2026-09-02 - F1: se confirma el fallo de presentacion del resultado por una llamada a getXpForNextLevel() que no existe en main. La correccion usa el resultado de addXp() como unica fuente de subida de nivel. Ademas, se elimina la llamada inexistente a handleEmergencyDataRoute() en main.js, que abortaba el registro de todos los listeners durante el arranque y dejaba Complete sin accion. F1 queda en curso hasta verificar el recorrido completo como jugador.

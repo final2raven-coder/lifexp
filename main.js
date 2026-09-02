@@ -221,8 +221,16 @@ async function registerAndVerifyLifeXPServiceWorker() {
 // ===========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Load game
-  loadGame();
+  // Load and validate the player's save before any content installer may persist.
+  const saveLoaded = loadGame();
+  if (saveLoaded) {
+    try {
+      runLifeXPContentInstallers();
+    } catch (error) {
+      console.error('[LifeXP] Content installation was blocked after save loading:', error);
+      if (typeof showToast === 'function') showToast('Official content was not installed. Your save was protected.', 'error');
+    }
+  }
   initializeLifeXPHistory();
   document.addEventListener('keydown', handleLifeXPKeydown);
   window.addEventListener('popstate', handleLifeXPBack);
