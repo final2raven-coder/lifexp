@@ -481,7 +481,7 @@ F1
 
 En curso
 
-Se confirma y corrige la excepcion que impedia llegar al resultado: finalizeCompletion() usaba getXpForNextLevel(), inexistente en main. Pendiente verificar el estado visual del boton y probar como jugador el recorrido desde categoria
+Se corrige la excepcion de finalizeCompletion() y el bloqueo de inicializacion causado por la llamada inexistente a handleEmergencyDataRoute() en main.js. Pendiente verificar como jugador el completado, el resultado y la persistencia
 
 F2
 
@@ -729,7 +729,7 @@ cambios recientes que afectan al trabajo futuro.
 
 14. Changelog operativo
 
-2026-09-02 - F1: se confirma el fallo de presentacion del resultado por una llamada a getXpForNextLevel() que no existe en main. La correccion usa el resultado de addXp() como unica fuente de subida de nivel. F1 queda en curso hasta verificar el boton de completado y la prueba de jugador.
+2026-09-02 - F1: se confirma el fallo de presentacion del resultado por una llamada a getXpForNextLevel() que no existe en main. La correccion usa el resultado de addXp() como unica fuente de subida de nivel. Ademas, se elimina la llamada inexistente a handleEmergencyDataRoute() en main.js, que abortaba el registro de todos los listeners durante el arranque y dejaba Complete sin accion. F1 queda en curso hasta verificar el recorrido completo como jugador.
 
 2026-09-02 - F0: mapa reducido a estado operativo. Se corrige el commit de main, se actualizan las ramas existentes, se retira historial redundante, se registra el GDD independiente, se marca Actions como desbloqueado y se deja la descompresion/catalogacion del ZIP para F13.
 

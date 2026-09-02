@@ -227,9 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', handleLifeXPKeydown);
   window.addEventListener('popstate', handleLifeXPBack);
 
-  // Emergency save tools also work when the Settings UI is unresponsive.
-  handleEmergencyDataRoute();
-
   // Quest discovery buttons: explicit listeners avoid issues with inline handlers
   // when the app is served from a PWA cache or a restrictive WebView.
   document.getElementById('btn-show-available-quests')?.addEventListener('click', showAvailableQuests);
