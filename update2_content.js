@@ -1,137 +1,244 @@
-'use strict';
+// LifeXP Update 2 - additive, idempotent content installation.
+(function () {
+  'use strict';
 
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+  const UPDATE_ID = 'lifexp_update2_ashbrand_quests';
+  const ASHBRAND_ID = 'cuchilla_llameante';
 
-const update2Source = fs.readFileSync(path.join(__dirname, '..', 'update2_content.js'), 'utf8');
-
-class MemoryStorage {
-  constructor(initial = {}) {
-    this.values = new Map(Object.entries(initial));
-  }
-
-  getItem(key) { return this.values.has(key) ? this.values.get(key) : null; }
-  setItem(key, value) { this.values.set(String(key), String(value)); }
-  removeItem(key) { this.values.delete(String(key)); }
-}
-
-function createDocument() {
-  return {
-    readyState: 'complete',
-    body: { appendChild() {} },
-    getElementById() { return null; },
-    createElement() {
-      return { style: {}, setAttribute() {}, textContent: '' };
+  const ASHBRAND = {
+    id: ASHBRAND_ID,
+    name: 'Ashbrand',
+    type: 'weapon',
+    rarity: 'rare',
+    icon: 'FIRE',
+    desc: 'A short sword taken from a shrine after the fire had gone out. The blade is warm. It does not glow.',
+    lore: 'Ashbrand remembers a fire that refused to become a ruin.',
+    stats: {},
+    value: 120,
+    themes: ['fuego', 'fuego_comida', 'ash'],
+    effects: [
+      { id: 'burning_edge', name: 'Burning Edge', trigger: 'passive', unlockStage: 1, description: 'Attacks can apply Burn for 3 turns.' },
+      { id: 'pressure', name: 'Pressure', trigger: 'passive', unlockStage: 3, activationRequired: true, description: 'A burning target can receive another, shorter Burn.' }
+    ],
+    attunement: {
+      required: true,
+      max: 3,
+      minimumStage: 1,
+      themes: ['fuego', 'fuego_comida', 'ash'],
+      stages: ['The grip is cold.', 'The edge holds its heat.', 'The old fire answers your hand.']
     }
   };
-}
 
-function createContext(options = {}) {
-  const storage = new MemoryStorage({ lifexp_save: options.rawSave || '{"player":"before"}' });
-  const errors = [];
-  const saveCalls = [];
-  const registeredInstallers = [];
-  const context = {
-    localStorage: storage,
-    document: createDocument(),
-    window: { LifeXPInventory: {} },
-    console: { error() {}, warn() {} },
-    showToast(message) { errors.push(String(message)); },
-    ITEMS: { base_item: { id: 'base_item' } },
-    ENEMIES: { base_enemy: { id: 'base_enemy' } },
-    QUESTS: { daily_any_3: { name: 'Original quest' } },
-    DEFAULT_TASKS: [{
-      id: 'base_task',
-      drops: { theme: 'base_theme', items: ['base_item'] },
-      sideQuest: { drops: ['base_item'] }
-    }],
-    DROP_TABLES: { base_theme: ['base_item'] },
-    THEME_ENEMIES: { base_theme: ['base_enemy'] },
-    EXPANSION_ITEMS_V1: { update_item: { id: 'update_item' } },
-    EXPANSION_DROP_TABLES_V1: { update_theme: ['update_item'] },
-    EXPANSION_ENEMIES_V1: { update_enemy: { id: 'update_enemy', drops: [{ itemId: 'update_item' }] } },
-    EXPANSION_QUESTS_V1: {
-      update_quest: {
-        id: 'update_quest',
-        name: 'Update quest',
-        reward: { items: ['update_item'] },
-        chapters: [{ id: 'chapter_one', rewards: { items: ['base_item'] } }]
+  const QUEST_PATCHES = {
+    daily_any_3: { name: 'The Threefold Ember', desc: 'Three small flames must answer before the watch can begin.', setting: 'The refuge keeps one ember alive for every path you tend.', lore: 'Old wardens never spoke of grand victories. They counted the lights that remained lit.' },
+    daily_casa_2: { name: 'The Quiet Hearth', desc: 'Restore two corners of the refuge before the evening bell.', setting: 'Dust gathers where the refuge walls meet, hiding marks left by former keepers.', lore: 'A clean hearth is not empty. It is a promise that someone intends to return.' },
+    daily_cuerpo_2: { name: 'The Travellers Readiness', desc: 'Strengthen the body before the road asks for its price.', setting: 'Beyond the refuge, the road begins with the body you bring to it.', lore: 'The old route-makers measured readiness by what could be carried without complaint.' }
+  };
+
+  function cloneValue(value) {
+    if (value === undefined) return undefined;
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function captureMutableTarget(snapshots, name, target) {
+    if (target && typeof target === 'object') snapshots.push({ name, target, value: cloneValue(target) });
+  }
+
+  function captureTransactionSnapshot() {
+    const snapshots = [];
+    if (typeof ITEMS !== 'undefined') captureMutableTarget(snapshots, 'ITEMS', ITEMS);
+    if (typeof ENEMIES !== 'undefined') captureMutableTarget(snapshots, 'ENEMIES', ENEMIES);
+    if (typeof QUESTS !== 'undefined') captureMutableTarget(snapshots, 'QUESTS', QUESTS);
+    if (typeof DEFAULT_TASKS !== 'undefined') captureMutableTarget(snapshots, 'DEFAULT_TASKS', DEFAULT_TASKS);
+    if (typeof DROP_TABLES !== 'undefined') captureMutableTarget(snapshots, 'DROP_TABLES', DROP_TABLES);
+    if (typeof THEME_ENEMIES !== 'undefined') captureMutableTarget(snapshots, 'THEME_ENEMIES', THEME_ENEMIES);
+    if (typeof EXPANSION_ITEMS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_ITEMS_V1', EXPANSION_ITEMS_V1);
+    if (typeof EXPANSION_DROP_TABLES_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_DROP_TABLES_V1', EXPANSION_DROP_TABLES_V1);
+    if (typeof EXPANSION_ENEMIES_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_ENEMIES_V1', EXPANSION_ENEMIES_V1);
+    if (typeof EXPANSION_QUESTS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_QUESTS_V1', EXPANSION_QUESTS_V1);
+    if (typeof EXPANSION_TASKS_V1 !== 'undefined') captureMutableTarget(snapshots, 'EXPANSION_TASKS_V1', EXPANSION_TASKS_V1);
+    return {
+      rawSave: localStorage.getItem('lifexp_save'),
+      snapshots,
+      gameState: typeof gameState !== 'undefined' ? cloneValue(gameState) : undefined
+    };
+  }
+
+  function restoreMutableTarget(snapshot) {
+    const target = snapshot.target;
+    if (Array.isArray(target)) {
+      target.length = 0;
+      target.push(...cloneValue(snapshot.value));
+      return;
+    }
+    for (const key of Object.keys(target)) delete target[key];
+    Object.assign(target, cloneValue(snapshot.value));
+  }
+
+  function restoreTransactionSnapshot(snapshot) {
+    snapshot.snapshots.forEach(restoreMutableTarget);
+    if (snapshot.gameState !== undefined && typeof gameState !== 'undefined') {
+      for (const key of Object.keys(gameState)) delete gameState[key];
+      Object.assign(gameState, cloneValue(snapshot.gameState));
+    }
+    if (snapshot.rawSave === null || snapshot.rawSave === undefined) localStorage.removeItem('lifexp_save');
+    else localStorage.setItem('lifexp_save', snapshot.rawSave);
+  }
+
+  function writeBackup(rawSave) {
+    if (rawSave !== null && rawSave !== undefined) localStorage.setItem('lifexp_update2_backup', rawSave);
+  }
+
+  function assertExpansionLoadOrder() {
+    const missing = [
+      ['EXPANSION_ITEMS_V1', typeof EXPANSION_ITEMS_V1 !== 'undefined' && EXPANSION_ITEMS_V1 && typeof EXPANSION_ITEMS_V1 === 'object'],
+      ['EXPANSION_DROP_TABLES_V1', typeof EXPANSION_DROP_TABLES_V1 !== 'undefined' && EXPANSION_DROP_TABLES_V1 && typeof EXPANSION_DROP_TABLES_V1 === 'object'],
+      ['EXPANSION_ENEMIES_V1', typeof EXPANSION_ENEMIES_V1 !== 'undefined' && EXPANSION_ENEMIES_V1 && typeof EXPANSION_ENEMIES_V1 === 'object'],
+      ['EXPANSION_QUESTS_V1', typeof EXPANSION_QUESTS_V1 !== 'undefined' && EXPANSION_QUESTS_V1 && typeof EXPANSION_QUESTS_V1 === 'object'],
+      ['EXPANSION_TASKS_V1', typeof EXPANSION_TASKS_V1 !== 'undefined' && Array.isArray(EXPANSION_TASKS_V1)]
+    ].filter(([, available]) => !available);
+
+    if (missing.length > 0) throw new Error(`Expansion load order incomplete: ${missing.map(([name]) => name).join(', ')}`);
+  }
+
+  function assertExpansionInstalled() {
+    const missing = [
+      ['ITEMS', ASHBRAND_ID, typeof ITEMS !== 'undefined' && ITEMS],
+      ['QUESTS', 'daily_any_3', typeof QUESTS !== 'undefined' && QUESTS]
+    ].filter(([, id, catalog]) => !catalog || !Object.prototype.hasOwnProperty.call(catalog, id));
+
+    const missingItems = Object.keys(EXPANSION_ITEMS_V1).filter(id => !Object.prototype.hasOwnProperty.call(ITEMS, id));
+    const missingDropTables = Object.keys(EXPANSION_DROP_TABLES_V1).filter(theme => !Object.prototype.hasOwnProperty.call(DROP_TABLES, theme));
+    const missingEnemies = Object.keys(EXPANSION_ENEMIES_V1).filter(id => !Object.prototype.hasOwnProperty.call(ENEMIES, id));
+    const missingQuests = Object.keys(EXPANSION_QUESTS_V1).filter(id => !Object.prototype.hasOwnProperty.call(QUESTS, id));
+    const missingTasks = EXPANSION_TASKS_V1.filter(task => !DEFAULT_TASKS.some(existing => existing.id === task.id));
+
+    if (missing.length || missingItems.length || missingDropTables.length || missingEnemies.length || missingQuests.length || missingTasks.length) {
+      throw new Error([
+        ...missing.map(([catalog, id]) => `${catalog}: ${id}`),
+        missingItems.length > 0 ? `items: ${missingItems.join(', ')}` : '',
+        missingDropTables.length > 0 ? `drop tables: ${missingDropTables.join(', ')}` : '',
+        missingEnemies.length > 0 ? `enemies: ${missingEnemies.join(', ')}` : '',
+        missingQuests.length > 0 ? `quests: ${missingQuests.join(', ')}` : '',
+        missingTasks.length > 0 ? `tasks: ${missingTasks.map(task => task.id).join(', ')}` : ''
+      ].filter(Boolean).join('; '));
+    }
+  }
+
+  const CANONICAL_ITEM_ID_RE = /^[a-z0-9_]+$/;
+
+  function hasCanonicalItem(itemId) {
+    return typeof itemId === 'string'
+      && CANONICAL_ITEM_ID_RE.test(itemId)
+      && Object.prototype.hasOwnProperty.call(ITEMS, itemId);
+  }
+
+  function inspectItemReference(errors, context, itemId) {
+    if (typeof itemId !== 'string' || !CANONICAL_ITEM_ID_RE.test(itemId)) {
+      errors.push(`${context}: "${String(itemId)}" is not a canonical item ID.`);
+      return;
+    }
+    if (!hasCanonicalItem(itemId)) errors.push(`${context}: item ID "${itemId}" is not declared in ITEMS.`);
+  }
+
+  function inspectItemList(errors, context, items) {
+    if (!Array.isArray(items)) {
+      errors.push(`${context} must be an array of canonical item IDs.`);
+      return;
+    }
+    items.forEach((itemId, index) => inspectItemReference(errors, `${context}[${index}]`, itemId));
+  }
+
+  function inspectDropPayload(errors, context, payload) {
+    if (payload === null || payload === undefined) return;
+    if (Array.isArray(payload)) {
+      inspectItemList(errors, context, payload);
+      return;
+    }
+    if (typeof payload !== 'object') {
+      errors.push(`${context} must be an array or an object with an items array.`);
+      return;
+    }
+    inspectItemList(errors, `${context}.items`, payload.items);
+  }
+
+  function inspectEnemyDrops(errors, enemyId, drops) {
+    if (drops === null || drops === undefined) return;
+    if (!Array.isArray(drops)) {
+      errors.push(`ENEMIES["${enemyId}"].drops must be an array.`);
+      return;
+    }
+    drops.forEach((drop, index) => {
+      const itemId = typeof drop === 'string' ? drop : drop && drop.itemId;
+      if (itemId === undefined) {
+        errors.push(`ENEMIES["${enemyId}"].drops[${index}] must declare itemId.`);
+        return;
       }
-    },
-    EXPANSION_TASKS_V1: [{
-      id: 'update_task',
-      drops: { theme: 'update_theme', items: ['update_item'] },
-      sideQuest: { drops: { theme: 'base_theme', items: ['base_item'] } }
-    }],
-    gameState: {
-      inventory: [{ id: 'existing_item', qty: 2 }],
-      stash: [],
-      equipment: { weapon: null },
-      customState: { preserved: true }
+      inspectItemReference(errors, `ENEMIES["${enemyId}"].drops[${index}].itemId`, itemId);
+    });
+  }
+
+  function inspectQuestReward(errors, context, reward) {
+    if (reward === undefined || reward === null) return;
+    if (Array.isArray(reward)) {
+      inspectItemList(errors, `${context}.items`, reward);
+      return;
     }
-  };
-  context.globalThis = context;
-  context.registerLifeXPContentInstaller = installer => {
-    if (typeof installer !== 'function') throw new Error('Test installer must be a function.');
-    registeredInstallers.push(installer);
-  };
-  context.saveGame = () => {
-    saveCalls.push(true);
-    if (!options.writeSave) return false;
-    context.localStorage.setItem('lifexp_save', JSON.stringify(context.gameState));
-    return true;
-  };
-  context.installExpansionItems = () => {
-    Object.assign(context.ITEMS, context.EXPANSION_ITEMS_V1);
-    Object.assign(context.DROP_TABLES, context.EXPANSION_DROP_TABLES_V1);
-  };
-  context.installExpansionEnemies = () => {
-    Object.assign(context.ENEMIES, context.EXPANSION_ENEMIES_V1);
-    if (options.failInstaller === 'enemies') throw new Error('synthetic enemy installer failure');
-  };
-  context.installExpansionQuests = () => {
-    Object.assign(context.QUESTS, context.EXPANSION_QUESTS_V1);
-  };
-  context.installExpansionTasks = () => {
-    context.DEFAULT_TASKS.push(...context.EXPANSION_TASKS_V1);
-  };
-  context.renderQuests = () => {
-    if (options.failAfterInstall === 'quests') throw new Error('synthetic quest render failure');
-  };
-  context.renderInventory = () => {};
-
-  if (options.invalidRewardReference === 'task') {
-    context.EXPANSION_TASKS_V1[0].drops.items = ['missing_item'];
-  }
-  if (options.invalidRewardReference === 'sideQuestArray') {
-    context.DEFAULT_TASKS[0].sideQuest.drops = ['missing_item'];
-  }
-  if (options.invalidRewardReference === 'sideQuestObject') {
-    context.EXPANSION_TASKS_V1[0].sideQuest.drops.items = ['missing_item'];
-  }
-  if (options.invalidRewardReference === 'enemy') {
-    context.EXPANSION_ENEMIES_V1.update_enemy.drops = [{ itemId: 'missing_item' }];
-  }
-  if (options.invalidRewardReference === 'dropTable') {
-    context.EXPANSION_DROP_TABLES_V1.update_theme = ['missing_item'];
-  }
-  if (options.invalidRewardReference === 'questReward') {
-    context.EXPANSION_QUESTS_V1.update_quest.reward.items = ['missing_item'];
-  }
-  if (options.invalidRewardReference === 'chapterReward') {
-    context.EXPANSION_QUESTS_V1.update_quest.chapters[0].rewards.items = ['missing_item'];
+    if (typeof reward !== 'object') {
+      errors.push(`${context} must be an object or an array.`);
+      return;
+    }
+    if (reward.items !== undefined) inspectItemList(errors, `${context}.items`, reward.items);
+    if (reward.itemId !== undefined) inspectItemReference(errors, `${context}.itemId`, reward.itemId);
   }
 
-  vm.createContext(context);
-  return { context, storage, errors, saveCalls, registeredInstallers };
-}
+  function assertRewardReferences() {
+    const errors = [];
 
-function runUpdate(harness) {
-  vm.runInContext(update2Source, harness.context, { filename: 'update2_content.js' });
-  if (harness.registeredInstallers.length !== 1) {
-    throw new Error(`Expected one registered installer, received ${harness.registeredInstallers.length}.`);
+    for (const [theme, pool] of Object.entries(DROP_TABLES)) {
+      if (Array.isArray(pool)) inspectItemList(errors, `DROP_TABLES["${theme}"]`, pool);
+    }
+
+    for (const [enemyId, enemy] of Object.entries(ENEMIES)) {
+      inspectEnemyDrops(errors, enemyId, enemy && enemy.drops);
+    }
+
+    for (const task of DEFAULT_TASKS) {
+      const taskId = task && task.id ? task.id : '<unknown>';
+      if (task && task.drops !== undefined) inspectDropPayload(errors, `TASKS["${taskId}"].drops`, task.drops);
+      if (task && task.sideQuest && task.sideQuest.drops !== undefined) {
+        inspectDropPayload(errors, `TASKS["${taskId}"].sideQuest.drops`, task.sideQuest.drops);
+      }
+    }
+
+    for (const [questId, quest] of Object.entries(QUESTS)) {
+      if (!quest || typeof quest !== 'object') continue;
+      inspectQuestReward(errors, `QUESTS["${questId}"].reward`, quest.reward);
+      inspectQuestReward(errors, `QUESTS["${questId}"].rewards`, quest.rewards);
+      if (Array.isArray(quest.chapters)) {
+        quest.chapters.forEach((chapter, index) => {
+          const chapterId = chapter && chapter.id ? chapter.id : index;
+          inspectQuestReward(errors, `QUESTS["${questId}"].chapters[${chapterId}].reward`, chapter && chapter.reward);
+          inspectQuestReward(errors, `QUESTS["${questId}"].chapters[${chapterId}].rewards`, chapter && chapter.rewards);
+        });
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Reward reference validation failed: ${errors.join(' ')}`);
+    }
+  }
+
+  function reportInstallFailure(error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (typeof showToast === 'function') showToast(`Update 2 no instalado: ${message}`);
+    if (typeof console !== 'undefined' && console.error) console.error('[LifeXP] Update 2 rollback:', message);
+  }
+
+  function restoreAshbrand() {
+    if (typeof ITEMS === 'undefined') return;
+    const current = ITEMS[ASHBRAND_ID];
+    if (!current || current.id !== ASHBRAND_ID) ITEMS[ASHBRAND_ID] = cloneValue(ASHBRAND);
   }
 
   function patchQuests() {
@@ -156,94 +263,30 @@ function runUpdate(harness) {
     }
   }
 
-  runUpdate(harness);
-  const firstState = snapshot(harness);
-  const firstSave = harness.storage.getItem('lifexp_save');
+  function install() {
+    if (typeof gameState !== 'undefined' && gameState.__lifexpUpdate2 === UPDATE_ID) return;
 
-  assert.deepEqual(calls, [
-    'installExpansionItems',
-    'installExpansionEnemies',
-    'installExpansionQuests',
-    'installExpansionTasks'
-  ]);
-  assert.equal(harness.context.gameState.__lifexpUpdate2, 'lifexp_update2_ashbrand_quests');
-  assert.equal(harness.context.ITEMS.update_item.id, 'update_item');
-  assert.equal(harness.context.ITEMS.cuchilla_llameante.id, 'cuchilla_llameante');
-  assert.equal(harness.context.ENEMIES.update_enemy.id, 'update_enemy');
-  assert.equal(harness.context.QUESTS.daily_any_3.setting, 'The refuge keeps one ember alive for every path you tend.');
-  assert.equal(harness.context.DEFAULT_TASKS.filter(task => task.id === 'update_task').length, 1);
-  assert.equal(harness.saveCalls.length, 1);
-  assert.equal(firstSave, JSON.stringify(harness.context.gameState));
+    const transaction = captureTransactionSnapshot();
+    writeBackup(transaction.rawSave);
 
-  runUpdate(harness);
-  assert.equal(harness.saveCalls.length, 1);
-  assert.equal(snapshot(harness), firstState);
-  assert.equal(harness.storage.getItem('lifexp_update2_backup'), '{"player":"before"}');
-}
-
-function testInstallerFailureRollsBackAndCanRetry() {
-  const harness = createContext({ writeSave: true, failInstaller: 'enemies' });
-  const before = snapshot(harness);
-  const rawBefore = harness.storage.getItem('lifexp_save');
-
-  runUpdate(harness);
-
-  assert.equal(snapshot(harness), before);
-  assert.equal(harness.storage.getItem('lifexp_save'), rawBefore);
-  assert.equal(harness.context.gameState.__lifexpUpdate2, undefined);
-  assert.equal(harness.saveCalls.length, 0);
-  assert.equal(harness.storage.getItem('lifexp_update2_backup'), rawBefore);
-  assert.equal(harness.errors.length, 1);
-  assert.match(harness.errors[0], /synthetic enemy installer failure/);
-
-  makeSuccessfulInstallers(harness);
-  runUpdate(harness);
-  assert.equal(harness.context.gameState.__lifexpUpdate2, 'lifexp_update2_ashbrand_quests');
-  assert.equal(harness.context.DEFAULT_TASKS.filter(task => task.id === 'update_task').length, 1);
-  assert.equal(harness.saveCalls.length, 1);
-}
-
-function testPostInstallFailureRollsBack() {
-  const harness = createContext({ writeSave: true, failAfterInstall: 'quests' });
-  const before = snapshot(harness);
-  const rawBefore = harness.storage.getItem('lifexp_save');
-
-  runUpdate(harness);
-
-  assert.equal(snapshot(harness), before);
-  assert.equal(harness.storage.getItem('lifexp_save'), rawBefore);
-  assert.equal(harness.context.gameState.__lifexpUpdate2, undefined);
-  assert.equal(harness.saveCalls.length, 0);
-  assert.equal(harness.errors.length, 1);
-  assert.match(harness.errors[0], /synthetic quest render failure/);
-}
-
-
-function testRewardReferenceValidationRollsBackEveryDropShape() {
-  const cases = [
-    ['task', 'TASKS["update_task"].drops.items'],
-    ['sideQuestArray', 'TASKS["base_task"].sideQuest.drops'],
-    ['sideQuestObject', 'TASKS["update_task"].sideQuest.drops.items'],
-    ['enemy', 'ENEMIES["update_enemy"].drops[0].itemId'],
-    ['dropTable', 'DROP_TABLES["update_theme"]'],
-    ['questReward', 'QUESTS["update_quest"].reward.items'],
-    ['chapterReward', 'QUESTS["update_quest"].chapters[chapter_one].rewards.items']
-  ];
-
-  for (const [invalidRewardReference, contextLabel] of cases) {
-    const harness = createContext({ writeSave: true, invalidRewardReference });
-    const before = snapshot(harness);
-    const rawBefore = harness.storage.getItem('lifexp_save');
-
-    runUpdate(harness);
-
-    assert.equal(snapshot(harness), before, contextLabel);
-    assert.equal(harness.storage.getItem('lifexp_save'), rawBefore, contextLabel);
-    assert.equal(harness.context.gameState.__lifexpUpdate2, undefined, contextLabel);
-    assert.equal(harness.saveCalls.length, 0, contextLabel);
-    assert.equal(harness.errors.length, 1, contextLabel);
-    assert.match(harness.errors[0], /Reward reference validation failed/, contextLabel);
-    assert.match(harness.errors[0], /missing_item/, contextLabel);
+    try {
+      assertExpansionLoadOrder();
+      installExpansionItems();
+      restoreAshbrand();
+      installExpansionEnemies();
+      installExpansionQuests();
+      patchQuests();
+      installExpansionTasks();
+      assertExpansionInstalled();
+      assertRewardReferences();
+      restoreAshbrand();
+      if (typeof renderQuests === 'function') renderQuests();
+      if (typeof renderInventory === 'function') renderInventory();
+      commitSave();
+    } catch (error) {
+      restoreTransactionSnapshot(transaction);
+      reportInstallFailure(error);
+    }
   }
 
   // Register during script loading. main.js runs the installer only after loadGame() succeeds.
