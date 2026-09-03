@@ -72,11 +72,20 @@ const DEFAULT_GAME_STATE = {
   completedQuests: [],
   
   // Canonical quest state
+  // questModelVersion is independent from saveVersion so DT-24 can evolve
+  // without rewriting the global save migration chain.
+  questModelVersion: 2,
   quests: {
     active: [],
     completed: [],
     failed: [],
-    dailyReset: null
+    dailyReset: null,
+    slotLimits: {
+      personal_project: 3,
+      guild_order: 1
+    },
+    availableFollowUps: [],
+    derivedTasks: []
   },
 
   // Item system
@@ -473,6 +482,11 @@ function getOverflowCount(cat) {
 // ===========================================================================
 
 const CURRENT_SAVE_VERSION = 4;
+const CURRENT_QUEST_MODEL_VERSION = 2;
+const DEFAULT_QUEST_SLOT_LIMITS = Object.freeze({
+  personal_project: 3,
+  guild_order: 1
+});
 const PREMIGRATION_SNAPSHOT_PREFIX = 'lifexp_premigration_';
 const MAX_PREMIGRATION_SNAPSHOTS = 3;
 
@@ -482,6 +496,111 @@ function cloneSaveState(value) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeQuestSlotLimits(value, warnings = [], path = 'quests.slotLimits') {
+  const source = isPlainObject(value) ? value : {};
+  const normalized = { ...DEFAULT_QUEST_SLOT_LIMITS };
+  for (const [group, defaultLimit] of Object.entries(DEFAULT_QUEST_SLOT_LIMITS)) {
+    const limit = source[group];
+    if (Number.isInteger(limit) && limit >= 0) {
+      normalized[group] = limit;
+    } else if (Object.prototype.hasOwnProperty.call(source, group)) {
+      recordSchemaDefault(warnings, `${path}.${group}`);
+    }
+  }
+  return normalized;
+}
+
+function normalizeCompletionIds(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(id => typeof id === 'string' && id.length > 0))];
+}
+
+function normalizeQuestObjectiveState(objective) {
+  if (!isPlainObject(objective)) return objective;
+  const normalized = { ...objective };
+  normalized.consumedCompletionIds = normalizeCompletionIds(normalized.consumedCompletionIds);
+  return normalized;
+}
+
+function normalizeQuestStageState(stage, index) {
+  if (!isPlainObject(stage)) {
+    return {
+      id: `stage_${index + 1}`,
+      status: index === 0 ? 'active' : 'locked',
+      objectives: []
+    };
+  }
+  const normalized = { ...stage };
+  normalized.id = typeof normalized.id === 'string' && normalized.id ? normalized.id : `stage_${index + 1}`;
+  normalized.status = ['locked', 'active', 'completed'].includes(normalized.status)
+    ? normalized.status
+    : (index === 0 ? 'active' : 'locked');
+  normalized.objectives = Array.isArray(normalized.objectives)
+    ? normalized.objectives.map(normalizeQuestObjectiveState)
+    : [];
+  return normalized;
+}
+
+function normalizeQuestInstanceState(value) {
+  if (!isPlainObject(value)) return value;
+  const normalized = { ...value };
+  if (Array.isArray(normalized.objectives)) {
+    normalized.objectives = normalized.objectives.map(normalizeQuestObjectiveState);
+  }
+  if (Array.isArray(normalized.stages)) {
+    normalized.stages = normalized.stages.map(normalizeQuestStageState);
+  }
+  if (!Number.isInteger(normalized.currentStage) || normalized.currentStage < 0) {
+    normalized.currentStage = 0;
+  }
+  normalized.derivedTaskIds = Array.isArray(normalized.derivedTaskIds)
+    ? [...new Set(normalized.derivedTaskIds.filter(id => typeof id === 'string' && id))]
+    : [];
+  return normalized;
+}
+
+function normalizeDerivedTaskState(value) {
+  if (!isPlainObject(value)) {
+    return {
+      status: 'needs_review',
+      rawValue: value === undefined ? null : cloneSaveState(value),
+      taskHistory: []
+    };
+  }
+  const normalized = { ...value };
+  if (typeof normalized.id !== 'string' || !normalized.id) normalized.status = 'needs_review';
+  if (!['pending', 'accepted', 'completed', 'expired', 'needs_review'].includes(normalized.status)) {
+    normalized.status = 'pending';
+  }
+  if (typeof normalized.sourceQuestId !== 'string' || !normalized.sourceQuestId) normalized.status = 'needs_review';
+  if (typeof normalized.templateId !== 'string' || !normalized.templateId) normalized.status = 'needs_review';
+  if (!Array.isArray(normalized.taskHistory)) normalized.taskHistory = [];
+  return normalized;
+}
+
+function normalizeQuestPersistence(state, warnings = []) {
+  if (!isPlainObject(state.quests)) state.quests = cloneSaveState(DEFAULT_GAME_STATE.quests);
+  const questState = state.quests;
+  if (!Array.isArray(questState.active)) questState.active = [];
+  if (!Array.isArray(questState.completed)) questState.completed = [];
+  if (!Array.isArray(questState.failed)) questState.failed = [];
+  if (questState.dailyReset !== null && typeof questState.dailyReset !== 'string') questState.dailyReset = null;
+  questState.slotLimits = normalizeQuestSlotLimits(questState.slotLimits, warnings);
+  questState.availableFollowUps = Array.isArray(questState.availableFollowUps)
+    ? [...new Set(questState.availableFollowUps.filter(id => typeof id === 'string' && id))]
+    : [];
+  questState.derivedTasks = Array.isArray(questState.derivedTasks)
+    ? questState.derivedTasks.map(normalizeDerivedTaskState)
+    : [];
+  for (const questId of new Set([...questState.active, ...questState.completed, ...questState.failed])) {
+    if (typeof questId === 'string' && isPlainObject(questState[questId])) {
+      questState[questId] = normalizeQuestInstanceState(questState[questId]);
+    }
+  }
+  state.questModelVersion = CURRENT_QUEST_MODEL_VERSION;
+  return state;
 }
 
 // ===========================================================================
@@ -800,11 +919,19 @@ function applySchemaDefaults(input, warnings = []) {
   if (!Array.isArray(state.activeQuests)) { state.activeQuests = []; recordSchemaDefault(warnings, 'activeQuests'); }
   if (!Array.isArray(state.completedQuests)) { state.completedQuests = []; recordSchemaDefault(warnings, 'completedQuests'); }
 
+  if (!isFiniteNumber(state.questModelVersion) || !Number.isInteger(state.questModelVersion) || state.questModelVersion < 1) {
+    state.questModelVersion = 1;
+    recordSchemaDefault(warnings, 'questModelVersion');
+  }
   state.quests = isPlainObject(state.quests) ? { ...defaults.quests, ...state.quests } : cloneSaveState(defaults.quests);
   if (!Array.isArray(state.quests.active)) { state.quests.active = []; recordSchemaDefault(warnings, 'quests.active'); }
   if (!Array.isArray(state.quests.completed)) { state.quests.completed = []; recordSchemaDefault(warnings, 'quests.completed'); }
   if (!Array.isArray(state.quests.failed)) { state.quests.failed = []; recordSchemaDefault(warnings, 'quests.failed'); }
   if (state.quests.dailyReset !== null && typeof state.quests.dailyReset !== 'string') { state.quests.dailyReset = null; recordSchemaDefault(warnings, 'quests.dailyReset'); }
+  if (!isPlainObject(state.quests.slotLimits)) { recordSchemaDefault(warnings, 'quests.slotLimits'); }
+  if (!Array.isArray(state.quests.availableFollowUps)) { recordSchemaDefault(warnings, 'quests.availableFollowUps'); }
+  if (!Array.isArray(state.quests.derivedTasks)) { recordSchemaDefault(warnings, 'quests.derivedTasks'); }
+  normalizeQuestPersistence(state, warnings);
 
   const rawSkills = isPlainObject(state.skills) ? state.skills : null;
   state.skills = normalizeSkillState(rawSkills);
@@ -1056,6 +1183,7 @@ function migrateV2ToV3(state, context = {}) {
 
 function migrateV4ToCurrent(state) {
   if (state.name === 'Aventurero') state.name = 'Adventurer';
+  normalizeQuestPersistence(state);
   return state;
 }
 
