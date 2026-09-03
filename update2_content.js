@@ -474,9 +474,20 @@
     });
   }
 
+  function isManifestRuntimeReady(manifest) {
+    try {
+      assertRequiredResources(manifest);
+      assertManifestInstalled(manifest);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function installManifest(manifest) {
     if (!manifest || typeof manifest !== 'object') throw new Error('Content manifest is unavailable.');
-    if (typeof gameState !== 'undefined' && gameState[manifest.marker] === manifest.id) return;
+    const markerMatches = typeof gameState !== 'undefined' && gameState[manifest.marker] === manifest.id;
+    if (markerMatches && isManifestRuntimeReady(manifest)) return;
 
     const transaction = captureTransactionSnapshot();
     writeBackup(transaction.rawSave);
@@ -490,7 +501,7 @@
           if (!installer) throw new Error(`${context}: installer "${operation.functionName}" is unavailable.`);
           installer();
         } else if (operation.type === 'ensureEntries') {
-          ensureEntries(getCatalog(operation.target), operation.entries, context);
+          ensureEntries(getCatalog(operation.target), operation.entries, operation.onConflict, context);
         } else if (operation.type === 'patchEntries') {
           patchEntries(getCatalog(operation.target), operation.entries, operation.missing, context);
         } else {

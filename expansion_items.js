@@ -156,7 +156,6 @@ const EXPANSION_DROP_TABLES_V1 = {
 };
 
 function installExpansionItems() {
-  if (installExpansionItems._installed) return;
   installExpansionItems._installed = true;
   Object.assign(ITEMS, EXPANSION_ITEMS_V1);
   // Merge expansion drop tables into existing DROP_TABLES (additive, per-theme)
