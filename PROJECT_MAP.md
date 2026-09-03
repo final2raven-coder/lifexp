@@ -147,7 +147,7 @@ Responsabilidad
 
 engine.js
 
-gameState, schema del save, migraciones v0->v4, tareas, disponibilidad, historial, XP, stats, navegacion y resultados pendientes
+gameState, schema del save, migraciones v0->v4, submodelo persistente de quests DT-24, tareas, disponibilidad, historial, XP, stats, navegacion y resultados pendientes
 
 combat.js
 
@@ -260,6 +260,10 @@ Fixtures de migraciones y disponibilidad
 tests/update2_transaction.test.js
 
 Fixtures de instalacion, recompensas, rollback e idempotencia
+
+tests/dt24_quest_schema.test.js
+
+Migracion, defaults, normalizacion idempotente y recuperacion del esquema persistente de quests DT-24
 
 manifest.json
 
@@ -742,6 +746,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-03 - DT-24 Goal 2: se anade el submodelo persistente de quests con questModelVersion 2, cupos declarativos personal_project/guild_order, etapas, completionIds por objetivo, follow-ups y tareas derivadas. La normalizacion es aditiva, idempotente y no cambia saveVersion: 4; los registros derivados invalidos quedan conservados como needs_review. Se anade la prueba permanente tests/dt24_quest_schema.test.js. Goal 2 completado; la aceptacion, el progreso, las recompensas y la UI quedan para goals separados.
 
 2026-09-03 - DT-23: la instalacion declarativa ya no confunde el marcador persistente con el estado runtime; valida los catalogos antes de omitir trabajo, corrige el paso de la politica onConflict a ensureEntries, permite rehidratar el instalador de items y reintenta pendingLoot tras cargar contenido. Se conserva claimId, se evita duplicacion y el save original no se modifica.
 
