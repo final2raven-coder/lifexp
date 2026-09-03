@@ -71,6 +71,77 @@ test('normalization is idempotent and preserves valid quest progress data', () =
   assert.deepEqual([...twice.quests.quest_alpha.derivedTaskIds], ['derived-1']);
 });
 
+
+test('normalizes a completed staged quest to an explicit terminal state', () => {
+  const context = createContext();
+  const state = context.migrateState({
+    saveVersion: 4,
+    quests: {
+      active: ['quest_sequence'],
+      completed: [],
+      failed: [],
+      dailyReset: null,
+      quest_sequence: {
+        status: 'active',
+        currentStage: 1,
+        stages: [
+          { id: 'stage_1', status: 'completed', objectives: [] },
+          { id: 'stage_2', status: 'active', objectives: [] }
+        ]
+      }
+    }
+  });
+
+  state.quests.quest_sequence.stages[1].status = 'completed';
+  context.normalizeQuestPersistence(state);
+
+  assert.equal(state.quests.quest_sequence.status, 'completed');
+  assert.equal(state.quests.quest_sequence.currentStage, null);
+  assert.deepEqual(
+    state.quests.quest_sequence.stages.map(stage => stage.status),
+    ['completed', 'completed']
+  );
+  assert.deepEqual(state.quests.active, []);
+  assert.deepEqual(state.quests.completed, ['quest_sequence']);
+
+  const snapshot = JSON.stringify(state);
+  context.normalizeQuestPersistence(state);
+  assert.equal(JSON.stringify(state), snapshot);
+});
+
+test('an active staged quest keeps only its current stage active', () => {
+  const context = createContext();
+  const state = context.migrateState({
+    saveVersion: 4,
+    quests: {
+      active: ['quest_sequence'],
+      completed: [],
+      failed: [],
+      dailyReset: null,
+      quest_sequence: {
+        status: 'active',
+        currentStage: 1,
+        stages: [
+          { id: 'stage_1', status: 'active', objectives: [] },
+          { id: 'stage_2', status: 'active', objectives: [] },
+          { id: 'stage_3', status: 'locked', objectives: [] }
+        ]
+      }
+    }
+  });
+
+  context.normalizeQuestPersistence(state);
+
+  assert.equal(state.quests.quest_sequence.status, 'active');
+  assert.equal(state.quests.quest_sequence.currentStage, 1);
+  assert.deepEqual(
+    state.quests.quest_sequence.stages.map(stage => stage.status),
+    ['completed', 'active', 'locked']
+  );
+  assert.deepEqual(state.quests.active, ['quest_sequence']);
+  assert.deepEqual(state.quests.completed, []);
+});
+
 test('invalid DT-24 collections receive safe defaults and remain recoverable', () => {
   const context = createContext();
   const state = context.migrateState({

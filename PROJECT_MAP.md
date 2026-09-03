@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-5c6215056dde6a0b38d60200740ed648bcbb4c8a
+77d66dd82eb8098485486ab5b3890536465d2ab0
 
 Build efectiva
 
@@ -750,6 +750,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-03 - DT-24 terminal contract: una quest secuencial completada se normaliza con status completed, currentStage null, todas sus etapas completed, ID ausente de active y presente en completed. La reconciliacion es determinista e idempotente; Goal 4 sigue sin implementarse.
 
 2026-09-03 - DT-24 Goal 3: la aceptacion de quests usa cupos declarativos por grupo mediante getQuestSlotGroup(), getQuestSlotLimit() y getQuestAcceptanceStatus(). personal_project permite 3 quests activas y guild_order permite 1 de forma independiente; se elimina el limite global de 3. Se anade tests/dt24_quest_slots.test.js. Goal 3 completado; etapas, progreso compartido, tareas derivadas, follow-ups y UI quedan para goals separados.
 

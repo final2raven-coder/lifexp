@@ -543,18 +543,70 @@ function normalizeQuestStageState(stage, index) {
   return normalized;
 }
 
-function normalizeQuestInstanceState(value) {
+const QUEST_INSTANCE_STATUS = Object.freeze({
+  active: 'active',
+  completed: 'completed',
+  failed: 'failed',
+  needsReview: 'needs_review'
+});
+
+function normalizeQuestInstanceState(value, context = {}) {
   if (!isPlainObject(value)) return value;
   const normalized = { ...value };
   if (Array.isArray(normalized.objectives)) {
     normalized.objectives = normalized.objectives.map(normalizeQuestObjectiveState);
   }
-  if (Array.isArray(normalized.stages)) {
+
+  const hasStages = Array.isArray(normalized.stages);
+  if (hasStages) {
     normalized.stages = normalized.stages.map(normalizeQuestStageState);
   }
-  if (!Number.isInteger(normalized.currentStage) || normalized.currentStage < 0) {
-    normalized.currentStage = 0;
+
+  const statusWasCompleted = normalized.status === QUEST_INSTANCE_STATUS.completed;
+  const statusWasFailed = normalized.status === QUEST_INSTANCE_STATUS.failed;
+  const stagesAreComplete = hasStages && normalized.stages.length > 0
+    && normalized.stages.every(stage => stage.status === QUEST_INSTANCE_STATUS.completed);
+  const isTerminal = context.completed === true || statusWasCompleted || stagesAreComplete;
+
+  if (isTerminal) {
+    // Terminal state is explicit and self-contained. Collection membership is
+    // reconciled by normalizeQuestPersistence, while this object guarantees
+    // that no stage index can point back into a completed quest.
+    normalized.status = QUEST_INSTANCE_STATUS.completed;
+    normalized.currentStage = null;
+    if (hasStages) {
+      normalized.stages = normalized.stages.map(stage => ({
+        ...stage,
+        status: QUEST_INSTANCE_STATUS.completed
+      }));
+    }
+  } else if (statusWasFailed || context.failed === true) {
+    normalized.status = QUEST_INSTANCE_STATUS.failed;
+    normalized.currentStage = null;
+  } else if (context.active === true || normalized.status === QUEST_INSTANCE_STATUS.active || hasStages) {
+    normalized.status = QUEST_INSTANCE_STATUS.active;
+    if (hasStages && normalized.stages.length > 0) {
+      const declaredStage = Number.isInteger(normalized.currentStage) ? normalized.currentStage : -1;
+      const firstActiveStage = normalized.stages.findIndex(stage => stage.status === QUEST_INSTANCE_STATUS.active);
+      const fallbackStage = firstActiveStage >= 0 ? firstActiveStage : 0;
+      const currentStage = Math.min(
+        normalized.stages.length - 1,
+        Math.max(0, declaredStage >= 0 ? declaredStage : fallbackStage)
+      );
+      normalized.currentStage = currentStage;
+      normalized.stages = normalized.stages.map((stage, index) => ({
+        ...stage,
+        status: index < currentStage
+          ? QUEST_INSTANCE_STATUS.completed
+          : index === currentStage
+            ? QUEST_INSTANCE_STATUS.active
+            : 'locked'
+      }));
+    } else if (!Number.isInteger(normalized.currentStage) || normalized.currentStage < 0) {
+      normalized.currentStage = 0;
+    }
   }
+
   normalized.derivedTaskIds = Array.isArray(normalized.derivedTaskIds)
     ? [...new Set(normalized.derivedTaskIds.filter(id => typeof id === 'string' && id))]
     : [];
@@ -594,9 +646,26 @@ function normalizeQuestPersistence(state, warnings = []) {
   questState.derivedTasks = Array.isArray(questState.derivedTasks)
     ? questState.derivedTasks.map(normalizeDerivedTaskState)
     : [];
-  for (const questId of new Set([...questState.active, ...questState.completed, ...questState.failed])) {
-    if (typeof questId === 'string' && isPlainObject(questState[questId])) {
-      questState[questId] = normalizeQuestInstanceState(questState[questId]);
+  const questIds = new Set([...questState.active, ...questState.completed, ...questState.failed]);
+  for (const questId of questIds) {
+    if (typeof questId !== 'string' || !isPlainObject(questState[questId])) continue;
+    const normalized = normalizeQuestInstanceState(questState[questId], {
+      active: questState.active.includes(questId),
+      completed: questState.completed.includes(questId),
+      failed: questState.failed.includes(questId)
+    });
+    questState[questId] = normalized;
+
+    // Keep the collection indexes and the instance status as one canonical
+    // state. In particular, a terminal staged instance cannot remain active.
+    if (normalized.status === QUEST_INSTANCE_STATUS.completed) {
+      questState.active = questState.active.filter(id => id !== questId);
+      questState.failed = questState.failed.filter(id => id !== questId);
+      if (!questState.completed.includes(questId)) questState.completed.push(questId);
+    } else if (normalized.status === QUEST_INSTANCE_STATUS.failed) {
+      questState.active = questState.active.filter(id => id !== questId);
+      questState.completed = questState.completed.filter(id => id !== questId);
+      if (!questState.failed.includes(questId)) questState.failed.push(questId);
     }
   }
   state.questModelVersion = CURRENT_QUEST_MODEL_VERSION;
