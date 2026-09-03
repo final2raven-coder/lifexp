@@ -230,6 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('[LifeXP] Content installation was blocked after save loading:', error);
       if (typeof showToast === 'function') showToast('Official content was not installed. Your save was protected.', 'error');
     }
+    try {
+      const inventory = typeof window !== 'undefined' ? window.LifeXPInventory : null;
+      if (inventory && typeof inventory.retryPendingLoot === 'function') inventory.retryPendingLoot();
+    } catch (error) {
+      console.error('[LifeXP] Pending reward recovery failed after content installation:', error);
+      if (typeof showToast === 'function') showToast('Pending rewards remain recoverable. Please try again.', 'error');
+    }
   }
   initializeLifeXPHistory();
   document.addEventListener('keydown', handleLifeXPKeydown);

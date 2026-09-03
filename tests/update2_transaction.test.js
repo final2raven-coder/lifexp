@@ -213,6 +213,25 @@ function testSuccessfulInstallationAndIdempotence() {
   assert.equal(harness.storage.getItem('lifexp_update2_backup'), '{"player":"before"}');
 }
 
+function testExistingMarkerDoesNotBlockRuntimeRehydration() {
+  const harness = createContext({ writeSave: true });
+  harness.context.gameState.__lifexpUpdate2 = 'lifexp_update2_ashbrand_quests';
+  delete harness.context.ITEMS.update_item;
+  delete harness.context.ITEMS.cuchilla_llameante;
+  delete harness.context.ENEMIES.update_enemy;
+  harness.context.DEFAULT_TASKS = harness.context.DEFAULT_TASKS.filter(task => task.id !== 'update_task');
+
+  runUpdate(harness);
+
+  assert.equal(harness.context.ITEMS.update_item.id, 'update_item');
+  assert.equal(harness.context.ITEMS.cuchilla_llameante.id, 'cuchilla_llameante');
+  assert.equal(harness.context.ENEMIES.update_enemy.id, 'update_enemy');
+  assert.equal(harness.context.QUESTS.daily_any_3.name, 'The Threefold Ember');
+  assert.equal(harness.context.DEFAULT_TASKS.filter(task => task.id === 'update_task').length, 1);
+  assert.equal(harness.context.gameState.__lifexpUpdate2, 'lifexp_update2_ashbrand_quests');
+  assert.equal(harness.saveCalls.length, 1);
+}
+
 function testInstallerFailureRollsBackAndCanRetry() {
   const harness = createContext({ writeSave: true, failInstaller: 'enemies' });
   const before = snapshot(harness);
@@ -281,6 +300,7 @@ function testRewardReferenceValidationRollsBackEveryDropShape() {
 
 testInstallerWaitsForSaveLoadBarrier();
 testSuccessfulInstallationAndIdempotence();
+testExistingMarkerDoesNotBlockRuntimeRehydration();
 testInstallerFailureRollsBackAndCanRetry();
 testPostInstallFailureRollsBack();
 testRewardReferenceValidationRollsBackEveryDropShape();

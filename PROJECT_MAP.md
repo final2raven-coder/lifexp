@@ -331,13 +331,16 @@ La frontera captura catalogos mutables, gameState y los bytes originales del sav
 
 Update 2 usa esta API mediante un manifiesto compatible. Sus funciones installExpansion* permanecen como adaptadores existentes y no se amplian con nuevos parches por ID.
 
+Si el marcador persistente de Update 2 ya existe, la frontera verifica tambien que los catalogos runtime sigan completos. Un marcador valido no evita la rehidratacion cuando falta contenido en memoria. Tras la instalacion o rehidratacion, main.js reintenta pendingLoot mediante LifeXPInventory.retryPendingLoot(), conservando claimId y evitando duplicados mediante rewardLedger.
+
+DT-23 - Rehidratacion de contenido: corregida la diferencia entre contenido marcado como instalado y contenido realmente disponible en runtime. Las recompensas pendientes se recuperan de forma determinista despues de cargar el catalogo; las no resolubles permanecen visibles y recuperables.
+
 Campos criticos:
 
 name, level, xp, gold, streak, lastActiveDate
 stats: fue, vit, des, int, vol, pre
 tasks, savedTasks, taskHistory
 inventory, equipment, stash, stashCapacity, inventoryCapacityBonus
-materialInteractions: { version: 1, ledger, discoveredUses }
 pendingLoot: { version: 1, entries: [] }
 rewardLedger
 classId, classLevel
@@ -426,19 +429,7 @@ rewardLedger evita duplicados.
 
 Las recompensas aseguradas de una quest son independientes del loot normal. Las quests desconocidas o parcialmente migrables no se borran silenciosamente.
 
-6.5 Interacciones de materiales (A1)
-
-El save puede contener materialInteractions: { version: 1, ledger, discoveredUses }. El ledger registra operaciones declarativas de materiales sin ejecutar efectos de consumidor.
-
-Una definicion de interaccion declara id, requirements [{ itemId, quantity, consume }], location (any, home o away) y metadata. Las referencias se resuelven contra ITEMS y cada requisito debe apuntar a un material con cantidad entera positiva.
-
-LifeXPMaterialInteractions.reserve() valida la ubicacion y la disponibilidad, reserva primero inventory y despues stash solo con contexto home, y persiste una unica entrada atomica. Fuera de home solo cuenta inventory. commit() consume las cantidades declaradas una vez, conserva las marcadas con consume: false y es idempotente por operationId. release() cierra una reserva sin consumo.
-
-Las reservas se consideran activas en estado reserved o recoverable y bloquean retiradas incompatibles. Al cargar el save, una reserva anterior no cerrada pasa a recoverable con motivo de interrupcion; nunca se consume ni se libera silenciosamente. La reconciliacion no ejecuta efectos de consumidor: estos pertenecen a bloques posteriores.
-
-A1 no incluye pantalla de uso, transiciones hogar/fuera, recetas, investigaciones, requisitos de quests, eventos, finales alternativos, combate ni contenido concreto de Friendship Token.
-
-6.6 Combate y habilidades
+6.5 Combate y habilidades
 
 gameState.skills es la fuente de verdad para habilidades del jugador.
 
@@ -640,6 +631,12 @@ Hay referencias de items inexistentes en drops legacy de tareas
 
 Resolver como contenido/datos; no crear objetos ficticios
 
+DT-23
+
+El marcador de Update 2 podia ocultar catalogos runtime incompletos y dejar recompensas recuperables sin entregar
+
+Rehidratar catalogos y reintentar pendingLoot de forma idempotente; cerrado en este bloque local, pendiente de PR manual
+
 F13
 
 El workflow y la descompresion/catalogacion del ZIP no estan verificados
@@ -745,6 +742,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-03 - DT-23: la instalacion declarativa ya no confunde el marcador persistente con el estado runtime; valida los catalogos antes de omitir trabajo, corrige el paso de la politica onConflict a ensureEntries, permite rehidratar el instalador de items y reintenta pendingLoot tras cargar contenido. Se conserva claimId, se evita duplicacion y el save original no se modifica.
 
 2026-09-02 - Bloque 2: update2_content.js migra a una frontera generica basada en manifiestos declarativos. Se conservan la marca historica, los IDs, la instalacion aditiva, la validacion de recompensas, el backup y el rollback; las funciones installExpansion* quedan como adaptadores de compatibilidad y no se anaden nuevos parches por ID.
 
