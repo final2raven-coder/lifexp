@@ -219,7 +219,7 @@ ENEMIES y THEME_ENEMIES
 
 quests.js
 
-QUESTS y aliases canonicos de UI
+QUESTS, cupos independientes declarativos de DT-24 y aliases canonicos de UI
 
 data_tasks.js
 
@@ -264,6 +264,10 @@ Fixtures de instalacion, recompensas, rollback e idempotencia
 tests/dt24_quest_schema.test.js
 
 Migracion, defaults, normalizacion idempotente y recuperacion del esquema persistente de quests DT-24
+
+tests/dt24_quest_slots.test.js
+
+Cupos independientes de proyectos personales y encargos de guild
 
 manifest.json
 
@@ -746,6 +750,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-03 - DT-24 Goal 3: la aceptacion de quests usa cupos declarativos por grupo mediante getQuestSlotGroup(), getQuestSlotLimit() y getQuestAcceptanceStatus(). personal_project permite 3 quests activas y guild_order permite 1 de forma independiente; se elimina el limite global de 3. Se anade tests/dt24_quest_slots.test.js. Goal 3 completado; etapas, progreso compartido, tareas derivadas, follow-ups y UI quedan para goals separados.
 
 2026-09-03 - DT-24 Goal 2: se anade el submodelo persistente de quests con questModelVersion 2, cupos declarativos personal_project/guild_order, etapas, completionIds por objetivo, follow-ups y tareas derivadas. La normalizacion es aditiva, idempotente y no cambia saveVersion: 4; los registros derivados invalidos quedan conservados como needs_review. Se anade la prueba permanente tests/dt24_quest_schema.test.js. Goal 2 completado; la aceptacion, el progreso, las recompensas y la UI quedan para goals separados.
 

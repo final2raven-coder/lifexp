@@ -238,15 +238,58 @@ const QUESTS = {
 // QUEST STATE MANAGEMENT
 // ===========================================================================
 
+const DEFAULT_QUEST_ORIGIN = 'personal';
+const DEFAULT_QUEST_SLOT_GROUP = 'personal_project';
+
+function getQuestSlotGroup(quest) {
+  if (!quest || typeof quest !== 'object') return DEFAULT_QUEST_SLOT_GROUP;
+  if (typeof quest.slotGroup === 'string' && quest.slotGroup.trim()) return quest.slotGroup;
+  if (typeof quest.origin === 'string' && quest.origin === 'guild') return 'guild_order';
+  return DEFAULT_QUEST_SLOT_GROUP;
+}
+
+function getQuestSlotLimit(slotGroup) {
+  const limits = gameState.quests && gameState.quests.slotLimits;
+  if (limits && Number.isInteger(limits[slotGroup]) && limits[slotGroup] >= 0) return limits[slotGroup];
+  if (typeof DEFAULT_QUEST_SLOT_LIMITS !== 'undefined' && Number.isInteger(DEFAULT_QUEST_SLOT_LIMITS[slotGroup])) {
+    return DEFAULT_QUEST_SLOT_LIMITS[slotGroup];
+  }
+  return 0;
+}
+
+function getActiveQuestCountBySlotGroup(slotGroup) {
+  return gameState.quests.active.reduce((count, questId) => {
+    const quest = QUESTS[questId];
+    return count + (getQuestSlotGroup(quest) === slotGroup ? 1 : 0);
+  }, 0);
+}
+
+function getQuestAcceptanceStatus(quest) {
+  const slotGroup = getQuestSlotGroup(quest);
+  const limit = getQuestSlotLimit(slotGroup);
+  const used = getActiveQuestCountBySlotGroup(slotGroup);
+  return {
+    allowed: used < limit,
+    slotGroup,
+    limit,
+    used,
+    remaining: Math.max(0, limit - used)
+  };
+}
+
 function initQuestState() {
   if (!gameState.quests) {
     gameState.quests = {
       active: [],      // Quest IDs currently active
       completed: [],   // Quest IDs completed
       failed: [],      // Quest IDs failed
-      dailyReset: null // Last daily reset date
+      dailyReset: null,
+      slotLimits: { personal_project: 3, guild_order: 1 },
+      availableFollowUps: [],
+      derivedTasks: []
     };
   }
+  if (typeof normalizeQuestPersistence === 'function') normalizeQuestPersistence(gameState);
 }
 
 function getActiveQuests() {
@@ -266,6 +309,7 @@ function getAvailableQuests() {
   return Object.values(QUESTS).filter(q => {
     // Not already active or completed (unless repeatable)
     if (gameState.quests.active.includes(q.id)) return false;
+    if (q.slotGroup && getQuestSlotLimit(q.slotGroup) === 0) return false;
     if (gameState.quests.completed.includes(q.id) && !q.repeatable) return false;
     
     // Level requirement
@@ -466,9 +510,12 @@ function acceptQuest(questId) {
   const quest = QUESTS[questId];
   if (!quest) return false;
   
-  // Check max active quests (3)
-  if (gameState.quests.active.length >= 3) {
-    return { success: false, message: 'Ya tienes 3 misiones activas.' };
+  const acceptance = getQuestAcceptanceStatus(quest);
+  if (!acceptance.allowed) {
+    const message = acceptance.slotGroup === 'guild_order'
+      ? 'You already have the maximum number of active guild orders.'
+      : 'You already have the maximum number of active personal projects.';
+    return { success: false, reason: 'slot_limit_reached', slotGroup: acceptance.slotGroup, limit: acceptance.limit, used: acceptance.used, message };
   }
   
   // Initialize quest state
@@ -478,6 +525,8 @@ function acceptQuest(questId) {
     instanceId: createQuestInstanceId(questId),
     objectives: quest.objectives ? quest.objectives.map(o => ({ ...o, progress: 0 })) : [],
     currentChapter: 0,
+    origin: typeof quest.origin === 'string' ? quest.origin : DEFAULT_QUEST_ORIGIN,
+    slotGroup: acceptance.slotGroup,
     rewardApplication: { final: null, chapters: {} }
   };
   
