@@ -563,6 +563,7 @@ function completeQuest(questId) {
   ensureQuestRewardState(questId, questState);
   
   // Move from active to completed
+  if (Array.isArray(questState.stages)) markStagedQuestTerminal(questId, questState);
   gameState.quests.active = gameState.quests.active.filter(id => id !== questId);
   if (!gameState.quests.completed.includes(questId)) {
     gameState.quests.completed.push(questId);
@@ -633,99 +634,205 @@ function retryQuestRewards(questId) {
 // QUEST PROGRESS TRACKING
 // ===========================================================================
 
-function updateQuestProgress(eventType, data) {
-  initQuestState();
-  
-  gameState.quests.active.forEach(questId => {
+function getQuestProgressCompletionId(data = {}) {
+  const candidates = [data.completionId, data.claimId, data.eventId];
+  return candidates.find(value => typeof value === 'string' && value.length > 0) || null;
+}
+
+function stagedObjectiveMatchesEvent(objective, eventType, data = {}) {
+  if (!objective || typeof objective !== 'object') return false;
+  const normalizedEventType = eventType === 'task_complete' ? 'task_completed' : eventType;
+  switch (objective.type) {
+    case 'complete_tasks':
+      return normalizedEventType === 'task_completed'
+        && (!objective.category || objective.category === data.category);
+    case 'defeat_enemy':
+      return normalizedEventType === 'enemy_defeated'
+        && objective.enemyId === data.enemyId;
+    case 'defeat_boss':
+      return normalizedEventType === 'boss_defeated'
+        && objective.enemyId === data.enemyId;
+    case 'reach_level':
+      return normalizedEventType === 'level_up'
+        && Number(data.level) >= Number(objective.level);
+    case 'equip_item':
+      return normalizedEventType === 'item_equipped'
+        && (!objective.itemId || objective.itemId === data.itemId);
+    default:
+      return false;
+  }
+}
+
+function applyStagedObjectiveEvent(objective, eventType, data, completionId) {
+  if (!stagedObjectiveMatchesEvent(objective, eventType, data)) return false;
+  if (!Array.isArray(objective.consumedCompletionIds)) objective.consumedCompletionIds = [];
+  if (objective.consumedCompletionIds.includes(completionId)) return false;
+
+  objective.consumedCompletionIds.push(completionId);
+  const target = Number.isFinite(Number(objective.count))
+    ? Math.max(1, Number(objective.count))
+    : 1;
+  const currentProgress = Number.isFinite(Number(objective.progress))
+    ? Math.max(0, Number(objective.progress))
+    : 0;
+
+  if (objective.type === 'reach_level') {
+    objective.progress = Math.max(currentProgress, Number(data.level));
+  } else if (objective.type === 'equip_item' || objective.type === 'defeat_boss') {
+    objective.progress = Math.max(currentProgress, 1);
+  } else {
+    objective.progress = Math.min(target, currentProgress + 1);
+  }
+  objective.completed = objective.type === 'reach_level'
+    ? objective.progress >= Number(objective.level)
+    : objective.progress >= target;
+  return true;
+}
+
+function markStagedQuestTerminal(questId, questState) {
+  if (!questState || !Array.isArray(questState.stages)) return false;
+  questState.status = QUEST_STATUS.completed;
+  questState.currentStage = null;
+  questState.stages = questState.stages.map(stage => ({
+    ...stage,
+    status: QUEST_STATUS.completed
+  }));
+  gameState.quests.active = gameState.quests.active.filter(id => id !== questId);
+  gameState.quests.failed = gameState.quests.failed.filter(id => id !== questId);
+  if (!gameState.quests.completed.includes(questId)) gameState.quests.completed.push(questId);
+  return true;
+}
+
+function advanceStagedQuest(questId, questState, eventType, data = {}) {
+  if (!questState || !Array.isArray(questState.stages)) return false;
+  const completionId = getQuestProgressCompletionId(data);
+  if (!completionId) return false;
+
+  const currentStageIndex = Number.isInteger(questState.currentStage)
+    ? questState.currentStage
+    : questState.stages.findIndex(stage => stage.status === QUEST_STATUS.active);
+  if (currentStageIndex < 0 || currentStageIndex >= questState.stages.length) return false;
+  const currentStage = questState.stages[currentStageIndex];
+  if (!currentStage || currentStage.status !== QUEST_STATUS.active) return false;
+
+  let updated = false;
+  currentStage.objectives.forEach(objective => {
+    if (objective.completed) return;
+    updated = applyStagedObjectiveEvent(objective, eventType, data, completionId) || updated;
+  });
+  if (!updated) return false;
+
+  const stageComplete = currentStage.objectives.length > 0
+    && currentStage.objectives.every(objective => objective.completed);
+  if (!stageComplete) return true;
+
+  const nextStageIndex = currentStageIndex + 1;
+  if (nextStageIndex >= questState.stages.length) {
+    // Let completeQuest() perform its existing terminal reward flow while the
+    // instance is still active. Normalizing all stages first would remove it
+    // from active before completeQuest() can apply the final package.
     const quest = QUESTS[questId];
-    if (!quest) return;
-    
+    if (quest) {
+      completeQuest(questId);
+    } else {
+      currentStage.status = QUEST_STATUS.completed;
+      markStagedQuestTerminal(questId, questState);
+    }
+    return true;
+  }
+
+  currentStage.status = QUEST_STATUS.completed;
+  questState.currentStage = nextStageIndex;
+  questState.stages = questState.stages.map((stage, index) => ({
+    ...stage,
+    status: index < nextStageIndex
+      ? QUEST_STATUS.completed
+      : index === nextStageIndex
+        ? QUEST_STATUS.active
+        : QUEST_STATUS.locked
+  }));
+  return true;
+}
+
+function updateQuestProgress(eventType, data = {}) {
+  initQuestState();
+  let updated = false;
+
+  [...gameState.quests.active].forEach(questId => {
+    const quest = QUESTS[questId];
     const questState = gameState.quests[questId];
     if (!questState) return;
-    
-    // Get current objectives (story quests use chapters)
+
+    // DT-24 staged quests are state-driven so a valid persisted instance can
+    // progress even when its optional catalog definition is unavailable.
+    if (Array.isArray(questState.stages)) {
+      updated = advanceStagedQuest(questId, questState, eventType, data) || updated;
+      return;
+    }
+    if (!quest) return;
+
+    // Legacy objective model remains supported for existing quests.
     let objectives = questState.objectives || [];
-    
     if (quest.type === 'story' && quest.chapters) {
       const chapter = quest.chapters[questState.currentChapter || 0];
       if (chapter) {
-        objectives = questState.chapterObjectives?.[questState.currentChapter] || 
-                     chapter.objectives.map(o => ({ ...o, progress: 0 }));
+        objectives = questState.chapterObjectives?.[questState.currentChapter]
+          || chapter.objectives.map(o => ({ ...o, progress: 0 }));
       }
     }
-    
-    let updated = false;
-    
+
+    let legacyUpdated = false;
     objectives.forEach(obj => {
       if (obj.completed) return;
-      
-      switch (obj.type) {
-        case 'complete_tasks':
-          if (eventType === 'task_completed') {
-            if (!obj.category || obj.category === data.category) {
-              obj.progress = (obj.progress || 0) + 1;
-              if (obj.progress >= obj.count) obj.completed = true;
-              updated = true;
-            }
+      switch (eventType) {
+        case 'task_completed':
+        case 'task_complete':
+          if (obj.type === 'complete_tasks' && (!obj.category || obj.category === data.category)) {
+            obj.progress = (obj.progress || 0) + 1;
+            if (obj.progress >= obj.count) obj.completed = true;
+            legacyUpdated = true;
           }
           break;
-          
-        case 'defeat_enemy':
-          if (eventType === 'enemy_defeated') {
-            if (obj.enemyId === data.enemyId) {
-              obj.progress = (obj.progress || 0) + 1;
-              if (obj.progress >= obj.count) obj.completed = true;
-              updated = true;
-            }
+        case 'enemy_defeated':
+          if (obj.type === 'defeat_enemy' && obj.enemyId === data.enemyId) {
+            obj.progress = (obj.progress || 0) + 1;
+            if (obj.progress >= obj.count) obj.completed = true;
+            legacyUpdated = true;
           }
           break;
-          
-        case 'defeat_boss':
-          if (eventType === 'boss_defeated') {
-            if (obj.enemyId === data.enemyId) {
-              obj.progress = 1;
-              obj.completed = true;
-              updated = true;
-            }
+        case 'boss_defeated':
+          if (obj.type === 'defeat_boss' && obj.enemyId === data.enemyId) {
+            obj.progress = 1;
+            obj.completed = true;
+            legacyUpdated = true;
           }
           break;
-          
-        case 'reach_level':
-          if (eventType === 'level_up') {
-            if (data.level >= obj.level) {
-              obj.progress = data.level;
-              obj.completed = true;
-              updated = true;
-            }
+        case 'level_up':
+          if (obj.type === 'reach_level' && data.level >= obj.level) {
+            obj.progress = data.level;
+            obj.completed = true;
+            legacyUpdated = true;
           }
           break;
-          
-        case 'equip_item':
-          if (eventType === 'item_equipped') {
-            if (!obj.itemId || obj.itemId === data.itemId) {
-              obj.progress = 1;
-              obj.completed = true;
-              updated = true;
-            }
+        case 'item_equipped':
+          if (obj.type === 'equip_item' && (!obj.itemId || obj.itemId === data.itemId)) {
+            obj.progress = 1;
+            obj.completed = true;
+            legacyUpdated = true;
           }
           break;
       }
     });
-    
-    if (updated) {
-      // Check if all objectives completed
-      const allDone = objectives.every(o => o.completed);
-      
-      if (allDone) {
+
+    if (legacyUpdated) {
+      updated = true;
+      if (objectives.every(o => o.completed)) {
         if (quest.type === 'story' && quest.chapters) {
-          // Advance chapter
           const nextChapter = (questState.currentChapter || 0) + 1;
           if (nextChapter >= quest.chapters.length) {
-            // Story complete
             completeQuest(questId);
           } else {
             questState.currentChapter = nextChapter;
-            // Grant the completed chapter package with a stable claim.
             const chapter = quest.chapters[nextChapter - 1];
             if (chapter?.rewards) {
               grantQuestRewards(chapter.rewards, {
@@ -741,10 +848,11 @@ function updateQuestProgress(eventType, data) {
           completeQuest(questId);
         }
       }
-      
-      saveGame();
     }
   });
+
+  if (updated) saveGame();
+  return updated;
 }
 
 // ===========================================================================

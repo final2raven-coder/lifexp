@@ -849,6 +849,20 @@ function resolveAutoCombat(enemy) {
 // REWARDS
 // ═══════════════════════════════════════════════════════════════════════════
 
+function recordCombatQuestProgress(members) {
+  if (typeof updateQuestProgress !== 'function' || !combatState) return;
+  members.forEach(member => {
+    const enemyId = member?.id || member?.name;
+    if (!enemyId) return;
+    const eventType = member.type === 'boss' ? 'boss_defeated' : 'enemy_defeated';
+    const instanceId = member.instanceId || enemyId;
+    updateQuestProgress(eventType, {
+      enemyId,
+      completionId: `${combatState.rewardClaimId}:defeat:${instanceId}`
+    });
+  });
+}
+
 function calculateCombatRewards() {
   if (!combatState || combatState.phase !== 'victory') return null;
   if (combatState.rewards) return combatState.rewards;
@@ -884,6 +898,7 @@ function calculateCombatRewards() {
   }
   
   combatState.rewards = rewards;
+  recordCombatQuestProgress(members);
   
   addCombatLog(`📦 Recompensas: +${rewards.xp} XP, +${rewards.gold} oro`);
   if (rewards.drops.length > 0) {

@@ -168,9 +168,11 @@ function getXpProgress() {
 function addXp(amount) {
   gameState.xp += amount;
   let leveledUp = false;
+  const reachedLevels = [];
   while (gameState.xp >= xpForLevel(gameState.level)) {
     gameState.xp -= xpForLevel(gameState.level);
     gameState.level++;
+    reachedLevels.push(gameState.level);
     leveledUp = true;
   }
   if (leveledUp) {
@@ -178,6 +180,12 @@ function addXp(amount) {
     if (typeof showLevelUpEffect === 'function') showLevelUpEffect();
     if (typeof triggerHaptic === 'function') triggerHaptic();
     if (typeof showToast === 'function') showToast(`Level ${gameState.level}!`, 'gold');
+    if (typeof updateQuestProgress === 'function') {
+      reachedLevels.forEach(level => updateQuestProgress('level_up', {
+        level,
+        completionId: `level:${level}`
+      }));
+    }
   }
   return leveledUp;
 }

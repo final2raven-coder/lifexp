@@ -751,6 +751,8 @@ cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
 
+2026-09-04 - DT-24 Goal 4: se implementa la progresion canonica de quests por etapas sobre el estado persistente; los completionIds se consumen una sola vez por objetivo, las etapas avanzan de forma determinista y el estado terminal queda normalizado. Los emisores canonicos de tareas, combate, nivel y equipamiento envian eventos con completionId determinista. Se anaden pruebas aisladas de progreso, duplicados, emisores y terminalizacion. El hash de main queda pendiente de correccion separada.
+
 2026-09-03 - DT-24 terminal contract: una quest secuencial completada se normaliza con status completed, currentStage null, todas sus etapas completed, ID ausente de active y presente en completed. La reconciliacion es determinista e idempotente; Goal 4 sigue sin implementarse.
 
 2026-09-03 - DT-24 Goal 3: la aceptacion de quests usa cupos declarativos por grupo mediante getQuestSlotGroup(), getQuestSlotLimit() y getQuestAcceptanceStatus(). personal_project permite 3 quests activas y guild_order permite 1 de forma independiente; se elimina el limite global de 3. Se anade tests/dt24_quest_slots.test.js. Goal 3 completado; etapas, progreso compartido, tareas derivadas, follow-ups y UI quedan para goals separados.
