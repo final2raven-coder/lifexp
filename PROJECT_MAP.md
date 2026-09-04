@@ -437,6 +437,18 @@ rewardLedger evita duplicados.
 
 Las recompensas aseguradas de una quest son independientes del loot normal. Las quests desconocidas o parcialmente migrables no se borran silenciosamente.
 
+6.4.1 Politica de misiones activas
+
+Las misiones diarias no forman parte del catalogo jugable de LifeXP. Las definiciones antiguas se conservan como `archived` / `catalogStatus: 'retired'` para que una referencia persistida siga siendo resoluble y recuperable, pero no pueden aceptarse de nuevo.
+
+Las misiones que el jugador decide iniciar pertenecen al grupo `personal_project` y tienen un limite de 3 activas.
+
+Las misiones de guild pertenecen al grupo `guild_order` y tienen un limite independiente de 1 activa.
+
+La aceptacion usa siempre los cupos declarativos de `gameState.quests.slotLimits`; no existe un limite global compartido ni una excepcion por ID. Una mision de guild puede abrir contenido posterior, como investigaciones y nuevas lineas de mision, pero esas relaciones se definiran como contenido en sus fases correspondientes.
+
+Las misiones son contenido fantastico visible en ingles y deben estar relacionadas con el estado descubierto del juego: objetos, enemigos, eventos, arco narrativo, mejoras del hogar o preparacion. Sus requisitos, tareas derivadas y recompensas se planifican en F4, F5, F11 y F12; no se mezclan con la politica de cupos.
+
 6.5 Combate y habilidades
 
 gameState.skills es la fuente de verdad para habilidades del jugador.
@@ -513,9 +525,9 @@ La previsualizacion de drops posibles se retiro de la pantalla canonica y se con
 
 F3
 
-Pendiente
+Completada
 
-Requiere decision sobre cupo de dailies y misiones de progreso
+Cupos fijados: `personal_project: 3` y `guild_order: 1`; las misiones diarias se retiran del catalogo activo y sus definiciones legacy quedan archivadas y recuperables
 
 F4
 
@@ -665,7 +677,7 @@ Cupo de misiones activas frente a dailies
 
 F3
 
-Pendiente
+Resuelta: no hay dailies jugables; `personal_project` admite 3 misiones activas y `guild_order` admite 1 con limite separado
 
 fragmento_historia como material o categoria narrativa propia
 
@@ -750,6 +762,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-04 - F3: se fija la politica de misiones activas. Las dailies dejan de formar parte del catalogo jugable; sus definiciones se conservan archivadas para resolver referencias legacy. Las misiones personales tienen 3 plazas activas y las de guild 1 plaza independiente. La aceptacion y el reset diario respetan esta politica declarativa.
 
 2026-09-04 - DT-24 Goal 4: se implementa la progresion canonica de quests por etapas sobre el estado persistente; los completionIds se consumen una sola vez por objetivo, las etapas avanzan de forma determinista y el estado terminal queda normalizado. Los emisores canonicos de tareas, combate, nivel y equipamiento envian eventos con completionId determinista. Se anaden pruebas aisladas de progreso, duplicados, emisores y terminalizacion. El hash de main queda pendiente de correccion separada.
 
