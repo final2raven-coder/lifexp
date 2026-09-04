@@ -200,6 +200,13 @@ function equipItem(itemId) {
   initializeItemSystem();
   if (item.attunement?.required && !gameState.itemSystem.attunement[itemId]) gameState.itemSystem.attunement[itemId] = { xp: 0, stage: 0 };
   saveGame();
+  if (typeof updateQuestProgress === 'function') {
+    updateQuestProgress('item_equipped', {
+      itemId,
+      slot,
+      completionId: `equipment:${itemId}:${slot}`
+    });
+  }
   return true;
 }
 
