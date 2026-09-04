@@ -33,6 +33,8 @@ const QUESTS = {
   // ========== DAILY QUESTS ==========
   daily_any_3: {
     id: 'daily_any_3',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'daily',
     name: 'Rutina Diaria',
     desc: 'Completa 3 tareas de cualquier categor\u00EDa.',
@@ -47,6 +49,8 @@ const QUESTS = {
   
   daily_casa_2: {
     id: 'daily_casa_2',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'daily',
     name: 'Hogar Ordenado',
     desc: 'Completa 2 tareas de Casa.',
@@ -61,6 +65,8 @@ const QUESTS = {
   
   daily_cuerpo_2: {
     id: 'daily_cuerpo_2',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'daily',
     name: 'Cuerpo en Forma',
     desc: 'Completa 2 tareas de Cuerpo.',
@@ -307,6 +313,10 @@ function getAvailableQuests() {
   const playerLevel = gameState.level || 1;
   
   return Object.values(QUESTS).filter(q => {
+    // Retired definitions remain resolvable for legacy saves but cannot be
+    // newly accepted from the active quest catalogue.
+    if (q.archived === true || q.catalogStatus === 'retired') return false;
+
     // Not already active or completed (unless repeatable)
     if (gameState.quests.active.includes(q.id)) return false;
     if (q.slotGroup && getQuestSlotLimit(q.slotGroup) === 0) return false;
@@ -509,6 +519,9 @@ function acceptQuest(questId) {
   initQuestState();
   const quest = QUESTS[questId];
   if (!quest) return false;
+  if (quest.archived === true || quest.catalogStatus === 'retired') {
+    return { success: false, reason: 'quest_retired', message: 'This quest is no longer available.' };
+  }
   
   const acceptance = getQuestAcceptanceStatus(quest);
   if (!acceptance.allowed) {
@@ -865,7 +878,11 @@ function checkDailyReset() {
   
   if (gameState.quests.dailyReset !== today) {
     // Reset daily quests
-    const dailyQuestIds = Object.keys(QUESTS).filter(id => QUESTS[id].resetDaily);
+    const dailyQuestIds = Object.keys(QUESTS).filter(id =>
+      QUESTS[id].resetDaily
+      && QUESTS[id].archived !== true
+      && QUESTS[id].catalogStatus !== 'retired'
+    );
     
     dailyQuestIds.forEach(id => {
       // Remove from active if present
