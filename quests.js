@@ -7,13 +7,13 @@
 // ===========================================================================
 
 const QUEST_TYPE = {
-  daily: { name: 'Diaria', icon: '\uD83D\uDCC5', color: '#4ade80' },
-  simple: { name: 'Misi\u00F3n', icon: '\uD83D\uDCDC', color: '#60a5fa' },
-  compound: { name: 'Compuesta', icon: '\uD83D\uDCDA', color: '#a78bfa' },
-  story: { name: 'Historia', icon: '\u2B50', color: '#ffd700' },
+  daily: { name: 'Daily', icon: '\uD83D\uDCC5', color: '#4ade80' },
+  simple: { name: 'Quest', icon: '\uD83D\uDCDC', color: '#60a5fa' },
+  compound: { name: 'Compound', icon: '\uD83D\uDCDA', color: '#a78bfa' },
+  story: { name: 'Story', icon: '\u2B50', color: '#ffd700' },
   bounty: { name: 'Bounty', icon: '\uD83C\uDFAF', color: '#f87171' },
-  class_quest: { name: 'Clase', icon: '\u2694\uFE0F', color: '#ff4d6d' },
-  event: { name: 'Evento', icon: '\uD83C\uDF89', color: '#22d3ee' }
+  class_quest: { name: 'Class', icon: '\u2694\uFE0F', color: '#ff4d6d' },
+  event: { name: 'Event', icon: '\uD83C\uDF89', color: '#22d3ee' }
 };
 
 const QUEST_STATUS = {
@@ -36,8 +36,8 @@ const QUESTS = {
     archived: true,
     catalogStatus: 'retired',
     type: 'daily',
-    name: 'Rutina Diaria',
-    desc: 'Completa 3 tareas de cualquier categor\u00EDa.',
+    name: 'Daily Routine',
+    desc: 'Complete 3 tasks from any category.',
     minLevel: 1,
     objectives: [
       { id: 'obj_1', type: 'complete_tasks', count: 3, category: null, progress: 0 }
@@ -52,8 +52,8 @@ const QUESTS = {
     archived: true,
     catalogStatus: 'retired',
     type: 'daily',
-    name: 'Hogar Ordenado',
-    desc: 'Completa 2 tareas de Casa.',
+    name: 'Orderly Home',
+    desc: 'Complete 2 House tasks.',
     minLevel: 1,
     objectives: [
       { id: 'obj_1', type: 'complete_tasks', count: 2, category: 'casa', progress: 0 }
@@ -68,8 +68,8 @@ const QUESTS = {
     archived: true,
     catalogStatus: 'retired',
     type: 'daily',
-    name: 'Cuerpo en Forma',
-    desc: 'Completa 2 tareas de Cuerpo.',
+    name: 'Fit Body',
+    desc: 'Complete 2 Body tasks.',
     minLevel: 1,
     objectives: [
       { id: 'obj_1', type: 'complete_tasks', count: 2, category: 'cuerpo', progress: 0 }
@@ -83,8 +83,8 @@ const QUESTS = {
   quest_first_steps: {
     id: 'quest_first_steps',
     type: 'simple',
-    name: 'Primeros Pasos',
-    desc: 'Completa tu primera tarea y familiar\u00EDzate con el sistema.',
+    name: 'First Steps',
+    desc: 'Complete your first task and get familiar with the system.',
     minLevel: 1,
     objectives: [
       { id: 'obj_1', type: 'complete_tasks', count: 1, category: null, progress: 0 }
@@ -96,8 +96,8 @@ const QUESTS = {
   quest_home_master: {
     id: 'quest_home_master',
     type: 'simple',
-    name: 'Maestro del Hogar',
-    desc: 'Demuestra que puedes mantener tu espacio en orden.',
+    name: 'Household Mastery',
+    desc: 'Prove that you can keep your space in order.',
     minLevel: 3,
     objectives: [
       { id: 'obj_1', type: 'complete_tasks', count: 10, category: 'casa', progress: 0 }
@@ -109,8 +109,8 @@ const QUESTS = {
   quest_body_temple: {
     id: 'quest_body_temple',
     type: 'simple',
-    name: 'El Cuerpo es un Templo',
-    desc: 'Cuida tu cuerpo completando tareas f\u00EDsicas.',
+    name: 'The Body is a Temple',
+    desc: 'Take care of your body by completing physical tasks.',
     minLevel: 3,
     objectives: [
       { id: 'obj_1', type: 'complete_tasks', count: 10, category: 'cuerpo', progress: 0 }
@@ -123,8 +123,8 @@ const QUESTS = {
   bounty_slimes: {
     id: 'bounty_slimes',
     type: 'bounty',
-    name: 'Plaga de Slimes',
-    desc: 'Los slimes han infestado las tuber\u00EDas. Elim\u00EDnalos.',
+    name: 'Slime Infestation',
+    desc: 'Slimes have infested the pipes. Eliminate them.',
     minLevel: 5,
     timeLimit: 7, // days
     objectives: [
@@ -137,8 +137,8 @@ const QUESTS = {
   bounty_bandits: {
     id: 'bounty_bandits',
     type: 'bounty',
-    name: 'Bandidos en el Camino',
-    desc: 'Unos bandidos molestan a los viajeros. Enc\u00E1rgate de ellos.',
+    name: 'Bandits on the Road',
+    desc: 'Some bandits are harassing travelers. Deal with them.',
     minLevel: 8,
     timeLimit: 5,
     objectives: [
@@ -152,62 +152,62 @@ const QUESTS = {
   story_wolf_hills: {
     id: 'story_wolf_hills',
     type: 'story',
-    name: 'El Lobo de las Colinas',
-    desc: 'Un lobo gigante aterroriza los alrededores. Investiga y enfr\u00E9ntalo.',
+    name: 'The Wolf of the Hills',
+    desc: 'A giant wolf is terrorizing the surrounding area. Investigate and face it.',
     minLevel: 10,
     chapters: [
       {
         id: 'ch_1',
-        name: 'Rumores',
-        desc: 'Investiga en el pueblo sobre el lobo.',
+        name: 'Rumors',
+        desc: 'Investigate the wolf in the village.',
         objectives: [
           { id: 'obj_1', type: 'complete_tasks', count: 2, category: 'social', progress: 0 }
         ],
         rewards: { xp: 50 },
         dialogue: {
-          start: 'Los aldeanos hablan de un lobo enorme en las colinas. Deber\u00EDas investigar.',
-          complete: 'Los rumores son ciertos. El lobo ataca de noche. Debes rastrearlo.'
+          start: 'The villagers speak of a huge wolf in the hills. You should investigate.',
+          complete: 'The rumors are true. The wolf attacks at night. You must track it.'
         }
       },
       {
         id: 'ch_2',
-        name: 'Rastreo',
-        desc: 'Rastrea al lobo en las colinas.',
+        name: 'Tracking',
+        desc: 'Track the wolf in the hills.',
         objectives: [
           { id: 'obj_1', type: 'complete_tasks', count: 3, category: 'cuerpo', progress: 0 }
         ],
         encounter: { enemyId: 'lobo_escarcha', count: 2, auto: true },
         rewards: { xp: 80, items: ['piel_lobo'] },
         dialogue: {
-          start: 'Sigues las huellas por las colinas...',
-          complete: 'Encuentras la guarida. El lobo alfa est\u00E1 dentro.'
+          start: 'You follow the tracks through the hills...',
+          complete: 'You find the den. The alpha wolf is inside.'
         }
       },
       {
         id: 'ch_3',
-        name: 'Preparaci\u00F3n',
-        desc: 'Prepara tu equipo para el enfrentamiento.',
+        name: 'Preparation',
+        desc: 'Prepare your equipment for the confrontation.',
         objectives: [
           { id: 'obj_1', type: 'complete_tasks', count: 2, category: 'casa', progress: 0 },
           { id: 'obj_2', type: 'complete_tasks', count: 1, category: 'gestiones', progress: 0 }
         ],
         rewards: { items: ['pocion_fuerza', 'pocion_fuerza'] },
         dialogue: {
-          start: 'Necesitas estar preparado. Organiza tu equipo.',
-          complete: 'Est\u00E1s listo. Es hora de enfrentar al lobo alfa.'
+          start: 'You need to be ready. Organize your equipment.',
+          complete: 'You are ready. It is time to face the alpha wolf.'
         }
       },
       {
         id: 'ch_4',
-        name: 'El Enfrentamiento',
-        desc: 'Derrota al Lobo Alfa.',
+        name: 'The Confrontation',
+        desc: 'Defeat the Alpha Wolf.',
         objectives: [
           { id: 'obj_1', type: 'defeat_boss', enemyId: 'lobo_alfa', count: 1, progress: 0 }
         ],
         rewards: { xp: 200, gold: 100, items: ['colmillo_alfa'] },
         dialogue: {
-          start: '\u00A1El Lobo Alfa aparece! Es enorme.',
-          complete: '\u00A1Victoria! El lobo ha ca\u00EDdo. Los aldeanos est\u00E1n a salvo.'
+          start: 'The Alpha Wolf appears! It is enormous.',
+          complete: 'Victory! The wolf has fallen. The villagers are safe.'
         }
       }
     ],
@@ -220,8 +220,8 @@ const QUESTS = {
   class_warrior_berserker: {
     id: 'class_warrior_berserker',
     type: 'class_quest',
-    name: 'El Camino del Berserker',
-    desc: 'Demuestra tu furia interior para desbloquear la clase Berserker.',
+    name: 'The Berserker\'s Path',
+    desc: 'Prove your inner fury to unlock the Berserker class.',
     minLevel: 30,
     requirements: {
       classId: 'guerrero',
@@ -544,7 +544,7 @@ function acceptQuest(questId) {
   };
   
   saveGame();
-  return { success: true, message: `\u00A1Misi\u00F3n "${quest.name}" aceptada!` };
+  return { success: true, message: `Quest "${quest.name}" accepted!` };
 }
 
 function abandonQuest(questId) {
