@@ -11,6 +11,7 @@
 // It is intentionally transient and is persisted in pendingTaskResult only
 // when an optional side-quest decision still needs to be resolved.
 let allowManualCooldownCompletion = false;
+let taskHistoryReturnScreen = 'settings';
 
 function getSavedTaskRecords() {
   const savedIds = Array.isArray(gameState.savedTasks) ? gameState.savedTasks : [];
@@ -99,7 +100,7 @@ function openSavedTask(taskId) {
   currentTask = record.task;
   currentCatFilter = record.task.cat;
   currentIsOverflow = Boolean(typeof isTaskOverdue === 'function' && isTaskOverdue(record.task));
-  allowManualCooldownCompletion = availability.status === 'cooldown';
+  allowManualCooldownCompletion = false;
   closeSavedTasksModal();
   renderTaskScreen();
   showScreen('task');
@@ -232,10 +233,27 @@ function getTaskCatalogStatus(task, availability) {
   if (availability.status === 'completed') return 'Completed';
   if (availability.status === 'cooldown') {
     const next = formatTaskCatalogDate(availability.nextAvailableDate);
-    return next ? `On cooldown until ${next}` : 'On cooldown';
+    return next ? `Available again ${next}` : 'Waiting for the next period';
   }
   if (task?.sideQuest) return 'Available · includes optional decision';
   return 'Available';
+}
+
+function getTaskScheduleSummary(availability) {
+  const limit = availability.limit;
+  if (limit === null || limit === undefined) return 'Repetitions: unlimited';
+  const used = Number.isInteger(availability.periodCompletionCount) ? availability.periodCompletionCount : availability.completionCount;
+  return `Repetitions: ${Math.min(used, limit)}/${limit}`;
+}
+
+function openTaskHistory(taskOrId = null, returnScreen = 'settings') {
+  const taskId = typeof taskOrId === 'string' ? taskOrId : taskOrId?.id || null;
+  const task = taskId ? gameState.tasks.find(candidate => candidate.id === taskId) : null;
+  if (taskId && !task) return;
+  if (typeof renderTaskHistory !== 'function') return;
+  taskHistoryReturnScreen = returnScreen;
+  renderTaskHistory(task?.id || null);
+  showScreen('task-history');
 }
 
 function getTaskCatalogHistory(task, availability) {
@@ -248,7 +266,7 @@ function getTaskCatalogHistory(task, availability) {
 }
 
 function canCompleteTaskFromCatalog(availability) {
-  return availability.status === 'available' || availability.status === 'cooldown';
+  return availability.status === 'available';
 }
 
 function ensureCategoryTaskScreen() {
@@ -280,6 +298,10 @@ function ensureCategoryTaskScreen() {
     }
     if (action === 'random') {
       openRandomTaskFromCategory(currentCatFilter);
+      return;
+    }
+    if (action === 'history') {
+      openTaskHistory(actionElement.dataset.taskId, 'category-tasks');
       return;
     }
     if (action === 'complete') {
@@ -332,20 +354,23 @@ function renderCategoryTaskList(catId) {
     const availability = getTaskAvailability(task);
     const status = getTaskCatalogStatus(task, availability);
     const history = getTaskCatalogHistory(task, availability);
+    const schedule = getTaskScheduleSummary(availability);
     const canComplete = canCompleteTaskFromCatalog(availability);
     const safeId = escapeTaskCatalogText(task.id);
     const safeName = escapeTaskCatalogText(task.name);
     const safeDesc = escapeTaskCatalogText(task.desc);
-    const actionLabel = availability.status === 'cooldown' ? 'Complete anyway' : 'Complete task';
     return `
       <article class="task-catalog-card" data-task-id="${safeId}">
         <div class="task-catalog-main">
           <div class="task-catalog-name">${safeName}</div>
           <div class="task-catalog-desc">${safeDesc}</div>
           <div class="task-catalog-meta">${escapeTaskCatalogText(status)}</div>
-          <div class="task-catalog-history">${escapeTaskCatalogText(history)}</div>
+          <div class="task-catalog-history">${escapeTaskCatalogText(history)} · ${escapeTaskCatalogText(schedule)}</div>
         </div>
-        <button class="btn btn-secondary btn-small" type="button" data-category-action="complete" data-task-id="${safeId}" ${canComplete ? '' : 'disabled'}>${actionLabel}</button>
+        <div class="task-catalog-actions">
+          <button class="btn btn-secondary btn-small" type="button" data-category-action="history" data-task-id="${safeId}">History</button>
+          <button class="btn btn-secondary btn-small" type="button" data-category-action="complete" data-task-id="${safeId}" ${canComplete ? '' : 'disabled'}>${canComplete ? 'Open task' : 'Unavailable'}</button>
+        </div>
       </article>
     `;
   }).join('');
@@ -362,10 +387,130 @@ function completeTaskFromCategory(taskId) {
   currentTask = task;
   currentCatFilter = task.cat;
   currentIsOverflow = Boolean(availability.isOverflow);
-  allowManualCooldownCompletion = availability.status === 'cooldown';
+  allowManualCooldownCompletion = false;
   renderTaskScreen();
   showScreen('task');
   resetTimer();
+}
+
+function getTaskHistoryRows(task) {
+  return getTaskHistoryEntries(task)
+    .filter(entry => entry && isValidTaskDate(entry.date))
+    .sort((left, right) => right.date.localeCompare(left.date));
+}
+
+function renderTaskHistory(selectedTaskId = null) {
+  let screen = document.getElementById('screen-task-history');
+  if (!screen) {
+    screen = document.createElement('div');
+    screen.className = 'screen';
+    screen.id = 'screen-task-history';
+    screen.innerHTML = `
+      <div class="header">
+        <button class="btn btn-ghost btn-small" type="button" data-task-history-action="back" style="width: auto;">&#8592; Back</button>
+        <div class="header-title" style="display: inline-block; margin-left: 10px;">Task history</div>
+      </div>
+      <div class="content">
+        <div id="task-history-content"></div>
+      </div>
+    `;
+    document.body.appendChild(screen);
+    screen.addEventListener('click', event => {
+      const actionElement = event.target.closest('[data-task-history-action]');
+      if (!actionElement) return;
+      const action = actionElement.dataset.taskHistoryAction;
+      if (action === 'back') {
+        showScreen(taskHistoryReturnScreen || 'settings');
+        return;
+      }
+      if (action === 'open') {
+        const task = gameState.tasks.find(candidate => candidate.id === actionElement.dataset.taskId);
+        if (!task) return;
+        currentTask = task;
+        currentCatFilter = task.cat;
+        currentIsOverflow = false;
+        allowManualCooldownCompletion = false;
+        renderTaskScreen();
+        showScreen('task');
+        resetTimer();
+        return;
+      }
+      if (action === 'save-limit') {
+        const task = gameState.tasks.find(candidate => candidate.id === actionElement.dataset.taskId);
+        const input = [...screen.querySelectorAll('[data-task-repeat-limit]')]
+          .find(candidate => candidate.dataset.taskRepeatLimit === actionElement.dataset.taskId);
+        if (!task || !input) return;
+        const rawValue = input.value.trim();
+        if (!setTaskRepeatLimit(task, rawValue)) {
+          showToast('Enter a positive whole number for a periodic task.', 'error');
+          return;
+        }
+        if (!saveGame()) {
+          showToast('The schedule could not be saved. Try again.', 'error');
+          return;
+        }
+        renderTaskHistory(task.id);
+        showToast('Task schedule saved.', 'green');
+      }
+    });
+  }
+
+  const content = screen.querySelector('#task-history-content');
+  if (!content) return;
+  const tasks = gameState.tasks
+    .filter(task => !isTaskArchived(task))
+    .sort((left, right) => `${left.cat}:${left.name}`.localeCompare(`${right.cat}:${right.name}`));
+  if (tasks.length === 0) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-state-title">No tasks available</div><div class="empty-state-desc">Add a task before reviewing its schedule.</div></div>';
+    return;
+  }
+
+  const filteredTasks = selectedTaskId ? tasks.filter(task => task.id === selectedTaskId) : tasks;
+  const visibleTasks = filteredTasks.length > 0 ? filteredTasks : tasks;
+  content.innerHTML = visibleTasks.map(task => {
+    const availability = getTaskAvailability(task);
+    const schedule = getTaskScheduleSettings(task);
+    const history = getTaskHistoryRows(task);
+    const safeId = escapeTaskCatalogText(task.id);
+    const frequency = escapeTaskCatalogText(
+      typeof LifeXPPresentation !== 'undefined'
+        ? LifeXPPresentation.getTask(task).frequencyLabel
+        : (schedule.frequency || 'Schedule not specified')
+    );
+    const next = availability.nextAvailableDate ? formatTaskCatalogDate(availability.nextAvailableDate) : null;
+    const limitValue = schedule.limit === null || schedule.limit === undefined ? '' : schedule.limit;
+    const historyMarkup = history.length === 0
+      ? '<div class="task-history-empty">No completions recorded.</div>'
+      : history.slice(0, 12).map(entry => `
+          <div class="task-history-entry">
+            <span>${escapeTaskCatalogText(formatTaskCatalogDate(entry.date) || entry.date)}</span>
+            <span>+${escapeTaskCatalogText(entry.xp || 0)} XP${entry.sideQuest ? ' · Side quest' : ''}</span>
+          </div>
+        `).join('');
+    const canEdit = schedule.editable;
+    return `
+      <article class="card task-history-card" data-task-id="${safeId}">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${escapeTaskCatalogText(task.name)}</div>
+            <div class="task-catalog-desc">${escapeTaskCatalogText(task.desc)}</div>
+          </div>
+          <span class="card-badge">${frequency}</span>
+        </div>
+        <div class="task-history-status">${escapeTaskCatalogText(getTaskCatalogStatus(task, availability))} · ${escapeTaskCatalogText(getTaskScheduleSummary(availability))}${next ? ` · Next: ${escapeTaskCatalogText(next)}` : ''}</div>
+        <div class="task-history-list">${historyMarkup}</div>
+        <div class="task-history-controls">
+          <label class="task-history-limit-label" for="task-repeat-${safeId}">Repetitions per period</label>
+          <div class="task-history-limit-row">
+            <input id="task-repeat-${safeId}" class="task-repeat-limit" type="number" min="1" step="1" value="${escapeTaskCatalogText(limitValue)}" ${canEdit ? '' : 'disabled'} data-task-repeat-limit="${safeId}" aria-label="Repetitions per period for ${escapeTaskCatalogText(task.name)}">
+            <button class="btn btn-secondary btn-small" type="button" data-task-history-action="save-limit" data-task-id="${safeId}" ${canEdit ? '' : 'disabled'}>Save schedule</button>
+            <button class="btn btn-ghost btn-small" type="button" data-task-history-action="open" data-task-id="${safeId}">Open task</button>
+          </div>
+          ${canEdit ? '<div class="task-history-help">Changes apply now; previous history stays unchanged.</div>' : '<div class="task-history-help">This task has no repeatable period.</div>'}
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
 function renderTaskScreen() {
@@ -380,8 +525,24 @@ function renderTaskScreen() {
   const taskPresentation = typeof LifeXPPresentation !== 'undefined'
     ? LifeXPPresentation.getTask(task)
     : { categoryLabel: 'Adventure', frequencyLabel: 'Schedule not specified' };
+  const availability = getTaskAvailability(task);
   document.getElementById('task-cat-label').textContent = `${cat.icon} ${taskPresentation.categoryLabel}`;
   document.getElementById('task-cat-badge').textContent = taskPresentation.frequencyLabel;
+  const scheduleBox = document.getElementById('task-schedule');
+  if (scheduleBox) {
+    const schedule = getTaskScheduleSummary(availability);
+    const next = availability.nextAvailableDate ? formatTaskCatalogDate(availability.nextAvailableDate) : null;
+    const status = getTaskCatalogStatus(task, availability);
+    scheduleBox.textContent = `${status} · ${schedule}${next ? ` · Next: ${next}` : ''}`;
+    scheduleBox.dataset.status = availability.status;
+  }
+  const completeButton = document.getElementById('btn-complete');
+  if (completeButton) {
+    completeButton.disabled = availability.status !== 'available';
+    completeButton.title = availability.status === 'cooldown' && availability.nextAvailableDate
+      ? `Available again ${formatTaskCatalogDate(availability.nextAvailableDate)}`
+      : availability.status !== 'available' ? 'This task is not available right now.' : '';
+  }
   
   // Task name and description
   document.getElementById('task-name').textContent = task.name;
@@ -565,8 +726,7 @@ function openTaskResultDecision(sideQuestCompleted) {
 function completeTask() {
   if (!currentTask) return;
   const availability = getTaskAvailability(currentTask);
-  const canCompleteDuringCooldown = allowManualCooldownCompletion && availability.status === 'cooldown';
-  if (availability.status !== 'available' && !canCompleteDuringCooldown) {
+  if (availability.status !== 'available') {
     showToast('This task is not available right now.', 'gold');
     return;
   }
@@ -588,7 +748,7 @@ function completeTask() {
       isOverflow: Boolean(currentIsOverflow),
       date: todayStr(),
       createdAt: new Date().toISOString(),
-      allowCooldownCompletion: Boolean(canCompleteDuringCooldown),
+      allowCooldownCompletion: false,
       claimId: completionId
     };
     if (!saveGame()) {
@@ -607,7 +767,7 @@ function completeTask() {
     taskName: currentTask.name,
     isOverflow: Boolean(currentIsOverflow),
     date: todayStr(),
-    allowCooldownCompletion: Boolean(canCompleteDuringCooldown),
+    allowCooldownCompletion: false,
     claimId: createTaskCompletionId(currentTask, todayStr())
   });
 }
@@ -617,14 +777,13 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
     taskId: currentTask?.id,
     date: todayStr(),
     isOverflow: Boolean(currentIsOverflow),
-    allowCooldownCompletion: Boolean(allowManualCooldownCompletion),
+    allowCooldownCompletion: false,
     claimId: currentTask ? createTaskCompletionId(currentTask, todayStr()) : null
   };
   const task = gameState.tasks.find(candidate => candidate.id === resolvedPendingResult.taskId) || currentTask;
   if (!task) return;
   const availability = getTaskAvailability(task);
-  const canCompleteDuringCooldown = Boolean(resolvedPendingResult.allowCooldownCompletion) && availability.status === 'cooldown';
-  if (availability.status !== 'available' && !canCompleteDuringCooldown) {
+  if (availability.status !== 'available') {
     showToast('This task is no longer available right now.', 'gold');
     return;
   }
@@ -727,7 +886,7 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
     date: today,
     createdAt: new Date().toISOString(),
     sideQuestCompleted: Boolean(sideQuestCompleted),
-    allowCooldownCompletion: Boolean(canCompleteDuringCooldown),
+    allowCooldownCompletion: false,
     claimId: historyEntry.completionId,
     totalXp,
     goldEarned,
