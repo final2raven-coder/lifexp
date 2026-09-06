@@ -53,7 +53,7 @@ function closeTaskResultModal(options = {}) {
 
 function handleLifeXPBack(event) {
   if (event.state?.lifexp && event.state.modal === 'task-result' && typeof hasPendingTaskResult === 'function' && hasPendingTaskResult()) {
-    showPendingTaskResult();
+    showPendingTaskResult({ fromHistory: true });
     return;
   }
   if (typeof isTaskResultModalVisible === 'function' && isTaskResultModalVisible()) {

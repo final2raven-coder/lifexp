@@ -543,15 +543,15 @@ Existe contrato transaccional; `deliverReward()` incorpora rollback de memoria y
 
 F6
 
-Parcial
+Hecha
 
-La actualización verificable existe; esta rama añade el pipeline correcto de release para que build, commit, artefacto de Pages y caché queden coordinados
+La actualización verificable y el pipeline de release quedan coordinados mediante el manifiesto de build, el commit publicado, el artefacto de Pages y la caché; verificación funcional pendiente solo si el despliegue requiere una comprobación adicional
 
 F7
 
-Parcial
+Completada
 
-El recorrido de recuperacion de tareas guardadas ya esta implementado en ui_tasks.js y conectado al aviso del Hub; queda validacion como jugador en la build desplegada. El resultado pendiente y la navegacion segura siguen vigentes
+La recuperación de tareas guardadas y de resultados pendientes usa un único punto de entrada; el resultado vuelve a la pantalla canónica, el modal registra una única entrada de History API y atrás/Escape conservan el resultado sin duplicar recompensas. Pendiente de verificación manual en la build desplegada
 
 F8
 
@@ -772,6 +772,8 @@ Changelog operativo
 2026-09-06 - F5: `inventory_system.js` refuerza `LifeXPInventory.deliverReward()` con una transaccion de persistencia: captura inventario, pendingLoot, rewardLedger y los bytes originales del save; si `saveGame()` falla, devuelve `false` o lanza una excepcion, restaura memoria y save sin confirmar la entrega. Se mantienen claimId, idempotencia y recuperacion visible de referencias no resolubles. `node --check inventory_system.js` pasa. Quedan pendientes las pruebas runtime, la validacion completa de referencias de drops y la decision narrativa; no se cambia `saveVersion`.
 
 2026-09-06 - F7: se implementa la recuperacion de tareas guardadas sin cambiar saveVersion ni el modelo persistente. El aviso del Hub abre una lista; las tareas validas entran en la pantalla canonica; las referencias invalidas quedan visibles como needs review y solo se eliminan mediante accion explicita. El guardado y la retirada son persistentes e idempotentes, con rollback en memoria si saveGame() falla. Se corrige tambien el cierre del modal guardado mediante data-close-modal.
+
+2026-09-06 - F7: se completa la navegacion segura de resultados pendientes. `showPendingTaskResult()` es el punto unico de recuperacion desde menu, atras, recarga y pantalla de tarea; vuelve a la tarea canonica antes de presentar el resultado. `renderTaskResultModal()` registra una unica entrada `task-result` en History API y el cierre mediante atras o Escape no confirma ni pierde la recompensa. No cambia `saveVersion`, `pendingTaskResult`, `claimId` ni `rewardLedger`.
 
 2026-09-04 - F3: se fija la politica de misiones activas. Las dailies dejan de formar parte del catalogo jugable; sus definiciones se conservan archivadas para resolver referencias legacy. Las misiones personales tienen 3 plazas activas y las de guild 1 plaza independiente. La aceptacion y el reset diario respetan esta politica declarativa.
 
