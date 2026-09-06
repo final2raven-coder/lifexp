@@ -181,7 +181,7 @@ Hub, personaje, inventario, equipo, consumibles y Settings
 
 ui_tasks.js
 
-Tareas, completado, drops, side quests, resultados pendientes y recuperacion
+Tareas, completado, drops, side quests, resultados pendientes y recuperacion. Incluye la ruta canonica de tareas guardadas: listado, apertura, retirada explicita y conservacion visible de referencias que necesitan revision
 
 ui_combat.js
 
@@ -551,7 +551,7 @@ F7
 
 Parcial
 
-Hay resultado pendiente y navegacion segura; falta validar todo el recorrido de recuperacion
+El recorrido de recuperacion de tareas guardadas ya esta implementado en ui_tasks.js y conectado al aviso del Hub; queda validacion como jugador en la build desplegada. El resultado pendiente y la navegacion segura siguen vigentes
 
 F8
 
@@ -762,6 +762,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-06 - F7: se implementa la recuperacion de tareas guardadas sin cambiar saveVersion ni el modelo persistente. El aviso del Hub abre una lista; las tareas validas entran en la pantalla canonica; las referencias invalidas quedan visibles como needs review y solo se eliminan mediante accion explicita. El guardado y la retirada son persistentes e idempotentes, con rollback en memoria si saveGame() falla. Se corrige tambien el cierre del modal guardado mediante data-close-modal.
 
 2026-09-04 - F3: se fija la politica de misiones activas. Las dailies dejan de formar parte del catalogo jugable; sus definiciones se conservan archivadas para resolver referencias legacy. Las misiones personales tienen 3 plazas activas y las de guild 1 plaza independiente. La aceptacion y el reset diario respetan esta politica declarativa.
 
