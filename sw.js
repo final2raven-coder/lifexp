@@ -28,6 +28,7 @@ const urlsToCache = [
   '/expansion_quests.js',
   '/expansion_tasks.js',
   '/update2_content.js',
+  'content_review_integration_v1.js',
   '/inventory_system.js',
   '/ui_hub.js',
   '/ui_tasks.js',
