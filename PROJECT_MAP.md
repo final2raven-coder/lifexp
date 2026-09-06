@@ -814,3 +814,25 @@ Changelog operativo
 
 2026-08-21 a 2026-08-25: se integran los contratos de resultados pendientes, recompensas durables, historial/disponibilidad, habilidades y combate. Las deudas no cerradas permanecen en la tabla DT.
 
+F12 - integracion local de contenido v1
+
+Estado
+
+Preparada localmente; no subida a GitHub ni integrada en main.
+
+Artefacto
+
+`content_review_integration_v1.js` registra un instalador posterior a `update2_content.js` y se ejecuta despues de cargar el save. Activa 73 tareas revisadas y archiva 57 definiciones antiguas sin borrar objetos de `gameState.tasks`, `taskHistory` ni `savedTasks`.
+
+Balance provisional
+
+Los valores `freq`, `stats` y `xp` se derivan de forma conservadora usando solo frecuencias y estadisticas existentes. El criterio completo queda en `content_review_migration_v1.json`. No se anade loot nuevo en este bloque.
+
+Compatibilidad
+
+El instalador es idempotente, conserva IDs antiguos y revierte el estado en memoria si `saveGame()` no confirma la persistencia. El save debe exportarse antes de probar la integracion.
+
+Pendiente
+
+Colocar el script en `index.html`, anadirlo a la cache del Service Worker, probar en una rama propia y abrir PR. F12c (loot tematico declarativo) queda separado.
+

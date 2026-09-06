@@ -1,0 +1,21 @@
+F12 content integration v1 - local validation
+
+node --check content_review_integration_v1.js: PASS
+Active task count: 73
+Active category counts: casa 47, cuerpo 7, gestiones 8, social 5, personal 6
+Retired task count: 57
+IDs: unique and snake_case: PASS
+Runtime frequencies: valid existing values: PASS
+Runtime stats: every active task totals 100: PASS
+Installer registration after save barrier: PASS
+Installation and active/archived split: PASS
+History and saved task references preserved: PASS
+Idempotent second installation: PASS
+Persistence failure rollback: PASS
+
+Scope exclusions verified:
+- No GitHub writes or commits.
+- No main branch changes.
+- No new loot implementation.
+- No changes to the canonical completion flow.
+- No save reset.

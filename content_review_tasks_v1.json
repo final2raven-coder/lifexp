@@ -1,0 +1,1600 @@
+{
+  "tasks": [
+    {
+      "id": "casa_recibidor_pasillos_reset",
+      "cat": "casa",
+      "name": "Reset the Entrance and Hallways",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the entrance and passageways clear, usable, and easy to cross.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "recibidor_pasillos",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_recibidor_pasillos_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Entrance and Hallways",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the entrance and passageways clear, usable, and easy to cross.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "recibidor_pasillos",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_recibidor_pasillos_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Entrance and Hallways",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the entrance and passageways clear, usable, and easy to cross.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "recibidor_pasillos",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_comedor_reset",
+      "cat": "casa",
+      "name": "Reset the Dining Room",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the dining area usable and clear enough to eat, work, or pass through.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "comedor",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_comedor_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Dining Room",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the dining area usable and clear enough to eat, work, or pass through.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "comedor",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_comedor_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Dining Room",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the dining area usable and clear enough to eat, work, or pass through.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "comedor",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_cocina_reset",
+      "cat": "casa",
+      "name": "Reset the Kitchen",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the kitchen usable for preparing food and cleaning up afterwards.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "cocina",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_cocina_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Kitchen",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the kitchen usable for preparing food and cleaning up afterwards.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "cocina",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_cocina_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Kitchen",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the kitchen usable for preparing food and cleaning up afterwards.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "cocina",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_despensa_reset",
+      "cat": "casa",
+      "name": "Reset the Pantry",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep stored food and supplies visible, accessible, and in a workable order.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "despensa",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_despensa_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Pantry",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep stored food and supplies visible, accessible, and in a workable order.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "despensa",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_despensa_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Pantry",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep stored food and supplies visible, accessible, and in a workable order.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "despensa",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_lavadera_reset",
+      "cat": "casa",
+      "name": "Reset the Laundry Room",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the laundry area usable and prevent clothing and supplies from accumulating.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "lavadera",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_lavadera_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Laundry Room",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the laundry area usable and prevent clothing and supplies from accumulating.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "lavadera",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_lavadera_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Laundry Room",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the laundry area usable and prevent clothing and supplies from accumulating.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "lavadera",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_habitacion_pequena_reset",
+      "cat": "casa",
+      "name": "Reset the Small Room",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the small room usable and prevent it from becoming a storage bottleneck.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "habitacion_pequena",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_habitacion_pequena_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Small Room",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the small room usable and prevent it from becoming a storage bottleneck.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "habitacion_pequena",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_habitacion_pequena_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Small Room",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the small room usable and prevent it from becoming a storage bottleneck.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "habitacion_pequena",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_bano_reset",
+      "cat": "casa",
+      "name": "Reset the Bathroom",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the bathroom hygienic and usable.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "bano",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_bano_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Bathroom",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the bathroom hygienic and usable.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "bano",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_bano_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Bathroom",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the bathroom hygienic and usable.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "bano",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_escritorio_reset",
+      "cat": "casa",
+      "name": "Reset the Study",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the study usable for focused work and easy to reset.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "escritorio",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_escritorio_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Study",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the study usable for focused work and easy to reset.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "escritorio",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_escritorio_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Study",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the study usable for focused work and easy to reset.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "escritorio",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_dormitorio_reset",
+      "cat": "casa",
+      "name": "Reset the Bedroom",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the bedroom usable for sleep, recovery, and getting dressed.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "dormitorio",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_dormitorio_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Bedroom",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the bedroom usable for sleep, recovery, and getting dressed.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "dormitorio",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_dormitorio_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Bedroom",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the bedroom usable for sleep, recovery, and getting dressed.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "dormitorio",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_terraza_inferior_reset",
+      "cat": "casa",
+      "name": "Reset the Lower Terrace",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the lower terrace usable and clear of accumulated dirt and objects.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "terraza_inferior",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_terraza_inferior_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Lower Terrace",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the lower terrace usable and clear of accumulated dirt and objects.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "terraza_inferior",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_terraza_inferior_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Lower Terrace",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the lower terrace usable and clear of accumulated dirt and objects.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "terraza_inferior",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_terraza_superior_reset",
+      "cat": "casa",
+      "name": "Reset the Upper Terrace",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the upper terrace usable and clear of accumulated dirt and objects.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "terraza_superior",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_terraza_superior_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Upper Terrace",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the upper terrace usable and clear of accumulated dirt and objects.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "terraza_superior",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_terraza_superior_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Upper Terrace",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the upper terrace usable and clear of accumulated dirt and objects.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "terraza_superior",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_escaleras_reset",
+      "cat": "casa",
+      "name": "Reset the Stairs",
+      "freq": "biweekly",
+      "desc": "Put away displaced items, clear surfaces, and restore the room to a usable state. Keep the stairs safe, clear, and easy to use.",
+      "stats": {
+        "vol": 60,
+        "vit": 40
+      },
+      "xp": 20,
+      "themes": [
+        "casa",
+        "santuario"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "escaleras",
+        "round": "reset",
+        "recommendedOrder": 1,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_escaleras_deep_clean",
+      "cat": "casa",
+      "name": "Deep-clean the Stairs",
+      "freq": "biweekly",
+      "desc": "Clean the room beyond a quick reset, focusing on the surfaces and areas that accumulate dirt. Keep the stairs safe, clear, and easy to use.",
+      "stats": {
+        "vit": 55,
+        "vol": 45
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "escaleras",
+        "round": "deep_clean",
+        "recommendedOrder": 2,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_escaleras_floor",
+      "cat": "casa",
+      "name": "Clean the floor of the Stairs",
+      "freq": "biweekly",
+      "desc": "Clean the floor of this room, including reachable edges and the areas that collect the most dirt. Keep the stairs safe, clear, and easy to use.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 25,
+      "themes": [
+        "casa",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_round",
+        "room": "escaleras",
+        "round": "floor",
+        "recommendedOrder": 3,
+        "robotTransition": "replace_with_robot_supervision"
+      }
+    },
+    {
+      "id": "casa_laundry_load",
+      "cat": "casa",
+      "name": "Put on a load of laundry",
+      "freq": "weekly",
+      "desc": "Gather the clothes that need washing, load the machine, add what it needs, and start the cycle.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "atuendo"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "lavadera",
+        "round": "laundry_load",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_laundry_hang",
+      "cat": "casa",
+      "name": "Hang the laundry",
+      "freq": "weekly",
+      "desc": "Take the finished load out of the washing machine and hang the clothes to dry.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "atuendo"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "lavadera",
+        "round": "laundry_hang",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_laundry_put_away",
+      "cat": "casa",
+      "name": "Collect, fold, and put away the laundry",
+      "freq": "weekly",
+      "desc": "Collect the dry clothes, fold them, and put them away in their usual places.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "casa",
+        "atuendo"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "lavadera",
+        "round": "laundry_put_away",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_plan_meals",
+      "cat": "casa",
+      "name": "Plan meals for the next 2–3 days",
+      "freq": "weekly",
+      "desc": "Choose meals for the next two or three days using saved recipes and any new recipes you want to try.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "fuego_comida",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "food_planning",
+        "room": "cocina",
+        "round": "meal_planning",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_buy_food",
+      "cat": "casa",
+      "name": "Buy food",
+      "freq": "weekly",
+      "desc": "Buy the food needed for the meals you have chosen and any basic items that are running low.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "comercio",
+        "fuego_comida"
+      ],
+      "reviewMeta": {
+        "kind": "food_shopping",
+        "room": "despensa",
+        "round": "food_shopping",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_buy_non_food_supplies",
+      "cat": "casa",
+      "name": "Buy non-food household supplies",
+      "freq": "weekly",
+      "desc": "Check what non-food household supplies are missing and buy the items needed to keep the home running.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "comercio",
+        "gestiones"
+      ],
+      "reviewMeta": {
+        "kind": "house_shopping",
+        "room": "despensa",
+        "round": "non_food_shopping",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_cook_and_prepare_containers",
+      "cat": "casa",
+      "name": "Cook and prepare containers",
+      "freq": "weekly",
+      "desc": "Cook the planned food and leave portions ready to eat or store in containers for later.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "fuego_comida",
+        "casa"
+      ],
+      "reviewMeta": {
+        "kind": "food_preparation",
+        "room": "cocina",
+        "round": "cooking",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_change_bedding",
+      "cat": "casa",
+      "name": "Change the sheets and pillowcases",
+      "freq": "biweekly",
+      "desc": "Remove the used sheets and pillowcases, put on clean ones, and leave the bed ready to use.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 30,
+      "themes": [
+        "descanso",
+        "atuendo"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "dormitorio",
+        "round": "bedding",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_reset_wardrobe",
+      "cat": "casa",
+      "name": "Review and reset the wardrobe",
+      "freq": "monthly",
+      "desc": "Review the wardrobe, return clothes to their places, and identify anything that no longer belongs there.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 40,
+      "themes": [
+        "atuendo",
+        "hallazgos"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "dormitorio",
+        "round": "wardrobe",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_clean_fridge",
+      "cat": "casa",
+      "name": "Clean and review the fridge",
+      "freq": "monthly",
+      "desc": "Check the fridge, remove anything no longer usable, clean the areas that need it, and restore a workable order.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 40,
+      "themes": [
+        "purificacion",
+        "fuego_comida"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "cocina",
+        "round": "fridge",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "casa_check_first_aid_kit",
+      "cat": "casa",
+      "name": "Check the first-aid kit and expiry dates",
+      "freq": "quarterly",
+      "desc": "Check medicines and medical supplies, review expiry dates, and note anything that needs replacing.",
+      "stats": {
+        "vit": 50,
+        "vol": 50
+      },
+      "xp": 40,
+      "themes": [
+        "gestiones",
+        "purificacion"
+      ],
+      "reviewMeta": {
+        "kind": "house_maintenance",
+        "room": "casa_general",
+        "round": "first_aid",
+        "recommendedOrder": null,
+        "robotTransition": "retain"
+      }
+    },
+    {
+      "id": "cuerpo_strength",
+      "cat": "cuerpo",
+      "name": "Gentle strength practice",
+      "freq": "weekly",
+      "desc": "Choose one or two comfortable strength exercises and practise for 5–10 minutes. Use bodyweight, a wall, a chair, weights, or other equipment as comfortable. Stop before pain or sensory overload.",
+      "stats": {
+        "fue": 40,
+        "vit": 35,
+        "vol": 25
+      },
+      "xp": 25,
+      "themes": [
+        "cuerpo"
+      ],
+      "reviewMeta": {
+        "kind": "movement",
+        "effortBand": "start_steady_extra_mile"
+      }
+    },
+    {
+      "id": "cuerpo_home_cardio",
+      "cat": "cuerpo",
+      "name": "Low-impact cardio at home",
+      "freq": "weekly",
+      "desc": "Move gently at home for a short session using an option that feels tolerable: walking indoors, music, seated movement, or another low-impact routine. Pauses count.",
+      "stats": {
+        "vit": 45,
+        "des": 30,
+        "vol": 25
+      },
+      "xp": 25,
+      "themes": [
+        "cuerpo"
+      ],
+      "reviewMeta": {
+        "kind": "movement",
+        "effortBand": "start_steady_extra_mile"
+      }
+    },
+    {
+      "id": "cuerpo_outdoor_movement",
+      "cat": "cuerpo",
+      "name": "Outdoor movement",
+      "freq": "weekly",
+      "desc": "Go outside for a short walk or another comfortable form of movement. There is no distance target, and walking is the normal starting option; running is optional.",
+      "stats": {
+        "vit": 45,
+        "des": 30,
+        "vol": 25
+      },
+      "xp": 25,
+      "themes": [
+        "cuerpo",
+        "exploracion"
+      ],
+      "reviewMeta": {
+        "kind": "movement",
+        "effortBand": "start_steady_extra_mile"
+      }
+    },
+    {
+      "id": "cuerpo_joint_mobility",
+      "cat": "cuerpo",
+      "name": "Joint mobility",
+      "freq": "weekly",
+      "desc": "Move one or more stiff areas gently, such as the neck, shoulders, back, hips, or ankles. Keep the range comfortable and stop if movement hurts.",
+      "stats": {
+        "des": 45,
+        "vit": 30,
+        "vol": 25
+      },
+      "xp": 20,
+      "themes": [
+        "cuerpo"
+      ],
+      "reviewMeta": {
+        "kind": "movement",
+        "effortBand": "start_steady_extra_mile"
+      }
+    },
+    {
+      "id": "cuerpo_stretching_yoga",
+      "cat": "cuerpo",
+      "name": "Gentle stretching or yoga",
+      "freq": "weekly",
+      "desc": "Complete a calm, whole-body stretching or gentle yoga session in a position that feels comfortable: standing, seated, supported, or on the floor.",
+      "stats": {
+        "des": 45,
+        "vit": 30,
+        "vol": 25
+      },
+      "xp": 20,
+      "themes": [
+        "cuerpo",
+        "descanso"
+      ],
+      "reviewMeta": {
+        "kind": "movement",
+        "effortBand": "start_steady_extra_mile"
+      }
+    },
+    {
+      "id": "cuerpo_active_recovery",
+      "cat": "cuerpo",
+      "name": "Active recovery",
+      "freq": "weekly",
+      "desc": "Choose a very gentle recovery action: a short walk, easy joint movement, a posture change, or a brief wind-down. This is for days when a normal workout would be too much.",
+      "stats": {
+        "vol": 55,
+        "vit": 25,
+        "des": 20
+      },
+      "xp": 15,
+      "themes": [
+        "cuerpo",
+        "descanso"
+      ],
+      "reviewMeta": {
+        "kind": "recovery",
+        "effortBand": "start"
+      }
+    },
+    {
+      "id": "cuerpo_personal_care",
+      "cat": "cuerpo",
+      "name": "Personal care routine",
+      "freq": "weekly",
+      "desc": "Choose the body-care need that deserves attention today: skin, hair, nails, hygiene, or another concrete need.",
+      "stats": {
+        "pre": 45,
+        "vol": 35,
+        "vit": 20
+      },
+      "xp": 15,
+      "themes": [
+        "cuerpo",
+        "atuendo"
+      ],
+      "reviewMeta": {
+        "kind": "personal_care"
+      }
+    },
+    {
+      "id": "gestiones_week_expenses",
+      "cat": "gestiones",
+      "name": "Review the week's expenses",
+      "freq": "weekly",
+      "desc": "Review recent transactions and identify one expense or money question that needs action.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 25,
+      "themes": [
+        "gestiones",
+        "comercio"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_inbox",
+      "cat": "gestiones",
+      "name": "Clear your inbox",
+      "freq": "weekly",
+      "desc": "Process pending email, archive or delete what no longer matters, and identify messages that need a response.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 25,
+      "themes": [
+        "gestiones",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_week_plan",
+      "cat": "gestiones",
+      "name": "Plan the week",
+      "freq": "weekly",
+      "desc": "Look at the calendar, choose realistic priorities, identify important commitments, and prepare the next concrete steps.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 25,
+      "themes": [
+        "gestiones",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_budget",
+      "cat": "gestiones",
+      "name": "Review finances and budget",
+      "freq": "monthly",
+      "desc": "Review income, expenses, and the current budget, then make any adjustment that is actually needed.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 35,
+      "themes": [
+        "gestiones",
+        "comercio"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_backup",
+      "cat": "gestiones",
+      "name": "Back up data",
+      "freq": "monthly",
+      "desc": "Back up important photos, documents, and other data using the storage method you currently rely on.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 35,
+      "themes": [
+        "gestiones",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_renewals",
+      "cat": "gestiones",
+      "name": "Review upcoming renewals",
+      "freq": "monthly",
+      "desc": "Check subscriptions, documents, and payments that may expire or renew soon, and record any action before the deadline.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 35,
+      "themes": [
+        "gestiones",
+        "comercio"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_digital_folder",
+      "cat": "gestiones",
+      "name": "Organize a digital folder",
+      "freq": "weekly",
+      "desc": "Choose one digital folder, remove or relocate obvious clutter, and leave its structure clear enough to use again.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 25,
+      "themes": [
+        "gestiones",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "gestiones_tax_return",
+      "cat": "gestiones",
+      "name": "File your tax return",
+      "freq": "annual",
+      "desc": "Complete and submit the annual income-tax return using the information and documents required for your situation.",
+      "stats": {
+        "int": 55,
+        "vol": 45
+      },
+      "xp": 35,
+      "themes": [
+        "gestiones",
+        "comercio"
+      ],
+      "reviewMeta": {
+        "kind": "administration"
+      }
+    },
+    {
+      "id": "social_partner_date",
+      "cat": "social",
+      "name": "Special date with your partner",
+      "freq": "weekly",
+      "desc": "Spend intentional quality time with your partner, using a plan that fits the energy and time available.",
+      "stats": {
+        "pre": 50,
+        "vol": 35,
+        "int": 15
+      },
+      "xp": 25,
+      "themes": [
+        "social",
+        "alianzas"
+      ],
+      "reviewMeta": {
+        "kind": "relationship"
+      }
+    },
+    {
+      "id": "social_best_friend_1",
+      "cat": "social",
+      "name": "Contact best friend 1",
+      "freq": "weekly",
+      "desc": "Start or maintain contact with this friend by message, call, meeting, or another form that is realistic today.",
+      "stats": {
+        "pre": 50,
+        "vol": 35,
+        "int": 15
+      },
+      "xp": 25,
+      "themes": [
+        "social",
+        "amistad"
+      ],
+      "reviewMeta": {
+        "kind": "relationship"
+      }
+    },
+    {
+      "id": "social_best_friend_2",
+      "cat": "social",
+      "name": "Contact best friend 2",
+      "freq": "weekly",
+      "desc": "Start or maintain contact with this friend by message, call, meeting, or another form that is realistic today.",
+      "stats": {
+        "pre": 50,
+        "vol": 35,
+        "int": 15
+      },
+      "xp": 25,
+      "themes": [
+        "social",
+        "amistad"
+      ],
+      "reviewMeta": {
+        "kind": "relationship"
+      }
+    },
+    {
+      "id": "social_family",
+      "cat": "social",
+      "name": "Call family",
+      "freq": "biweekly",
+      "desc": "Call or otherwise contact a close family member and give the conversation enough attention to feel real.",
+      "stats": {
+        "pre": 50,
+        "vol": 35,
+        "int": 15
+      },
+      "xp": 25,
+      "themes": [
+        "social",
+        "alianzas"
+      ],
+      "reviewMeta": {
+        "kind": "relationship"
+      }
+    },
+    {
+      "id": "social_plans",
+      "cat": "social",
+      "name": "Plans with friends",
+      "freq": "monthly",
+      "desc": "Propose, organize, or attend a concrete plan with friends. A specific message or date proposal is a valid starting step.",
+      "stats": {
+        "pre": 50,
+        "vol": 35,
+        "int": 15
+      },
+      "xp": 35,
+      "themes": [
+        "social",
+        "alianzas"
+      ],
+      "reviewMeta": {
+        "kind": "relationship"
+      }
+    },
+    {
+      "id": "personal_ttrpg",
+      "cat": "personal",
+      "name": "TTRPG session",
+      "freq": "weekly",
+      "desc": "Work on the TTRPG project for a focused block. Choose one concrete piece and stop with a clear next step ready.",
+      "stats": {
+        "int": 45,
+        "vol": 40,
+        "pre": 15
+      },
+      "xp": 25,
+      "themes": [
+        "creacion",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "project",
+        "minimumMinutes": 5
+      }
+    },
+    {
+      "id": "personal_chinese",
+      "cat": "personal",
+      "name": "Chinese practice",
+      "freq": "weekly",
+      "desc": "Practise Chinese with an app, video, flashcards, reading, listening, or conversation for a manageable focused block.",
+      "stats": {
+        "int": 45,
+        "vol": 40,
+        "pre": 15
+      },
+      "xp": 25,
+      "themes": [
+        "oriente",
+        "conocimiento"
+      ],
+      "reviewMeta": {
+        "kind": "learning",
+        "minimumMinutes": 5
+      }
+    },
+    {
+      "id": "personal_digital_detox",
+      "cat": "personal",
+      "name": "Digital detox",
+      "freq": "weekly",
+      "desc": "Spend a deliberate period away from screens and choose a low-pressure way to rest or be present.",
+      "stats": {
+        "int": 45,
+        "vol": 40,
+        "pre": 15
+      },
+      "xp": 25,
+      "themes": [
+        "descanso",
+        "mente"
+      ],
+      "reviewMeta": {
+        "kind": "recovery",
+        "minimumMinutes": 10
+      }
+    },
+    {
+      "id": "personal_gaming",
+      "cat": "personal",
+      "name": "Gaming session",
+      "freq": "weekly",
+      "desc": "Take intentional leisure time to play something you enjoy, without treating rest as a failure to be productive.",
+      "stats": {
+        "int": 45,
+        "vol": 40,
+        "pre": 15
+      },
+      "xp": 25,
+      "themes": [
+        "descanso"
+      ],
+      "reviewMeta": {
+        "kind": "leisure"
+      }
+    },
+    {
+      "id": "personal_film_series",
+      "cat": "personal",
+      "name": "Watch a film or series",
+      "freq": "weekly",
+      "desc": "Take intentional leisure time to watch something you choose and let the activity be enough.",
+      "stats": {
+        "int": 45,
+        "vol": 40,
+        "pre": 15
+      },
+      "xp": 25,
+      "themes": [
+        "descanso"
+      ],
+      "reviewMeta": {
+        "kind": "leisure"
+      }
+    },
+    {
+      "id": "personal_manga",
+      "cat": "personal",
+      "name": "Read manga",
+      "freq": "weekly",
+      "desc": "Take intentional leisure time to read manga you want to read.",
+      "stats": {
+        "int": 45,
+        "vol": 40,
+        "pre": 15
+      },
+      "xp": 25,
+      "themes": [
+        "descanso"
+      ],
+      "reviewMeta": {
+        "kind": "leisure"
+      }
+    }
+  ]
+}
