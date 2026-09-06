@@ -101,8 +101,22 @@ function handleLifeXPKeydown(event) {
 
 const LIFE_XP_UPDATE_CHECK_TIMEOUT_MS = 2500;
 
+function getLifeXPEffectiveBuildInfo() {
+  const fallback = {
+    buildId: 'development',
+    label: typeof LIFE_XP_BUILD === 'string' && LIFE_XP_BUILD.trim() ? LIFE_XP_BUILD : 'development',
+    commitSha: 'unknown',
+    shortSha: 'unknown',
+    builtAt: null,
+    cacheName: 'lifexp-development'
+  };
+  const info = typeof globalThis !== 'undefined' && globalThis.LifeXPBuild;
+  if (!info || typeof info !== 'object') return fallback;
+  return { ...fallback, ...info };
+}
+
 function getLifeXPEffectiveBuild() {
-  return typeof LIFE_XP_BUILD === 'string' && LIFE_XP_BUILD.trim() ? LIFE_XP_BUILD : 'unknown';
+  return getLifeXPEffectiveBuildInfo().label;
 }
 
 function reportLifeXPUpdateStatus(message, level = 'info') {
@@ -110,18 +124,19 @@ function reportLifeXPUpdateStatus(message, level = 'info') {
   else if (typeof console !== 'undefined' && console[level]) console[level](`[LifeXP] ${message}`);
 }
 
-function readLifeXPDeclaredSourceBuild() {
-  const sourceUrl = new URL('./data_tasks.js', window.location.href);
+function readLifeXPPublishedBuildInfo() {
+  const sourceUrl = new URL('./build-info.json', window.location.href);
   sourceUrl.searchParams.set('lifexp_build_check', String(Date.now()));
   return fetch(sourceUrl.href, { cache: 'no-store', credentials: 'same-origin' })
     .then(response => {
-      if (!response.ok) throw new Error(`Source build request failed with HTTP ${response.status}.`);
-      return response.text();
+      if (!response.ok) throw new Error(`Published build info request failed with HTTP ${response.status}.`);
+      return response.json();
     })
-    .then(source => {
-      const match = source.match(/\bconst\s+LIFE_XP_BUILD\s*=\s*['"]([^'"]+)['"]/);
-      if (!match) throw new Error('The source does not declare LIFE_XP_BUILD.');
-      return match[1];
+    .then(info => {
+      if (!info || typeof info !== 'object' || typeof info.buildId !== 'string' || !info.buildId.trim()) {
+        throw new Error('Published build info is invalid.');
+      }
+      return info;
     });
 }
 
@@ -174,28 +189,33 @@ function observeLifeXPServiceWorkerInstallation(registration, previousController
 }
 
 async function verifyLifeXPUpdate(registration, installationStatus) {
-  const effectiveBuild = getLifeXPEffectiveBuild();
-  let declaredBuild;
+  const effectiveBuildInfo = getLifeXPEffectiveBuildInfo();
+  const effectiveBuild = effectiveBuildInfo.label;
+  let publishedBuildInfo;
   let serviceWorkerStatus;
-  try { declaredBuild = await readLifeXPDeclaredSourceBuild(); }
+  try { publishedBuildInfo = await readLifeXPPublishedBuildInfo(); }
   catch (error) {
-    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}. No se pudo leer la build declarada de la fuente.`, 'warn');
+    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}. No se pudo leer el manifiesto publicado.`, 'warn');
     return { confirmed: false, effectiveBuild, installationStatus, error };
   }
-  if (declaredBuild !== effectiveBuild) {
-    reportLifeXPUpdateStatus(`Actualización no confirmada. Build en ejecución: ${effectiveBuild}; build declarada por la fuente: ${declaredBuild}.`, 'warn');
-    return { confirmed: false, effectiveBuild, declaredBuild, installationStatus };
+  if (publishedBuildInfo.buildId !== effectiveBuildInfo.buildId || publishedBuildInfo.commitSha !== effectiveBuildInfo.commitSha) {
+    reportLifeXPUpdateStatus(`Actualización no confirmada. El manifiesto publicado (${publishedBuildInfo.shortSha || publishedBuildInfo.buildId}) no coincide con la build en ejecución (${effectiveBuildInfo.shortSha || effectiveBuildInfo.buildId}).`, 'warn');
+    return { confirmed: false, effectiveBuild, publishedBuildInfo, installationStatus };
   }
   try { serviceWorkerStatus = await requestLifeXPServiceWorkerStatus(registration); }
   catch (error) {
     reportLifeXPUpdateStatus(`Build comprobada: ${effectiveBuild}. No se pudo confirmar el estado de la caché o del Service Worker; no se muestra una actualización como aplicada.`, 'warn');
-    return { confirmed: false, effectiveBuild, declaredBuild, installationStatus, error };
+    return { confirmed: false, effectiveBuild, publishedBuildInfo, installationStatus, error };
   }
-  const cacheName = serviceWorkerStatus.cacheName || 'desconocida';
+  const cacheName = serviceWorkerStatus.cacheName || effectiveBuildInfo.cacheName || 'desconocida';
+  if (serviceWorkerStatus.buildId && serviceWorkerStatus.buildId !== effectiveBuildInfo.buildId) {
+    reportLifeXPUpdateStatus(`Actualización no confirmada. El Service Worker usa ${serviceWorkerStatus.buildId} y la página usa ${effectiveBuildInfo.buildId}.`, 'warn');
+    return { confirmed: false, effectiveBuild, publishedBuildInfo, installationStatus, serviceWorkerStatus };
+  }
   if (installationStatus === 'activated') reportLifeXPUpdateStatus(`Caché actualizada: ${cacheName}. La página sigue ejecutando la build ${effectiveBuild}; recarga para ejecutar los assets recién activados.`);
   else if (installationStatus === 'pending-reload') reportLifeXPUpdateStatus(`Hay una actualización preparada en la caché ${cacheName}. La página sigue ejecutando la build ${effectiveBuild}; recarga para aplicarla.`);
-  else reportLifeXPUpdateStatus(`No se ha confirmado una build nueva. Build en ejecución: ${effectiveBuild}; fuente declarada: ${declaredBuild}; caché activa: ${cacheName}.`);
-  return { confirmed: installationStatus === 'activated' || installationStatus === 'pending-reload', effectiveBuild, declaredBuild, installationStatus, serviceWorkerStatus };
+  else reportLifeXPUpdateStatus(`No se ha confirmado una build nueva. Build: ${effectiveBuild} (${effectiveBuildInfo.shortSha}); caché activa: ${cacheName}.`);
+  return { confirmed: installationStatus === 'activated' || installationStatus === 'pending-reload', effectiveBuild, publishedBuildInfo, installationStatus, serviceWorkerStatus };
 }
 
 async function registerAndVerifyLifeXPServiceWorker() {
@@ -206,7 +226,9 @@ async function registerAndVerifyLifeXPServiceWorker() {
   }
   const previousController = navigator.serviceWorker.controller;
   try {
-    const registration = await navigator.serviceWorker.register('./sw.js');
+    const buildInfo = getLifeXPEffectiveBuildInfo();
+    const swUrl = `./sw.js?lifexp_build=${encodeURIComponent(buildInfo.buildId)}`;
+    const registration = await navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' });
     const installationPromise = observeLifeXPServiceWorkerInstallation(registration, previousController);
     try { await registration.update(); }
     catch (error) { await verifyLifeXPUpdate(registration, 'not-confirmed'); return; }

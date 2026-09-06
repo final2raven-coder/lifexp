@@ -41,7 +41,7 @@ Commit actual de main
 
 Build efectiva
 
-v13.4-equip-action-fix
+Generada por el artefacto de GitHub Pages desde el commit publicado; la etiqueta visible y el commit se leen de build-info.json/build-info.js. No hay una etiqueta fija en el código fuente.
 
 Publicacion
 
@@ -73,7 +73,7 @@ taskModelVersion: 1
 
 Cache conocida
 
-lifexp-v23
+Generada por release: lifexp-<buildId>; el Service Worker la obtiene del manifiesto publicado
 
 Proteccion de main
 
@@ -543,9 +543,9 @@ Existe contrato transaccional; `deliverReward()` incorpora rollback de memoria y
 
 F6
 
-Ya estaba hecho
+Parcial
 
-Build visible y actualizacion verificable implementadas
+La actualización verificable existe; esta rama añade el pipeline correcto de release para que build, commit, artefacto de Pages y caché queden coordinados
 
 F7
 
@@ -594,6 +594,10 @@ F14
 Pendiente
 
 QA final solo despues de cerrar las fases anteriores
+
+F6 - Contrato de publicación
+
+GitHub Pages debe publicar el artefacto generado por `.github/workflows/deploy-pages.yml`, no la raíz de `main`. `tools/build_release.js` genera `build-info.json` y `build-info.js` usando el commit de GitHub Actions. `data_tasks.js`, `main.js`, `ui_hub.js` y `sw.js` consumen ese manifiesto; el save no participa en el versionado.
 
 Deuda tecnica abierta
 
@@ -762,6 +766,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-06 - F6: se prepara el pipeline de publicación reproducible. GitHub Pages generará desde el commit un manifiesto de build, una etiqueta visible y una caché coordinada; el Service Worker deja de depender de un número manual. Pendiente de colocar los ficheros en la rama y cambiar la fuente de Pages a GitHub Actions.
 
 2026-09-06 - F5: `inventory_system.js` refuerza `LifeXPInventory.deliverReward()` con una transaccion de persistencia: captura inventario, pendingLoot, rewardLedger y los bytes originales del save; si `saveGame()` falla, devuelve `false` o lanza una excepcion, restaura memoria y save sin confirmar la entrega. Se mantienen claimId, idempotencia y recuperacion visible de referencias no resolubles. `node --check inventory_system.js` pasa. Quedan pendientes las pruebas runtime, la validacion completa de referencias de drops y la decision narrativa; no se cambia `saveVersion`.
 
