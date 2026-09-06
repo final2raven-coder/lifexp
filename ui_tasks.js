@@ -926,7 +926,12 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
   // Trigger all post-completion state changes before persisting the visible result.
   triggerEncounterAfterTask(task);
   if (typeof updateQuestProgress === 'function') {
-    updateQuestProgress('task_complete', { category: task.cat });
+    updateQuestProgress('task_complete', {
+      category: task.cat,
+      taskId: task.id,
+      date: today,
+      completionId: historyEntry.completionId
+    });
   }
   if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
 
