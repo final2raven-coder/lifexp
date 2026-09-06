@@ -539,7 +539,7 @@ F5
 
 Parcial
 
-Existe contrato transaccional; siguen abiertas referencias invalidas de drops y decision narrativa
+Existe contrato transaccional; `deliverReward()` incorpora rollback de memoria y save ante fallos de persistencia; siguen pendientes las pruebas runtime, la validacion completa de referencias invalidas de drops y la decision narrativa
 
 F6
 
@@ -762,6 +762,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-06 - F5: `inventory_system.js` refuerza `LifeXPInventory.deliverReward()` con una transaccion de persistencia: captura inventario, pendingLoot, rewardLedger y los bytes originales del save; si `saveGame()` falla, devuelve `false` o lanza una excepcion, restaura memoria y save sin confirmar la entrega. Se mantienen claimId, idempotencia y recuperacion visible de referencias no resolubles. `node --check inventory_system.js` pasa. Quedan pendientes las pruebas runtime, la validacion completa de referencias de drops y la decision narrativa; no se cambia `saveVersion`.
 
 2026-09-06 - F7: se implementa la recuperacion de tareas guardadas sin cambiar saveVersion ni el modelo persistente. El aviso del Hub abre una lista; las tareas validas entran en la pantalla canonica; las referencias invalidas quedan visibles como needs review y solo se eliminan mediante accion explicita. El guardado y la retirada son persistentes e idempotentes, con rollback en memoria si saveGame() falla. Se corrige tambien el cierre del modal guardado mediante data-close-modal.
 
