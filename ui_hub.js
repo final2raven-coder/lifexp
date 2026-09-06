@@ -392,6 +392,14 @@ function renderSettings() {
       <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Resetear progreso</button>
     </div>
     
+    <div class="section-title">Tasks</div>
+    <div class="card">
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Review every task's schedule, repetitions, next available date, and completion history.
+      </p>
+      <button class="btn btn-secondary" onclick="openTaskHistory(null, 'settings')">&#128197; Task history and schedules</button>
+    </div>
+
     <div class="section-title">Content Planning</div>
     <div class="card">
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">

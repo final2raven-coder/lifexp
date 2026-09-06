@@ -309,6 +309,39 @@ function getTaskAvailabilityDefinition(task) {
   };
 }
 
+function getTaskScheduleSettings(task) {
+  const definition = getTaskAvailabilityDefinition(task);
+  return {
+    frequency: definition.frequency,
+    availability: definition.type,
+    intervalDays: definition.intervalDays,
+    limit: definition.limit,
+    repeatable: definition.repeatable,
+    editable: definition.type === 'periodic',
+    overridden: Boolean(task && isPlainObject(task.availability))
+  };
+}
+
+function setTaskRepeatLimit(task, value) {
+  if (!task || typeof task !== 'object') return false;
+  if (value === null || value === undefined || value === '') {
+    delete task.availability;
+    return true;
+  }
+  const limit = Number(value);
+  const current = getTaskAvailabilityDefinition(task);
+  if (!Number.isInteger(limit) || limit < 1 || current.type !== 'periodic' || !Number.isFinite(current.intervalDays) || current.intervalDays <= 0) {
+    return false;
+  }
+  task.availability = {
+    type: 'periodic',
+    intervalDays: current.intervalDays,
+    limit,
+    repeatable: true
+  };
+  return true;
+}
+
 function isValidTaskDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
 }
@@ -355,6 +388,8 @@ function getTaskAvailability(task, referenceDate = todayStr()) {
     limit: definition.limit,
     repeatable: definition.repeatable,
     completionCount: history.length,
+    periodCompletionCount: 0,
+    remainingInPeriod: definition.limit === null ? null : definition.limit,
     nextAvailableDate: null
   };
 
@@ -364,6 +399,8 @@ function getTaskAvailability(task, referenceDate = todayStr()) {
       ...base,
       status: 'needs_review',
       available: !isValidTaskDate(task?.lastDone),
+      periodCompletionCount: 0,
+      remainingInPeriod: null,
       reason: definition.reason
     };
   }
@@ -372,13 +409,15 @@ function getTaskAvailability(task, referenceDate = todayStr()) {
       ...base,
       status: history.length > 0 ? 'completed' : 'available',
       available: history.length === 0,
+      periodCompletionCount: Math.min(history.length, 1),
+      remainingInPeriod: history.length > 0 ? 0 : 1,
       nextAvailableDate: null
     };
   }
   if (!isValidTaskDate(referenceDate)) {
     return { ...base, status: 'needs_review', available: false, reason: 'invalid_reference_date' };
   }
-  if (definition.limit === null) return { ...base, status: 'available', available: true };
+  if (definition.limit === null) return { ...base, status: 'available', available: true, periodCompletionCount: 0, remainingInPeriod: null };
 
   const recent = history.filter(entry => {
     if (!isValidTaskDate(entry.date)) return false;
@@ -393,10 +432,18 @@ function getTaskAvailability(task, referenceDate = todayStr()) {
       ...base,
       status: 'cooldown',
       available: false,
+      periodCompletionCount: recent.length,
+      remainingInPeriod: 0,
       nextAvailableDate: addDaysToDate(oldestRecent, definition.intervalDays)
     };
   }
-  return { ...base, status: 'available', available: true };
+  return {
+    ...base,
+    status: 'available',
+    available: true,
+    periodCompletionCount: recent.length,
+    remainingInPeriod: Math.max(0, definition.limit - recent.length)
+  };
 }
 
 function createTaskHistoryEntry(task, values = {}) {
@@ -1423,7 +1470,16 @@ function updateStreak() {
 
 function showScreen(screenId, options = {}) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(`screen-${screenId}`).classList.add('active');
+  const targetScreen = document.getElementById(`screen-${screenId}`);
+  if (!targetScreen && screenId === 'task-history' && typeof renderTaskHistory === 'function') {
+    renderTaskHistory();
+  }
+  const resolvedScreen = document.getElementById(`screen-${screenId}`);
+  if (!resolvedScreen) {
+    console.warn(`Unknown LifeXP screen: ${screenId}`);
+    return;
+  }
+  resolvedScreen.classList.add('active');
   
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector(`.nav-item[data-screen="${screenId}"]`)?.classList.add('active');
@@ -1435,6 +1491,7 @@ function showScreen(screenId, options = {}) {
   else if (screenId === 'quests') renderQuests();
   else if (screenId === 'guild') renderGuild();
   else if (screenId === 'settings') renderSettings();
+  else if (screenId === 'task-history' && typeof renderTaskHistory === 'function') renderTaskHistory();
 
   if (typeof syncLifeXPScreenHistory === 'function') {
     syncLifeXPScreenHistory(screenId, options);

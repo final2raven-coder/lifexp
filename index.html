@@ -376,6 +376,30 @@ body {
   .saved-task-actions { justify-content: flex-start; margin-top: 10px; }
 }
 
+.task-schedule {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 16px;
+  padding: 9px 10px;
+}
+.task-schedule[data-status="available"] { color: var(--green); border-color: rgba(74, 222, 128, 0.45); }
+.task-schedule[data-status="cooldown"], .task-schedule[data-status="completed"] { color: var(--gold); border-color: var(--gold-dim); }
+.task-catalog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.task-history-status { color: var(--gold); font-size: 12px; margin-bottom: 12px; }
+.task-history-list { border-top: 1px solid var(--border); margin-bottom: 12px; }
+.task-history-entry { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 12px; padding: 8px 0; }
+.task-history-empty, .task-history-help { color: var(--text-muted); font-size: 11px; }
+.task-history-controls { border-top: 1px solid var(--border); padding-top: 12px; }
+.task-history-limit-label { color: var(--text-muted); display: block; font-size: 11px; margin-bottom: 6px; }
+.task-history-limit-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.task-repeat-limit { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); min-width: 80px; padding: 8px; }
+.task-history-help { margin-top: 7px; }
+@media (max-width: 520px) { .task-catalog-actions, .task-history-limit-row { justify-content: flex-start; } .task-history-entry { display: block; } }
+
 /* Task card (main view) */
 .task-card {
   background: var(--bg-card);
@@ -1181,6 +1205,7 @@ body {
       <div class="task-card-body">
         <div class="task-name" id="task-name"></div>
         <div class="task-desc" id="task-desc"></div>
+        <div id="task-schedule" class="task-schedule" aria-live="polite"></div>
         <div class="task-rewards" id="task-rewards"></div>
         <div class="side-quest" id="side-quest-box">
           <div class="side-quest-header">

@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-77d66dd82eb8098485486ab5b3890536465d2ab0
+0f48d3b4be1c788a4b304fe5f52903398282b578
 
 Build efectiva
 
@@ -147,7 +147,7 @@ Responsabilidad
 
 engine.js
 
-gameState, schema del save, migraciones v0->v4, submodelo persistente de quests DT-24, tareas, disponibilidad, historial, XP, stats, navegacion y resultados pendientes
+gameState, schema del save, migraciones v0->v4, submodelo persistente de quests DT-24, tareas, disponibilidad, frecuencias configurables por tarea, historial, XP, stats, navegacion y resultados pendientes
 
 combat.js
 
@@ -181,7 +181,7 @@ Hub, personaje, inventario, equipo, consumibles y Settings
 
 ui_tasks.js
 
-Tareas, completado, drops, side quests, resultados pendientes y recuperacion. Incluye la ruta canonica de tareas guardadas: listado, apertura, retirada explicita y conservacion visible de referencias que necesitan revision
+Tareas, disponibilidad, frecuencias, historial, completado, drops, side quests, resultados pendientes y recuperacion. Incluye la ruta canonica de tareas guardadas: listado, apertura, retirada explicita y conservacion visible de referencias que necesitan revision
 
 ui_combat.js
 
@@ -555,9 +555,9 @@ La recuperación de tareas guardadas y de resultados pendientes usa un único pu
 
 F8
 
-Parcial
+Completada
 
-Motor de frecuencia e historial existe; falta integracion completa de consumidores
+Disponibilidad, proxima fecha, limites por tarea, historial completo y bloqueo al agotar repeticiones integrados en motor y UI; saveVersion se conserva en 4
 
 F9
 
@@ -642,12 +642,6 @@ DT-19
 Persisten referencias legacy no ASCII en enemigos
 
 Cambio de datos separado con migracion y trazabilidad
-
-DT-21
-
-Consumidores de tareas no integran completamente la politica nueva
-
-PR separado despues de F1
 
 DT-22
 
@@ -772,6 +766,8 @@ Changelog operativo
 2026-09-06 - F5: `inventory_system.js` refuerza `LifeXPInventory.deliverReward()` con una transaccion de persistencia: captura inventario, pendingLoot, rewardLedger y los bytes originales del save; si `saveGame()` falla, devuelve `false` o lanza una excepcion, restaura memoria y save sin confirmar la entrega. Se mantienen claimId, idempotencia y recuperacion visible de referencias no resolubles. `node --check inventory_system.js` pasa. Quedan pendientes las pruebas runtime, la validacion completa de referencias de drops y la decision narrativa; no se cambia `saveVersion`.
 
 2026-09-06 - F7: se implementa la recuperacion de tareas guardadas sin cambiar saveVersion ni el modelo persistente. El aviso del Hub abre una lista; las tareas validas entran en la pantalla canonica; las referencias invalidas quedan visibles como needs review y solo se eliminan mediante accion explicita. El guardado y la retirada son persistentes e idempotentes, con rollback en memoria si saveGame() falla. Se corrige tambien el cierre del modal guardado mediante data-close-modal.
+
+2026-09-06 - F8: se integran frecuencias e historial. Cada tarea periodica permite configurar su limite de repeticiones desde la pantalla de historial; el cambio se aplica inmediatamente sin modificar entradas antiguas. La UI muestra estado, repeticiones usadas, proxima fecha e historial completo; se elimina el bypass de cooldown y no se cambia saveVersion.
 
 2026-09-06 - F7: se completa la navegacion segura de resultados pendientes. `showPendingTaskResult()` es el punto unico de recuperacion desde menu, atras, recarga y pantalla de tarea; vuelve a la tarea canonica antes de presentar el resultado. `renderTaskResultModal()` registra una unica entrada `task-result` en History API y el cierre mediante atras o Escape no confirma ni pierde la recompensa. No cambia `saveVersion`, `pendingTaskResult`, `claimId` ni `rewardLedger`.
 
