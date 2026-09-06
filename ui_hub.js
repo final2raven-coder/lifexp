@@ -4,7 +4,24 @@
 // Depende de: engine.js, items.js, inventory_system.js, item_flavor.js.
 // ===========================================================================
 
+function bindHubAlertActions() {
+  const alertsDiv = document.getElementById('hub-alerts');
+  if (!alertsDiv || alertsDiv.dataset.hubAlertsBound === 'true') return;
+
+  alertsDiv.dataset.hubAlertsBound = 'true';
+  alertsDiv.addEventListener('click', event => {
+    const actionElement = event.target.closest('[data-hub-action]');
+    if (!actionElement || !alertsDiv.contains(actionElement)) return;
+
+    if (actionElement.dataset.hubAction === 'saved-tasks') {
+      event.preventDefault();
+      showSavedTasks();
+    }
+  });
+}
+
 function renderHub() {
+  bindHubAlertActions();
   // Header stats
   document.getElementById('hub-streak').textContent = gameState.streak;
   document.getElementById('hub-gold').textContent = gameState.gold;
@@ -39,8 +56,6 @@ function renderHub() {
       </button>
     `;
   }
-  const savedTasksAlert = alertsDiv.querySelector('[data-hub-action="saved-tasks"]');
-  if (savedTasksAlert) savedTasksAlert.addEventListener('click', showSavedTasks);
   
   // Categories
   const catGrid = document.getElementById('hub-categories');
