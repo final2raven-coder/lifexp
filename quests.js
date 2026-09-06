@@ -515,6 +515,63 @@ function grantQuestRewards(rewards, options = {}) {
   return { status, claimId, results, rewardPackage };
 }
 
+function cloneLegacyQuestObjectives(objectives) {
+  return (Array.isArray(objectives) ? objectives : []).map(objective => ({
+    ...objective,
+    progress: Number.isFinite(Number(objective.progress)) ? Math.max(0, Number(objective.progress)) : 0,
+    completed: Boolean(objective.completed),
+    consumedCompletionIds: Array.isArray(objective.consumedCompletionIds)
+      ? [...new Set(objective.consumedCompletionIds.filter(id => typeof id === 'string' && id))]
+      : []
+  }));
+}
+
+function ensureLegacyQuestProgressState(quest, questState) {
+  if (!quest || !questState || typeof questState !== 'object') return [];
+
+  if (quest.type === 'story' && Array.isArray(quest.chapters)) {
+    if (!isPlainObject(questState.chapterObjectives)) questState.chapterObjectives = {};
+    const chapterIndex = Number.isInteger(questState.currentChapter)
+      ? Math.max(0, Math.min(quest.chapters.length - 1, questState.currentChapter))
+      : 0;
+    questState.currentChapter = chapterIndex;
+
+    const chapterKey = String(chapterIndex);
+    if (!Array.isArray(questState.chapterObjectives[chapterKey])) {
+      const fallback = Array.isArray(questState.objectives) && questState.objectives.length > 0
+        ? questState.objectives
+        : quest.chapters[chapterIndex]?.objectives || [];
+      questState.chapterObjectives[chapterKey] = cloneLegacyQuestObjectives(fallback);
+    } else {
+      questState.chapterObjectives[chapterKey] = cloneLegacyQuestObjectives(questState.chapterObjectives[chapterKey]);
+    }
+
+    // Keep the legacy root field as a compatibility mirror for existing saves
+    // and UI consumers. The chapter map is the canonical persisted state.
+    questState.objectives = questState.chapterObjectives[chapterKey];
+    return questState.objectives;
+  }
+
+  if (!Array.isArray(questState.objectives)) {
+    questState.objectives = cloneLegacyQuestObjectives(quest.objectives || []);
+  } else {
+    questState.objectives = cloneLegacyQuestObjectives(questState.objectives);
+  }
+  return questState.objectives;
+}
+
+function initializeLegacyQuestProgressState(quest, questState) {
+  const objectives = cloneLegacyQuestObjectives(quest?.objectives || []);
+  if (quest?.type === 'story' && Array.isArray(quest.chapters)) {
+    const chapterObjectives = cloneLegacyQuestObjectives(quest.chapters[0]?.objectives || []);
+    questState.chapterObjectives = { '0': chapterObjectives };
+    questState.objectives = chapterObjectives;
+  } else {
+    questState.objectives = objectives;
+  }
+  return questState;
+}
+
 function acceptQuest(questId) {
   initQuestState();
   const quest = QUESTS[questId];
@@ -531,17 +588,19 @@ function acceptQuest(questId) {
     return { success: false, reason: 'slot_limit_reached', slotGroup: acceptance.slotGroup, limit: acceptance.limit, used: acceptance.used, message };
   }
   
-  // Initialize quest state
-  gameState.quests.active.push(questId);
-  gameState.quests[questId] = {
+  // Initialize quest state. Chapter objectives are persisted from the first
+  // moment so progress cannot disappear between task completions.
+  const questState = {
     startedAt: todayStr(),
     instanceId: createQuestInstanceId(questId),
-    objectives: quest.objectives ? quest.objectives.map(o => ({ ...o, progress: 0 })) : [],
     currentChapter: 0,
     origin: typeof quest.origin === 'string' ? quest.origin : DEFAULT_QUEST_ORIGIN,
     slotGroup: acceptance.slotGroup,
     rewardApplication: { final: null, chapters: {} }
   };
+  initializeLegacyQuestProgressState(quest, questState);
+  gameState.quests.active.push(questId);
+  gameState.quests[questId] = questState;
   
   saveGame();
   return { success: true, message: `Quest "${quest.name}" accepted!` };
@@ -784,57 +843,54 @@ function updateQuestProgress(eventType, data = {}) {
     }
     if (!quest) return;
 
-    // Legacy objective model remains supported for existing quests.
-    let objectives = questState.objectives || [];
-    if (quest.type === 'story' && quest.chapters) {
-      const chapter = quest.chapters[questState.currentChapter || 0];
-      if (chapter) {
-        objectives = questState.chapterObjectives?.[questState.currentChapter]
-          || chapter.objectives.map(o => ({ ...o, progress: 0 }));
-      }
-    }
+    // Legacy objective model remains supported for existing quests. Story
+    // chapter objectives are materialized into persistent state before they
+    // receive an event, so progress survives the next task completion.
+    const objectives = ensureLegacyQuestProgressState(quest, questState);
+    const completionId = getQuestProgressCompletionId(data);
 
     let legacyUpdated = false;
     objectives.forEach(obj => {
       if (obj.completed) return;
+      if (completionId) {
+        if (!Array.isArray(obj.consumedCompletionIds)) obj.consumedCompletionIds = [];
+        if (obj.consumedCompletionIds.includes(completionId)) return;
+      }
+
+      let matches = false;
       switch (eventType) {
         case 'task_completed':
         case 'task_complete':
-          if (obj.type === 'complete_tasks' && (!obj.category || obj.category === data.category)) {
-            obj.progress = (obj.progress || 0) + 1;
-            if (obj.progress >= obj.count) obj.completed = true;
-            legacyUpdated = true;
-          }
+          matches = obj.type === 'complete_tasks' && (!obj.category || obj.category === data.category);
           break;
         case 'enemy_defeated':
-          if (obj.type === 'defeat_enemy' && obj.enemyId === data.enemyId) {
-            obj.progress = (obj.progress || 0) + 1;
-            if (obj.progress >= obj.count) obj.completed = true;
-            legacyUpdated = true;
-          }
+          matches = obj.type === 'defeat_enemy' && obj.enemyId === data.enemyId;
           break;
         case 'boss_defeated':
-          if (obj.type === 'defeat_boss' && obj.enemyId === data.enemyId) {
-            obj.progress = 1;
-            obj.completed = true;
-            legacyUpdated = true;
-          }
+          matches = obj.type === 'defeat_boss' && obj.enemyId === data.enemyId;
           break;
         case 'level_up':
-          if (obj.type === 'reach_level' && data.level >= obj.level) {
-            obj.progress = data.level;
-            obj.completed = true;
-            legacyUpdated = true;
-          }
+          matches = obj.type === 'reach_level' && data.level >= obj.level;
           break;
         case 'item_equipped':
-          if (obj.type === 'equip_item' && (!obj.itemId || obj.itemId === data.itemId)) {
-            obj.progress = 1;
-            obj.completed = true;
-            legacyUpdated = true;
-          }
+          matches = obj.type === 'equip_item' && (!obj.itemId || obj.itemId === data.itemId);
           break;
       }
+      if (!matches) return;
+
+      if (completionId) obj.consumedCompletionIds.push(completionId);
+      if (obj.type === 'defeat_boss' || obj.type === 'equip_item') {
+        obj.progress = 1;
+      } else if (obj.type === 'reach_level') {
+        obj.progress = Math.max(Number(obj.progress) || 0, Number(data.level));
+      } else {
+        obj.progress = (Number(obj.progress) || 0) + 1;
+      }
+      const target = Number.isFinite(Number(obj.count)) ? Number(obj.count) : 1;
+      obj.completed = obj.type === 'reach_level'
+        ? obj.progress >= Number(obj.level)
+        : obj.progress >= target;
+      legacyUpdated = true;
     });
 
     if (legacyUpdated) {
@@ -842,17 +898,21 @@ function updateQuestProgress(eventType, data = {}) {
       if (objectives.every(o => o.completed)) {
         if (quest.type === 'story' && quest.chapters) {
           const nextChapter = (questState.currentChapter || 0) + 1;
+          const completedChapter = quest.chapters[questState.currentChapter || 0];
           if (nextChapter >= quest.chapters.length) {
             completeQuest(questId);
           } else {
             questState.currentChapter = nextChapter;
-            const chapter = quest.chapters[nextChapter - 1];
-            if (chapter?.rewards) {
-              grantQuestRewards(chapter.rewards, {
+            if (!isPlainObject(questState.chapterObjectives)) questState.chapterObjectives = {};
+            const nextObjectives = cloneLegacyQuestObjectives(quest.chapters[nextChapter]?.objectives || []);
+            questState.chapterObjectives[String(nextChapter)] = nextObjectives;
+            questState.objectives = nextObjectives;
+            if (completedChapter?.rewards) {
+              grantQuestRewards(completedChapter.rewards, {
                 questId,
                 questState,
-                rewardKey: chapter.id,
-                claimId: `${questState.instanceId}:chapter:${chapter.id}`,
+                rewardKey: completedChapter.id,
+                claimId: `${questState.instanceId}:chapter:${completedChapter.id}`,
                 source: 'quest_chapter'
               });
             }
@@ -908,9 +968,18 @@ function getQuestProgress(questId) {
   const state = gameState.quests[questId];
   if (!quest || !state) return null;
   
-  const objectives = state.objectives || [];
+  const objectives = ensureLegacyQuestProgressState(quest, state);
   const completed = objectives.filter(o => o.completed).length;
   const total = objectives.length;
+  const totalUnits = objectives.reduce((sum, objective) => {
+    if (objective.type === 'reach_level') return sum + 1;
+    return sum + (Number.isFinite(Number(objective.count)) ? Math.max(1, Number(objective.count)) : 1);
+  }, 0);
+  const completedUnits = objectives.reduce((sum, objective) => {
+    if (objective.type === 'reach_level') return sum + (objective.completed ? 1 : 0);
+    const target = Number.isFinite(Number(objective.count)) ? Math.max(1, Number(objective.count)) : 1;
+    return sum + Math.min(target, Math.max(0, Number(objective.progress) || 0));
+  }, 0);
   
   return {
     questId,
@@ -918,7 +987,7 @@ function getQuestProgress(questId) {
     objectives,
     completed,
     total,
-    percent: total > 0 ? Math.round((completed / total) * 100) : 0
+    percent: totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0
   };
 }
 

@@ -573,9 +573,9 @@ Habilidades, requisitos, dificultad legible y formaciones jugables implementados
 
 F11
 
-Pendiente
+En curso
 
-Revisar botones de misiones sin accion efectiva
+El flujo canonico de progreso ya actualiza misiones al completar tareas; este bloque local persiste objetivos por capitulo, conserva completionId contra duplicados, recupera estados legacy y corrige la visibilidad del boton de accion. Falta verificacion manual como jugador antes de marcarla completada
 
 F12
 
@@ -766,6 +766,8 @@ Changelog operativo
 2026-09-06 - F5: `inventory_system.js` refuerza `LifeXPInventory.deliverReward()` con una transaccion de persistencia: captura inventario, pendingLoot, rewardLedger y los bytes originales del save; si `saveGame()` falla, devuelve `false` o lanza una excepcion, restaura memoria y save sin confirmar la entrega. Se mantienen claimId, idempotencia y recuperacion visible de referencias no resolubles. `node --check inventory_system.js` pasa. Quedan pendientes las pruebas runtime, la validacion completa de referencias de drops y la decision narrativa; no se cambia `saveVersion`.
 
 2026-09-06 - F7: se implementa la recuperacion de tareas guardadas sin cambiar saveVersion ni el modelo persistente. El aviso del Hub abre una lista; las tareas validas entran en la pantalla canonica; las referencias invalidas quedan visibles como needs review y solo se eliminan mediante accion explicita. El guardado y la retirada son persistentes e idempotentes, con rollback en memoria si saveGame() falla. Se corrige tambien el cierre del modal guardado mediante data-close-modal.
+
+2026-09-06 - F11: se corrige localmente el progreso canonico de misiones. Al aceptar una mision por capitulos se persisten sus objetivos iniciales; los estados legacy con objetivos vacios se materializan de forma determinista; cada objetivo consume completionId para ignorar eventos duplicados; completar un capitulo persiste el siguiente y entrega su recompensa idempotente. ui_tasks.js propaga taskId, categoria, fecha y completionId desde finalizeCompletion(). ui_quests.js restaura la visibilidad del boton de accion al abrir el detalle. Falta verificacion manual como jugador antes de cerrar la fase y entregar el PR.
 
 2026-09-06 - F8: se integran frecuencias e historial. Cada tarea periodica permite configurar su limite de repeticiones desde la pantalla de historial; el cambio se aplica inmediatamente sin modificar entradas antiguas. La UI muestra estado, repeticiones usadas, proxima fecha e historial completo; se elimina el bypass de cooldown y no se cambia saveVersion.
 

@@ -176,6 +176,8 @@ function showQuestDetail(questId) {
   contentEl.innerHTML += rewardStatusHtml;
 
   const actionBtn = document.getElementById('btn-item-action');
+  actionBtn.style.display = '';
+  actionBtn.disabled = false;
   actionBtn.textContent = '\u274C Abandon quest';
   actionBtn.onclick = () => abandonQuest(questId);
   openModal('modal-item');
