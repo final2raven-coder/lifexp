@@ -322,39 +322,78 @@ function renderCategoryTaskList(catId) {
 
   const tasks = gameState.tasks
     .filter(task => !isTaskArchived(task) && task.cat === catId);
-  const availableCount = tasks.filter(task => {
-    const availability = getTaskAvailability(task);
-    return canCompleteTaskFromCatalog(availability);
-  }).length;
-  const pendingCount = tasks.filter(task => {
-    const availability = getTaskAvailability(task);
-    return availability.status === 'available';
-  }).length;
+  const statusCounts = tasks.reduce((counts, task) => {
+    const status = getTaskAvailability(task).status;
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+  const availableCount = statusCounts.available || 0;
+  const waitingCount = (statusCounts.cooldown || 0) + (statusCounts.completed || 0);
+  const reviewCount = statusCounts.needs_review || 0;
 
   const presentation = typeof LifeXPPresentation !== 'undefined'
     ? LifeXPPresentation
     : { getCategoryLabel: () => 'Adventure' };
   heading.textContent = `${cat.icon} ${presentation.getCategoryLabel(catId)}`;
   summary.innerHTML = `
-    <div class="stat-card">
-      <div class="stat-label">Tasks in this category</div>
-      <div class="stat-value">${tasks.length}</div>
-      <div class="stat-label">${availableCount} actionable · ${pendingCount} available now</div>
+    <div class="task-catalog-summary">
+      <div class="task-catalog-summary-intro">
+        <div class="task-catalog-summary-kicker">Category overview</div>
+        <div class="task-catalog-summary-title">${tasks.length} task${tasks.length === 1 ? '' : 's'} in this category</div>
+        <div class="task-catalog-summary-copy">Choose a task to open its full action screen.</div>
+      </div>
+      <div class="task-catalog-summary-stats" aria-label="Category task summary">
+        <div class="task-catalog-summary-stat">
+          <span class="task-catalog-summary-value">${availableCount}</span>
+          <span class="task-catalog-summary-label">Available now</span>
+        </div>
+        <div class="task-catalog-summary-stat">
+          <span class="task-catalog-summary-value">${waitingCount}</span>
+          <span class="task-catalog-summary-label">Waiting</span>
+        </div>
+        ${reviewCount > 0 ? `
+          <div class="task-catalog-summary-stat task-catalog-summary-stat-warning">
+            <span class="task-catalog-summary-value">${reviewCount}</span>
+            <span class="task-catalog-summary-label">Needs review</span>
+          </div>
+        ` : ''}
+      </div>
     </div>
   `;
   randomButton.disabled = availableCount === 0;
   randomButton.title = availableCount === 0 ? 'No tasks are available in this category.' : '';
 
   if (tasks.length === 0) {
-    list.innerHTML = '<div class="empty-state">No tasks in this category.</div>';
+    list.innerHTML = '<div class="empty-state task-catalog-empty"><div class="empty-state-icon">&#128221;</div><div class="empty-state-title">No tasks in this category</div><div class="empty-state-desc">Choose another category or add a task to begin.</div></div>';
     return;
   }
 
-  list.innerHTML = tasks.map(task => {
+  const unavailableNotice = availableCount === 0
+    ? `
+      <div class="task-catalog-empty task-catalog-empty-compact" role="status">
+        <div class="task-catalog-empty-title">No tasks are available right now</div>
+        <div class="task-catalog-empty-copy">Your task history is safe. Check the schedule shown on each card to see when it returns.</div>
+      </div>
+    `
+    : '';
+
+  list.innerHTML = unavailableNotice + tasks.map(task => {
     const availability = getTaskAvailability(task);
     const status = getTaskCatalogStatus(task, availability);
     const history = getTaskCatalogHistory(task, availability);
     const schedule = getTaskScheduleSummary(availability);
+    const taskPresentation = typeof LifeXPPresentation !== 'undefined' && typeof LifeXPPresentation.getTask === 'function'
+      ? LifeXPPresentation.getTask(task)
+      : null;
+    const frequency = taskPresentation?.frequencyLabel || task.freq || 'Schedule not specified';
+    const statusClassMap = {
+      available: 'available',
+      cooldown: 'cooldown',
+      completed: 'completed',
+      needs_review: 'needs-review',
+      archived: 'archived'
+    };
+    const statusClass = statusClassMap[availability.status] || 'unknown';
     const canComplete = canCompleteTaskFromCatalog(availability);
     const safeId = escapeTaskCatalogText(task.id);
     const safeName = escapeTaskCatalogText(task.name);
@@ -362,14 +401,29 @@ function renderCategoryTaskList(catId) {
     return `
       <article class="task-catalog-card" data-task-id="${safeId}">
         <div class="task-catalog-main">
-          <div class="task-catalog-name">${safeName}</div>
+          <div class="task-catalog-heading">
+            <div class="task-catalog-name">${safeName}</div>
+            <span class="task-catalog-frequency">${escapeTaskCatalogText(frequency)}</span>
+          </div>
           <div class="task-catalog-desc">${safeDesc}</div>
-          <div class="task-catalog-meta">${escapeTaskCatalogText(status)}</div>
-          <div class="task-catalog-history">${escapeTaskCatalogText(history)} · ${escapeTaskCatalogText(schedule)}</div>
+          <div class="task-catalog-details">
+            <div class="task-catalog-detail task-catalog-detail-status task-catalog-detail-${statusClass}">
+              <span class="task-catalog-detail-label">Status</span>
+              <span class="task-catalog-detail-value">${escapeTaskCatalogText(status)}</span>
+            </div>
+            <div class="task-catalog-detail">
+              <span class="task-catalog-detail-label">History</span>
+              <span class="task-catalog-detail-value">${escapeTaskCatalogText(history)}</span>
+            </div>
+            <div class="task-catalog-detail">
+              <span class="task-catalog-detail-label">Schedule</span>
+              <span class="task-catalog-detail-value">${escapeTaskCatalogText(schedule)}</span>
+            </div>
+          </div>
         </div>
         <div class="task-catalog-actions">
-          <button class="btn btn-secondary btn-small" type="button" data-category-action="history" data-task-id="${safeId}">History</button>
-          <button class="btn btn-secondary btn-small" type="button" data-category-action="complete" data-task-id="${safeId}" ${canComplete ? '' : 'disabled'}>${canComplete ? 'Open task' : 'Unavailable'}</button>
+          <button class="btn btn-secondary btn-small" type="button" data-category-action="history" data-task-id="${safeId}" aria-label="View history for ${safeName}">History</button>
+          <button class="btn btn-primary btn-small" type="button" data-category-action="complete" data-task-id="${safeId}" ${canComplete ? '' : 'disabled'} aria-label="${canComplete ? `Open ${safeName}` : `${safeName} is unavailable`}">${canComplete ? 'Open task' : 'Unavailable'}</button>
         </div>
       </article>
     `;
