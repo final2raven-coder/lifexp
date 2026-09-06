@@ -4,7 +4,15 @@
 // Sin dependencias. Debe cargarse antes que engine.js y expansions.
 // ===========================================================================
 
-const LIFE_XP_BUILD = 'v13.4-equip-action-fix';
+const LIFE_XP_BUILD_INFO = globalThis.LifeXPBuild || {
+  buildId: 'development',
+  label: 'development',
+  commitSha: 'unknown',
+  shortSha: 'unknown',
+  builtAt: null,
+  cacheName: 'lifexp-development'
+};
+const LIFE_XP_BUILD = LIFE_XP_BUILD_INFO.label;
 
 // ===========================================================================
 // CONSTANTS

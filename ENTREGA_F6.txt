@@ -1,0 +1,15 @@
+LifeXP F6 - Opcion A
+
+Esta entrega cambia GitHub Pages para publicar el artefacto generado por GitHub Actions.
+
+Ficheros que sustituyen o crean:
+- data_tasks.js -> sustituir en la raiz
+- index.html -> sustituir en la raiz
+- main.js -> sustituir en la raiz
+- sw.js -> sustituir en la raiz
+- ui_hub.js -> sustituir en la raiz
+- PROJECT_MAP.md -> sustituir en la raiz
+- tools/build_release.js -> crear o sustituir en tools/
+- .github/workflows/deploy-pages.yml -> crear en .github/workflows/
+
+No se debe crear build-info.js ni build-info.json manualmente en el repositorio: los genera el workflow dentro del artefacto de Pages a partir de github.sha.

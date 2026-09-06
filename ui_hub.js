@@ -372,7 +372,7 @@ function useConsumable(itemId) {
 
 
 function forceAppUpdate() {
-  const current = typeof LIFE_XP_BUILD !== 'undefined' ? LIFE_XP_BUILD : 'unknown';
+  const current = typeof LIFE_XP_BUILD_INFO !== 'undefined' && LIFE_XP_BUILD_INFO.buildId ? LIFE_XP_BUILD_INFO.buildId : 'unknown';
   const url = `${location.pathname}?lifexp_update=${encodeURIComponent(current)}_${Date.now()}`;
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(reg => reg.update()))).finally(() => location.replace(url));
@@ -403,7 +403,10 @@ function renderSettings() {
     <div class="section-title">Info</div>
     <div class="card">
       <p style="font-size: 13px; color: var(--text-muted);">
-        LifeXP RPG v1.0 · Build ${LIFE_XP_BUILD}<br>
+        LifeXP RPG v1.0<br>
+        Release: ${LIFE_XP_BUILD_INFO.label}<br>
+        Commit: ${LIFE_XP_BUILD_INFO.shortSha}<br>
+        Built: ${LIFE_XP_BUILD_INFO.builtAt || 'development'}<br>
         Tasks: ${gameState.tasks.length}<br>
         Level: ${gameState.level}<br>
         XP Total: ${gameState.taskHistory.reduce((a, h) => a + h.xp, 0)}
