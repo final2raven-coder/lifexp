@@ -8,7 +8,7 @@
 const ENEMIES = {
 
   rata_gigante: {
-    id: 'rata_gigante', name: 'Rata Gigante', icon: '\uD83D\uDC00',
+    id: 'rata_gigante', name: 'Giant Rat', icon: '\uD83D\uDC00',
     type: 'common', level: 1,
     hp: 30, fue: 5, vit: 4, des: 8, int: 2, vol: 3, pre: 1,
     xp: 15, gold: 5,
@@ -21,12 +21,12 @@ const ENEMIES = {
   },
 
   'arana_domestica': {
-    id: 'arana_domestica', name: 'Ara\u00F1a Dom\u00E9stica', icon: '\uD83D\uDD77\uFE0F',
+    id: 'arana_domestica', name: 'House Spider', icon: '\uD83D\uDD77\uFE0F',
     type: 'common', level: 2,
     hp: 25, fue: 4, vit: 3, des: 12, int: 3, vol: 4, pre: 2,
     xp: 18, gold: 6,
     skills: [
-      { id: 'veneno_leve', name: 'Mordisco Venenoso', type: 'attack', power: 8, cost: 0 }
+      { id: 'veneno_leve', name: 'Venomous Bite', type: 'attack', power: 8, cost: 0 }
     ],
     drops: [
       { itemId: 'seda_arana', chance: 0.25 },
@@ -41,8 +41,8 @@ const ENEMIES = {
     hp: 120, fue: 8, vit: 6, des: 14, int: 15, vol: 12, pre: 10,
     xp: 80, gold: 35,
     skills: [
-      { id: 'lanzar_objeto', name: 'Lanzar Objeto', type: 'attack', power: 20, scaling: { int: 0.5 } },
-      { id: 'aullido', name: 'Aullido Aterrador', type: 'debuff', effect: 'fear' }
+      { id: 'lanzar_objeto', name: 'Hurl Object', type: 'attack', power: 20, scaling: { int: 0.5 } },
+      { id: 'aullido', name: 'Terrifying Howl', type: 'debuff', effect: 'fear' }
     ],
     drops: [
       { itemId: 'esencia_espectral', chance: 0.4 },
@@ -52,12 +52,12 @@ const ENEMIES = {
   },
 
   slime_acido: {
-    id: 'slime_acido', name: 'Slime \u00C1cido', icon: '\uD83D\uDFE2',
+    id: 'slime_acido', name: 'Acid Slime', icon: '\uD83D\uDFE2',
     type: 'common', level: 3,
     hp: 45, fue: 6, vit: 8, des: 4, int: 5, vol: 6, pre: 1,
     xp: 22, gold: 8,
     skills: [
-      { id: 'salpicadura', name: 'Salpicadura \u00C1cida', type: 'attack', power: 12, damageType: 'magical' }
+      { id: 'salpicadura', name: 'Acid Splash', type: 'attack', power: 12, damageType: 'magical' }
     ],
     drops: [
       { itemId: 'nucleo_slime', chance: 0.35 },
@@ -67,13 +67,13 @@ const ENEMIES = {
   },
 
   elemental_agua: {
-    id: 'elemental_agua', name: 'Elemental de Agua', icon: '\uD83D\uDCA7',
+    id: 'elemental_agua', name: 'Water Elemental', icon: '\uD83D\uDCA7',
     type: 'elite', level: 12,
     hp: 180, fue: 10, vit: 14, des: 12, int: 18, vol: 15, pre: 8,
     xp: 120, gold: 55,
     skills: [
-      { id: 'chorro_presion', name: 'Chorro a Presi\u00F3n', type: 'attack', power: 25, scaling: { int: 0.8 }, damageType: 'magical' },
-      { id: 'regenerar', name: 'Regeneraci\u00F3n', type: 'heal', power: 30 }
+      { id: 'chorro_presion', name: 'Pressurized Jet', type: 'attack', power: 25, scaling: { int: 0.8 }, damageType: 'magical' },
+      { id: 'regenerar', name: 'Regeneration', type: 'heal', power: 30 }
     ],
     drops: [
       { itemId: 'esencia_agua', chance: 0.5 },
@@ -83,12 +83,12 @@ const ENEMIES = {
   },
 
   salamandra: {
-    id: 'salamandra', name: 'Salamandra de Fuego', icon: '\uD83E\uDD8E',
+    id: 'salamandra', name: 'Fire Salamander', icon: '\uD83E\uDD8E',
     type: 'common', level: 4,
     hp: 40, fue: 8, vit: 5, des: 10, int: 8, vol: 6, pre: 3,
     xp: 28, gold: 12,
     skills: [
-      { id: 'llamarada', name: 'Llamarada', type: 'attack', power: 15, damageType: 'magical', scaling: { int: 0.4 } }
+      { id: 'llamarada', name: 'Flare', type: 'attack', power: 15, damageType: 'magical', scaling: { int: 0.4 } }
     ],
     drops: [
       { itemId: 'escama_fuego', chance: 0.3 },
@@ -98,13 +98,13 @@ const ENEMIES = {
   },
 
   golem_horno: {
-    id: 'golem_horno', name: 'G\u00F3lem del Horno', icon: '\uD83D\uDD25',
+    id: 'golem_horno', name: 'Oven Golem', icon: '\uD83D\uDD25',
     type: 'elite', level: 15,
     hp: 250, fue: 20, vit: 22, des: 6, int: 12, vol: 18, pre: 5,
     xp: 150, gold: 70,
     skills: [
-      { id: 'puno_ardiente', name: 'Pu\u00F1o Ardiente', type: 'attack', power: 35, scaling: { fue: 1.0 } },
-      { id: 'explosion_calor', name: 'Explosi\u00F3n de Calor', type: 'attack', power: 25, damageType: 'magical' }
+      { id: 'puno_ardiente', name: 'Blazing Fist', type: 'attack', power: 35, scaling: { fue: 1.0 } },
+      { id: 'explosion_calor', name: 'Heat Burst', type: 'attack', power: 25, damageType: 'magical' }
     ],
     drops: [
       { itemId: 'corazon_fuego', chance: 0.4 },
@@ -114,12 +114,12 @@ const ENEMIES = {
   },
 
   planta_carnivora: {
-    id: 'planta_carnivora', name: 'Planta Carn\u00EDvora', icon: '\uD83C\uDF3F',
+    id: 'planta_carnivora', name: 'Carnivorous Plant', icon: '\uD83C\uDF3F',
     type: 'common', level: 3,
     hp: 35, fue: 7, vit: 6, des: 5, int: 4, vol: 8, pre: 2,
     xp: 20, gold: 7,
     skills: [
-      { id: 'mordisco', name: 'Mordisco', type: 'attack', power: 12 }
+      { id: 'mordisco', name: 'Bite', type: 'attack', power: 12 }
     ],
     drops: [
       { itemId: 'hierba_curativa', chance: 0.4 },
@@ -129,13 +129,13 @@ const ENEMIES = {
   },
 
   treant: {
-    id: 'treant', name: 'Treant Guardi\u00E1n', icon: '\uD83C\uDF33',
+    id: 'treant', name: 'Guardian Treant', icon: '\uD83C\uDF33',
     type: 'elite', level: 18,
     hp: 300, fue: 22, vit: 28, des: 4, int: 14, vol: 20, pre: 12,
     xp: 180, gold: 80,
     skills: [
-      { id: 'ramas_aplastantes', name: 'Ramas Aplastantes', type: 'attack', power: 40, scaling: { fue: 1.2 } },
-      { id: 'regeneracion_natural', name: 'Regeneraci\u00F3n Natural', type: 'heal', power: 40 }
+      { id: 'ramas_aplastantes', name: 'Crushing Branches', type: 'attack', power: 40, scaling: { fue: 1.2 } },
+      { id: 'regeneracion_natural', name: 'Natural Regeneration', type: 'heal', power: 40 }
     ],
     drops: [
       { itemId: 'corazon_bosque', chance: 0.35 },
@@ -145,14 +145,14 @@ const ENEMIES = {
   },
 
   espiritu_bosque: {
-    id: 'espiritu_bosque', name: 'Esp\u00EDritu del Bosque', icon: '\uD83E\uDDDA',
+    id: 'espiritu_bosque', name: 'Forest Spirit', icon: '\uD83E\uDDDA',
     type: 'boss', level: 25,
     hp: 500, fue: 15, vit: 20, des: 25, int: 30, vol: 28, pre: 22,
     xp: 400, gold: 200,
     skills: [
-      { id: 'furia_naturaleza', name: 'Furia de la Naturaleza', type: 'attack', power: 50, damageType: 'magical', scaling: { int: 1.0 } },
-      { id: 'raices', name: 'Ra\u00EDces Atrapantes', type: 'debuff', effect: 'slow' },
-      { id: 'bendicion_verde', name: 'Bendici\u00F3n Verde', type: 'heal', power: 80 }
+      { id: 'furia_naturaleza', name: 'Wrath of Nature', type: 'attack', power: 50, damageType: 'magical', scaling: { int: 1.0 } },
+      { id: 'raices', name: 'Grasping Roots', type: 'debuff', effect: 'slow' },
+      { id: 'bendicion_verde', name: 'Verdant Blessing', type: 'heal', power: 80 }
     ],
     drops: [
       { itemId: 'esencia_vida', chance: 0.6 },
@@ -163,12 +163,12 @@ const ENEMIES = {
   },
 
   lobo_escarcha: {
-    id: 'lobo_escarcha', name: 'Lobo de Escarcha', icon: '\uD83D\uDC3A',
+    id: 'lobo_escarcha', name: 'Frost Wolf', icon: '\uD83D\uDC3A',
     type: 'common', level: 5,
     hp: 55, fue: 10, vit: 8, des: 12, int: 6, vol: 8, pre: 5,
     xp: 35, gold: 15,
     skills: [
-      { id: 'mordisco_gelido', name: 'Mordisco G\u00E9lido', type: 'attack', power: 18 }
+      { id: 'mordisco_gelido', name: 'Frostbite', type: 'attack', power: 18 }
     ],
     drops: [
       { itemId: 'colmillo_hielo', chance: 0.3 },
@@ -178,13 +178,13 @@ const ENEMIES = {
   },
 
   elemental_hielo: {
-    id: 'elemental_hielo', name: 'Elemental de Hielo', icon: '\u2744\uFE0F',
+    id: 'elemental_hielo', name: 'Ice Elemental', icon: '\u2744\uFE0F',
     type: 'elite', level: 14,
     hp: 200, fue: 12, vit: 16, des: 10, int: 20, vol: 16, pre: 8,
     xp: 140, gold: 65,
     skills: [
-      { id: 'ventisca', name: 'Ventisca', type: 'attack', power: 28, damageType: 'magical', scaling: { int: 0.9 } },
-      { id: 'armadura_hielo', name: 'Armadura de Hielo', type: 'buff', effect: 'defense_up' }
+      { id: 'ventisca', name: 'Blizzard', type: 'attack', power: 28, damageType: 'magical', scaling: { int: 0.9 } },
+      { id: 'armadura_hielo', name: 'Ice Armor', type: 'buff', effect: 'defense_up' }
     ],
     drops: [
       { itemId: 'fragmento_hielo', chance: 0.5 },
@@ -194,12 +194,12 @@ const ENEMIES = {
   },
 
   halcon_viento: {
-    id: 'halcon_viento', name: 'Halc\u00F3n del Viento', icon: '\uD83E\uDD85',
+    id: 'halcon_viento', name: 'Wind Hawk', icon: '\uD83E\uDD85',
     type: 'common', level: 4,
     hp: 35, fue: 7, vit: 5, des: 16, int: 6, vol: 7, pre: 8,
     xp: 25, gold: 10,
     skills: [
-      { id: 'picotazo', name: 'Picotazo Veloz', type: 'attack', power: 14, scaling: { des: 0.5 } }
+      { id: 'picotazo', name: 'Swift Peck', type: 'attack', power: 14, scaling: { des: 0.5 } }
     ],
     drops: [
       { itemId: 'pluma_viento', chance: 0.4 },
@@ -209,13 +209,13 @@ const ENEMIES = {
   },
 
   grifo: {
-    id: 'grifo', name: 'Grifo', icon: '\uD83E\uDD81',
+    id: 'grifo', name: 'Griffin', icon: '\uD83E\uDD81',
     type: 'elite', level: 20,
     hp: 280, fue: 24, vit: 18, des: 22, int: 14, vol: 16, pre: 18,
     xp: 200, gold: 100,
     skills: [
-      { id: 'zarpazo', name: 'Zarpazo', type: 'attack', power: 35, scaling: { fue: 0.8, des: 0.4 } },
-      { id: 'grito_guerra', name: 'Grito de Guerra', type: 'buff', effect: 'attack_up' }
+      { id: 'zarpazo', name: 'Claw Swipe', type: 'attack', power: 35, scaling: { fue: 0.8, des: 0.4 } },
+      { id: 'grito_guerra', name: 'War Cry', type: 'buff', effect: 'attack_up' }
     ],
     drops: [
       { itemId: 'pluma_grifo', chance: 0.45 },
@@ -225,12 +225,12 @@ const ENEMIES = {
   },
 
   bandido: {
-    id: 'bandido', name: 'Bandido', icon: '\uD83D\uDDE1\uFE0F',
+    id: 'bandido', name: 'Bandit', icon: '\uD83D\uDDE1\uFE0F',
     type: 'common', level: 5,
     hp: 60, fue: 12, vit: 10, des: 10, int: 5, vol: 6, pre: 8,
     xp: 30, gold: 25,
     skills: [
-      { id: 'golpe_traicionero', name: 'Golpe Traicionero', type: 'attack', power: 20 }
+      { id: 'golpe_traicionero', name: 'Treacherous Strike', type: 'attack', power: 20 }
     ],
     drops: [
       { itemId: 'moneda_antigua', chance: 0.5 },
@@ -240,13 +240,13 @@ const ENEMIES = {
   },
 
   capitan_bandidos: {
-    id: 'capitan_bandidos', name: 'Capit\u00E1n Bandido', icon: '\u2694\uFE0F',
+    id: 'capitan_bandidos', name: 'Bandit Captain', icon: '\u2694\uFE0F',
     type: 'elite', level: 12,
     hp: 180, fue: 18, vit: 15, des: 14, int: 8, vol: 10, pre: 14,
     xp: 110, gold: 80,
     skills: [
-      { id: 'combo_espadas', name: 'Combo de Espadas', type: 'attack', power: 28, scaling: { fue: 0.7, des: 0.5 } },
-      { id: 'llamar_refuerzos', name: 'Llamar Refuerzos', type: 'summon' }
+      { id: 'combo_espadas', name: 'Sword Combo', type: 'attack', power: 28, scaling: { fue: 0.7, des: 0.5 } },
+      { id: 'llamar_refuerzos', name: 'Call Reinforcements', type: 'summon' }
     ],
     drops: [
       { itemId: 'botas_viajero', chance: 0.35 },
@@ -256,12 +256,12 @@ const ENEMIES = {
   },
 
   cangrejo_gigante: {
-    id: 'cangrejo_gigante', name: 'Cangrejo Gigante', icon: '\uD83E\uDD80',
+    id: 'cangrejo_gigante', name: 'Giant Crab', icon: '\uD83E\uDD80',
     type: 'common', level: 6,
     hp: 70, fue: 14, vit: 16, des: 6, int: 3, vol: 8, pre: 2,
     xp: 40, gold: 18,
     skills: [
-      { id: 'pinza', name: 'Pinzas Trituradoras', type: 'attack', power: 22, scaling: { fue: 0.6 } }
+      { id: 'pinza', name: 'Crushing Claws', type: 'attack', power: 22, scaling: { fue: 0.6 } }
     ],
     drops: [
       { itemId: 'caparazon', chance: 0.4 },
@@ -271,13 +271,13 @@ const ENEMIES = {
   },
 
   serpiente_marina: {
-    id: 'serpiente_marina', name: 'Serpiente Marina', icon: '\uD83D\uDC0D',
+    id: 'serpiente_marina', name: 'Sea Serpent', icon: '\uD83D\uDC0D',
     type: 'elite', level: 16,
     hp: 220, fue: 16, vit: 14, des: 20, int: 12, vol: 14, pre: 10,
     xp: 160, gold: 75,
     skills: [
-      { id: 'constriccion', name: 'Constricci\u00F3n', type: 'attack', power: 30 },
-      { id: 'veneno_marino', name: 'Veneno Marino', type: 'attack', power: 15, damageType: 'magical', effect: 'poison' }
+      { id: 'constriccion', name: 'Constriction', type: 'attack', power: 30 },
+      { id: 'veneno_marino', name: 'Sea Venom', type: 'attack', power: 15, damageType: 'magical', effect: 'poison' }
     ],
     drops: [
       { itemId: 'escama_marina', chance: 0.45 },
@@ -287,14 +287,14 @@ const ENEMIES = {
   },
 
   kraken_menor: {
-    id: 'kraken_menor', name: 'Kraken Menor', icon: '\uD83D\uDC19',
+    id: 'kraken_menor', name: 'Lesser Kraken', icon: '\uD83D\uDC19',
     type: 'boss', level: 30,
     hp: 600, fue: 28, vit: 25, des: 18, int: 22, vol: 24, pre: 15,
     xp: 500, gold: 250,
     skills: [
-      { id: 'tentaculos', name: 'Azote de Tent\u00E1culos', type: 'attack', power: 45, scaling: { fue: 1.0 } },
-      { id: 'tinta', name: 'Nube de Tinta', type: 'debuff', effect: 'blind' },
-      { id: 'remolino', name: 'Remolino', type: 'attack', power: 35, damageType: 'magical' }
+      { id: 'tentaculos', name: 'Tentacle Lash', type: 'attack', power: 45, scaling: { fue: 1.0 } },
+      { id: 'tinta', name: 'Ink Cloud', type: 'debuff', effect: 'blind' },
+      { id: 'remolino', name: 'Whirlpool', type: 'attack', power: 35, damageType: 'magical' }
     ],
     drops: [
       { itemId: 'tentaculo_kraken', chance: 0.6 },
@@ -305,12 +305,12 @@ const ENEMIES = {
   },
 
   pesadilla: {
-    id: 'pesadilla', name: 'Pesadilla', icon: '\uD83D\uDE31',
+    id: 'pesadilla', name: 'Nightmare', icon: '\uD83D\uDE31',
     type: 'common', level: 7,
     hp: 50, fue: 5, vit: 6, des: 14, int: 16, vol: 10, pre: 8,
     xp: 45, gold: 20,
     skills: [
-      { id: 'terror', name: 'Visi\u00F3n de Terror', type: 'attack', power: 18, damageType: 'magical', scaling: { int: 0.6 } }
+      { id: 'terror', name: 'Vision of Terror', type: 'attack', power: 18, damageType: 'magical', scaling: { int: 0.6 } }
     ],
     drops: [
       { itemId: 'esencia_oscura', chance: 0.35 },
@@ -320,13 +320,13 @@ const ENEMIES = {
   },
 
   devorador_suenos: {
-    id: 'devorador_suenos', name: 'Devorador de Sue\u00F1os', icon: '\uD83C\uDF19',
+    id: 'devorador_suenos', name: 'Dream Eater', icon: '\uD83C\uDF19',
     type: 'elite', level: 18,
     hp: 200, fue: 10, vit: 12, des: 16, int: 26, vol: 22, pre: 14,
     xp: 170, gold: 85,
     skills: [
-      { id: 'drenar_mente', name: 'Drenar Mente', type: 'attack', power: 30, damageType: 'magical', scaling: { int: 1.0 }, effect: 'mp_drain' },
-      { id: 'hipnosis', name: 'Hipnosis', type: 'debuff', effect: 'sleep' }
+      { id: 'drenar_mente', name: 'Mind Drain', type: 'attack', power: 30, damageType: 'magical', scaling: { int: 1.0 }, effect: 'mp_drain' },
+      { id: 'hipnosis', name: 'Hypnosis', type: 'debuff', effect: 'sleep' }
     ],
     drops: [
       { itemId: 'fragmento_sueno', chance: 0.5 },
@@ -341,7 +341,7 @@ const ENEMIES = {
     hp: 90, fue: 16, vit: 14, des: 10, int: 8, vol: 12, pre: 6,
     xp: 55, gold: 30,
     skills: [
-      { id: 'maza_oni', name: 'Golpe de Maza', type: 'attack', power: 25, scaling: { fue: 0.8 } }
+      { id: 'maza_oni', name: 'Mace Strike', type: 'attack', power: 25, scaling: { fue: 0.8 } }
     ],
     drops: [
       { itemId: 'cuerno_oni', chance: 0.35 },
@@ -356,8 +356,8 @@ const ENEMIES = {
     hp: 180, fue: 12, vit: 14, des: 24, int: 26, vol: 20, pre: 22,
     xp: 190, gold: 95,
     skills: [
-      { id: 'fuego_zorro', name: 'Fuego de Zorro', type: 'attack', power: 35, damageType: 'magical', scaling: { int: 0.9 } },
-      { id: 'ilusion', name: 'Ilusi\u00F3n', type: 'debuff', effect: 'confusion' }
+      { id: 'fuego_zorro', name: 'Foxfire', type: 'attack', power: 35, damageType: 'magical', scaling: { int: 0.9 } },
+      { id: 'ilusion', name: 'Illusion', type: 'debuff', effect: 'confusion' }
     ],
     drops: [
       { itemId: 'cola_kitsune', chance: 0.4 },
@@ -367,14 +367,14 @@ const ENEMIES = {
   },
 
   dragon_oriental: {
-    id: 'dragon_oriental', name: 'Drag\u00F3n Oriental', icon: '\uD83D\uDC32',
+    id: 'dragon_oriental', name: 'Eastern Dragon', icon: '\uD83D\uDC32',
     type: 'boss', level: 40,
     hp: 800, fue: 30, vit: 28, des: 26, int: 35, vol: 32, pre: 28,
     xp: 800, gold: 400,
     skills: [
-      { id: 'aliento_dragon', name: 'Aliento de Drag\u00F3n', type: 'attack', power: 60, damageType: 'magical', scaling: { int: 1.2 } },
-      { id: 'cola_dragon', name: 'Coletazo', type: 'attack', power: 50, scaling: { fue: 1.0 } },
-      { id: 'aura_dragon', name: 'Aura Drac\u00F3nica', type: 'buff', effect: 'all_stats_up' }
+      { id: 'aliento_dragon', name: 'Dragon Breath', type: 'attack', power: 60, damageType: 'magical', scaling: { int: 1.2 } },
+      { id: 'cola_dragon', name: 'Tail Sweep', type: 'attack', power: 50, scaling: { fue: 1.0 } },
+      { id: 'aura_dragon', name: 'Draconic Aura', type: 'buff', effect: 'all_stats_up' }
     ],
     drops: [
       { itemId: 'escama_dragon', chance: 0.7 },
@@ -385,12 +385,12 @@ const ENEMIES = {
   },
 
   libro_maldito: {
-    id: 'libro_maldito', name: 'Libro Maldito', icon: '\uD83D\uDCD5',
+    id: 'libro_maldito', name: 'Cursed Book', icon: '\uD83D\uDCD5',
     type: 'common', level: 6,
     hp: 40, fue: 3, vit: 5, des: 8, int: 18, vol: 14, pre: 4,
     xp: 38, gold: 15,
     skills: [
-      { id: 'paginas_cortantes', name: 'P\u00E1ginas Cortantes', type: 'attack', power: 16, damageType: 'magical' }
+      { id: 'paginas_cortantes', name: 'Cutting Pages', type: 'attack', power: 16, damageType: 'magical' }
     ],
     drops: [
       { itemId: 'pagina_arcana', chance: 0.4 },
@@ -400,15 +400,15 @@ const ENEMIES = {
   },
 
   liche: {
-    id: 'liche', name: 'Liche', icon: '\uD83D\uDC80',
+    id: 'liche', name: 'Lich', icon: '\uD83D\uDC80',
     type: 'boss', level: 35,
     hp: 450, fue: 12, vit: 15, des: 14, int: 40, vol: 35, pre: 20,
     xp: 600, gold: 300,
     mp: 200,
     skills: [
-      { id: 'rayo_muerte', name: 'Rayo de la Muerte', type: 'attack', power: 55, damageType: 'magical', cost: 25, costType: 'mp', scaling: { int: 1.3 } },
-      { id: 'invocar_esqueletos', name: 'Invocar Esqueletos', type: 'summon', cost: 30, costType: 'mp' },
-      { id: 'drenar_vida', name: 'Drenar Vida', type: 'attack', power: 30, damageType: 'magical', effect: 'lifesteal' }
+      { id: 'rayo_muerte', name: 'Death Ray', type: 'attack', power: 55, damageType: 'magical', cost: 25, costType: 'mp', scaling: { int: 1.3 } },
+      { id: 'invocar_esqueletos', name: 'Summon Skeletons', type: 'summon', cost: 30, costType: 'mp' },
+      { id: 'drenar_vida', name: 'Life Drain', type: 'attack', power: 30, damageType: 'magical', effect: 'lifesteal' }
     ],
     drops: [
       { itemId: 'filacteria', chance: 0.5 },
@@ -419,12 +419,12 @@ const ENEMIES = {
   },
 
   mercader_corrupto: {
-    id: 'mercader_corrupto', name: 'Mercader Corrupto', icon: '\uD83C\uDFAD',
+    id: 'mercader_corrupto', name: 'Corrupt Merchant', icon: '\uD83C\uDFAD',
     type: 'common', level: 5,
     hp: 50, fue: 8, vit: 8, des: 10, int: 12, vol: 10, pre: 16,
     xp: 32, gold: 50,
     skills: [
-      { id: 'soborno', name: 'Soborno', type: 'debuff', effect: 'confusion' }
+      { id: 'soborno', name: 'Bribe', type: 'debuff', effect: 'confusion' }
     ],
     drops: [
       { itemId: 'moneda_antigua', chance: 0.6 },
@@ -434,14 +434,14 @@ const ENEMIES = {
   },
 
   asesino_gremio: {
-    id: 'asesino_gremio', name: 'Asesino del Gremio', icon: '\uD83D\uDDE1\uFE0F',
+    id: 'asesino_gremio', name: 'Guild Assassin', icon: '\uD83D\uDDE1\uFE0F',
     type: 'elite', level: 22,
     hp: 180, fue: 18, vit: 12, des: 30, int: 14, vol: 16, pre: 20,
     xp: 220, gold: 110,
     skills: [
-      { id: 'golpe_mortal', name: 'Golpe Mortal', type: 'attack', power: 45, scaling: { des: 1.2 } },
-      { id: 'veneno_asesino', name: 'Veneno de Asesino', type: 'attack', power: 20, effect: 'poison' },
-      { id: 'sombras', name: 'Fundirse en las Sombras', type: 'buff', effect: 'evasion_up' }
+      { id: 'golpe_mortal', name: 'Killing Blow', type: 'attack', power: 45, scaling: { des: 1.2 } },
+      { id: 'veneno_asesino', name: 'Assassin\'s Poison', type: 'attack', power: 20, effect: 'poison' },
+      { id: 'sombras', name: 'Meld into Shadows', type: 'buff', effect: 'evasion_up' }
     ],
     drops: [
       { itemId: 'daga_asesino', chance: 0.35 },
@@ -452,15 +452,15 @@ const ENEMIES = {
   },
 
   lobo_alfa: {
-    id: 'lobo_alfa', name: 'Lobo Alfa', icon: '\uD83D\uDC3A',
+    id: 'lobo_alfa', name: 'Alpha Wolf', icon: '\uD83D\uDC3A',
     type: 'boss', level: 15,
     hp: 400, maxHp: 400,
     fue: 20, vit: 18, des: 16, int: 8, vol: 14, pre: 12,
     xp: 200, gold: 100,
     skills: [
-      { id: 'mordisco_feroz', name: 'Mordisco Feroz', type: 'attack', power: 35, scaling: { fue: 0.8 } },
-      { id: 'aullido_alfa', name: 'Aullido Aterrador', type: 'debuff', effect: 'fear', duration: 2 },
-      { id: 'zarpazo_rapido', name: 'Zarpazo R\u00E1pido', type: 'attack', power: 22, scaling: { des: 0.6 } }
+      { id: 'mordisco_feroz', name: 'Feral Bite', type: 'attack', power: 35, scaling: { fue: 0.8 } },
+      { id: 'aullido_alfa', name: 'Terrifying Howl', type: 'debuff', effect: 'fear', duration: 2 },
+      { id: 'zarpazo_rapido', name: 'Swift Claw', type: 'attack', power: 22, scaling: { des: 0.6 } }
     ],
     drops: [
       { itemId: 'piel_lobo', chance: 0.6 },
@@ -470,17 +470,17 @@ const ENEMIES = {
   },
 
   espejo_oscuro: {
-    id: 'espejo_oscuro', name: 'Espejo Oscuro', icon: '\uD83E\uDEDE',
+    id: 'espejo_oscuro', name: 'Dark Mirror', icon: '\uD83E\uDEDE',
     type: 'boss', level: 30,
     hp: 650, maxHp: 650,
     fue: 18, vit: 20, des: 20, int: 28, vol: 22, pre: 25,
     xp: 500, gold: 250,
     skills: [
-      { id: 'reflejo_dolor', name: 'Reflejo de Dolor', type: 'attack', power: 40, scaling: { int: 1.0 }, damageType: 'magical' },
-      { id: 'confusion_profunda', name: 'Confusi\u00F3n Profunda', type: 'debuff', effect: 'confusion', duration: 3 },
-      { id: 'drenaje_mental', name: 'Drenaje Mental', type: 'debuff', effect: 'mp_drain', duration: 2, damage: 8 },
-      { id: 'miedo_interior', name: 'Miedo Interior', type: 'debuff', effect: 'fear', duration: 2 },
-      { id: 'imagen_perfecta', name: 'Imagen Perfecta', type: 'buff', effect: 'all_stats_up', duration: 3 }
+      { id: 'reflejo_dolor', name: 'Pain Reflection', type: 'attack', power: 40, scaling: { int: 1.0 }, damageType: 'magical' },
+      { id: 'confusion_profunda', name: 'Deep Confusion', type: 'debuff', effect: 'confusion', duration: 3 },
+      { id: 'drenaje_mental', name: 'Mental Drain', type: 'debuff', effect: 'mp_drain', duration: 2, damage: 8 },
+      { id: 'miedo_interior', name: 'Inner Fear', type: 'debuff', effect: 'fear', duration: 2 },
+      { id: 'imagen_perfecta', name: 'Perfect Image', type: 'buff', effect: 'all_stats_up', duration: 3 }
     ],
     drops: [
       { itemId: 'esencia_oscura', chance: 0.7 },
