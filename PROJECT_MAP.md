@@ -607,6 +607,19 @@ Deuda
 
 Siguiente accion
 
+DT-25
+
+El aviso del Hub para tareas guardadas se renderiza, pero su accion dinamica no responde de forma fiable en la build publicada
+
+Usar delegacion estable en el contenedor del Hub; verificar como jugador y cerrar solo tras abrir la lista y una tarea guardada
+
+
+ID
+
+Deuda
+
+Siguiente accion
+
 DT-04
 
 ui_misc.js agrupa varias pantallas
@@ -760,6 +773,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-06 - DT-25: se prepara un arreglo local para el aviso de tareas guardadas. La accion se delega una sola vez desde el contenedor estable del Hub, de modo que las reconstrucciones de alertas no dependan de listeners directos sobre botones dinamicos. Pendiente de colocar y verificar como jugador.
 
 2026-09-06 - F6: se prepara el pipeline de publicación reproducible. GitHub Pages generará desde el commit un manifiesto de build, una etiqueta visible y una caché coordinada; el Service Worker deja de depender de un número manual. Pendiente de colocar los ficheros en la rama y cambiar la fuente de Pages a GitHub Actions.
 
