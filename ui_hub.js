@@ -33,12 +33,14 @@ function renderHub() {
   // Saved tasks alert
   if (gameState.savedTasks.length > 0) {
     alertsDiv.innerHTML += `
-      <div class="alert alert-saved" onclick="showSavedTasks()">
+      <button class="alert alert-saved" type="button" data-hub-action="saved-tasks" aria-label="Open saved tasks">
         <div class="alert-icon">\uD83D\uDCCC</div>
         <div class="alert-text"><strong>${gameState.savedTasks.length} saved</strong> for later</div>
-      </div>
+      </button>
     `;
   }
+  const savedTasksAlert = alertsDiv.querySelector('[data-hub-action="saved-tasks"]');
+  if (savedTasksAlert) savedTasksAlert.addEventListener('click', showSavedTasks);
   
   // Categories
   const catGrid = document.getElementById('hub-categories');

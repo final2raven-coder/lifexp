@@ -351,6 +351,30 @@ body {
   background: linear-gradient(135deg, rgba(96,165,250,0.1), transparent);
 }
 .alert-saved .alert-text strong { color: var(--blue); }
+.alert-saved {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.saved-task-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.saved-task-card:last-child { border-bottom: 0; }
+.saved-task-main { min-width: 0; flex: 1; }
+.saved-task-name { font-weight: 700; margin-bottom: 4px; }
+.saved-task-desc { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.saved-task-meta { color: var(--blue); font-size: 11px; margin-top: 6px; }
+.saved-task-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+@media (max-width: 520px) {
+  .saved-task-card { display: block; }
+  .saved-task-actions { justify-content: flex-start; margin-top: 10px; }
+}
 
 /* Task card (main view) */
 .task-card {
@@ -1342,7 +1366,7 @@ body {
     <div class="modal-handle"></div>
     <div class="modal-title">Tasks</div>
     <div id="modal-saved-content"></div>
-    <button class="btn btn-ghost" onclick="closeModal('modal-saved')" style="margin-top: 12px;">Close</button>
+    <button class="btn btn-ghost" type="button" data-close-modal="modal-saved" style="margin-top: 12px;">Close</button>
   </div>
 </div>
 

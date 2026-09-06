@@ -12,6 +12,148 @@
 // when an optional side-quest decision still needs to be resolved.
 let allowManualCooldownCompletion = false;
 
+function getSavedTaskRecords() {
+  const savedIds = Array.isArray(gameState.savedTasks) ? gameState.savedTasks : [];
+  const taskById = new Map((Array.isArray(gameState.tasks) ? gameState.tasks : []).map(task => [task.id, task]));
+  return savedIds.map((taskId, index) => {
+    const task = taskById.get(taskId) || null;
+    return {
+      taskId,
+      task,
+      index,
+      status: task ? 'recoverable' : 'needs_review'
+    };
+  });
+}
+
+function getSavedTaskById(taskId) {
+  return getSavedTaskRecords().find(record => record.taskId === taskId) || null;
+}
+
+function renderSavedTasksModal() {
+  const modal = document.getElementById('modal-saved');
+  const content = document.getElementById('modal-saved-content');
+  if (!modal || !content) return;
+
+  const records = getSavedTaskRecords();
+  if (records.length === 0) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#128221;</div><div class="empty-state-title">No saved tasks</div><div class="empty-state-desc">Tasks you save for later will appear here.</div></div>';
+    modal.classList.add('show');
+    return;
+  }
+
+  content.innerHTML = records.map(record => {
+    const safeTaskId = escapeTaskCatalogText(record.taskId);
+    if (!record.task) {
+      return `
+        <article class="saved-task-card" data-task-id="${safeTaskId}">
+          <div class="saved-task-main">
+            <div class="saved-task-name">Saved task needs review</div>
+            <div class="saved-task-desc">This saved reference is no longer present in the current task catalog.</div>
+          </div>
+          <button class="btn btn-ghost btn-small" type="button" data-saved-task-action="remove" data-task-id="${safeTaskId}">Remove</button>
+        </article>
+      `;
+    }
+
+    const safeName = escapeTaskCatalogText(record.task.name);
+    const safeDesc = escapeTaskCatalogText(record.task.desc);
+    const availability = getTaskAvailability(record.task);
+    const status = escapeTaskCatalogText(getTaskCatalogStatus(record.task, availability));
+    return `
+      <article class="saved-task-card" data-task-id="${safeTaskId}">
+        <div class="saved-task-main">
+          <div class="saved-task-name">${safeName}</div>
+          <div class="saved-task-desc">${safeDesc}</div>
+          <div class="saved-task-meta">${status}</div>
+        </div>
+        <div class="saved-task-actions">
+          <button class="btn btn-primary btn-small" type="button" data-saved-task-action="open" data-task-id="${safeTaskId}">Open task</button>
+          <button class="btn btn-ghost btn-small" type="button" data-saved-task-action="remove" data-task-id="${safeTaskId}">Remove</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+  modal.classList.add('show');
+}
+
+function showSavedTasks() {
+  bindSavedTasksModal();
+  renderSavedTasksModal();
+}
+
+function openSavedTask(taskId) {
+  const record = getSavedTaskById(taskId);
+  if (!record) return;
+  if (!record.task) {
+    showToast('This saved task needs review before it can be opened.', 'gold');
+    return;
+  }
+
+  const availability = getTaskAvailability(record.task);
+  if (availability.status === 'archived') {
+    showToast('This saved task is archived and cannot be opened.', 'gold');
+    return;
+  }
+
+  currentTask = record.task;
+  currentCatFilter = record.task.cat;
+  currentIsOverflow = Boolean(typeof isTaskOverdue === 'function' && isTaskOverdue(record.task));
+  allowManualCooldownCompletion = availability.status === 'cooldown';
+  closeSavedTasksModal();
+  renderTaskScreen();
+  showScreen('task');
+  resetTimer();
+}
+
+function removeSavedTask(taskId) {
+  const record = getSavedTaskById(taskId);
+  if (!record) return;
+  gameState.savedTasks.splice(record.index, 1);
+  if (!saveGame()) {
+    gameState.savedTasks.splice(record.index, 0, taskId);
+    showToast('The saved task could not be removed. Try again.', 'error');
+    return;
+  }
+  renderSavedTasksModal();
+  if (typeof renderHub === 'function') renderHub();
+  showToast('Task removed from saved tasks.', 'green');
+}
+
+function closeSavedTasksModal() {
+  document.getElementById('modal-saved')?.classList.remove('show');
+}
+
+function saveForLater() {
+  if (!currentTask || !currentTask.id) return;
+  if (!Array.isArray(gameState.savedTasks)) gameState.savedTasks = [];
+  const wasAlreadySaved = gameState.savedTasks.includes(currentTask.id);
+  if (!wasAlreadySaved) gameState.savedTasks.push(currentTask.id);
+  if (!saveGame()) {
+    if (!wasAlreadySaved) gameState.savedTasks = gameState.savedTasks.filter(taskId => taskId !== currentTask.id);
+    showToast('The task could not be saved. Try again.', 'error');
+    return;
+  }
+  showToast('Task saved for later.', 'blue');
+  showScreen('hub');
+}
+
+function bindSavedTasksModal() {
+  const modal = document.getElementById('modal-saved');
+  if (!modal || modal.dataset.savedTasksBound === 'true') return;
+  modal.dataset.savedTasksBound = 'true';
+  modal.addEventListener('click', event => {
+    const actionElement = event.target.closest('[data-saved-task-action]');
+    if (actionElement) {
+      const taskId = actionElement.dataset.taskId;
+      if (actionElement.dataset.savedTaskAction === 'open') openSavedTask(taskId);
+      if (actionElement.dataset.savedTaskAction === 'remove') removeSavedTask(taskId);
+      return;
+    }
+    if (event.target === modal) closeSavedTasksModal();
+  });
+}
+
 function openRandomTask() {
   currentCatFilter = null;
   allowManualCooldownCompletion = false;
