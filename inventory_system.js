@@ -265,12 +265,60 @@
       return rewardResult('rejected', { claimId, itemId: previous.itemId || null, quantity: previous.quantity || quantity, reason: previous.reason, recoverable: true, duplicate: true });
     }
 
+    const inventorySnapshot = Array.isArray(gameState.inventory) ? cloneValue(gameState.inventory) : [];
+    const queueSnapshot = cloneValue(queue);
+    const ledgerSnapshot = cloneValue(ledger);
+    let originalSave = null;
+    let saveWasReadable = false;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        originalSave = localStorage.getItem('lifexp_save');
+        saveWasReadable = true;
+      }
+    } catch (error) {
+      saveWasReadable = false;
+    }
+
+    const rollback = () => {
+      gameState.inventory = cloneValue(inventorySnapshot);
+      gameState.pendingLoot = cloneValue(queueSnapshot);
+      gameState.rewardLedger = cloneValue(ledgerSnapshot);
+      if (!saveWasReadable || typeof localStorage === 'undefined') return;
+      try {
+        if (originalSave === null) localStorage.removeItem('lifexp_save');
+        else localStorage.setItem('lifexp_save', originalSave);
+      } catch (error) {
+        console.warn('Reward rollback could not restore the save bytes:', error);
+      }
+    };
+
+    const persist = () => {
+      if (typeof saveGame !== 'function') {
+        rollback();
+        return false;
+      }
+      try {
+        const result = saveGame();
+        if (result === false) {
+          rollback();
+          return false;
+        }
+        return true;
+      } catch (error) {
+        rollback();
+        console.warn('Reward persistence failed:', error);
+        return false;
+      }
+    };
+
     const resolvedId = resolve(input);
     if (!resolvedId) {
       const pending = createPendingEntry({ claimId, input: entry, itemId: null, quantity, source, reason: 'unknown_item', status: 'rejected', metadata: options.metadata });
       upsertPendingEntry(queue, pending);
       ledger[claimId] = { status: 'rejected', itemId: null, quantity, source, reason: 'unknown_item', updatedAt: new Date().toISOString() };
-      persistRewardState();
+      if (!persist()) {
+        return rewardResult('rejected', { claimId, itemId: null, quantity, reason: 'save_failed', recoverable: false, displayName: pending.displayName });
+      }
       return rewardResult('rejected', { claimId, itemId: null, quantity, reason: 'unknown_item', recoverable: true, pending: true, displayName: pending.displayName });
     }
 
@@ -281,7 +329,9 @@
     if (inserted) {
       removePendingEntry(queue, claimId);
       ledger[claimId] = { status: 'granted', itemId: resolvedId, quantity, source, updatedAt: new Date().toISOString() };
-      persistRewardState();
+      if (!persist()) {
+        return rewardResult('rejected', { claimId, itemId: resolvedId, quantity, reason: 'save_failed', recoverable: false });
+      }
       return rewardResult('granted', { claimId, itemId: resolvedId, quantity, duplicate: false, stacked: insertion?.stacked === true });
     }
 
@@ -290,7 +340,9 @@
     const pending = createPendingEntry({ claimId, input: entry, itemId: resolvedId, quantity, source, reason, status, metadata: options.metadata });
     upsertPendingEntry(queue, pending);
     ledger[claimId] = { status, itemId: resolvedId, quantity, source, reason, updatedAt: new Date().toISOString() };
-    persistRewardState();
+    if (!persist()) {
+      return rewardResult('rejected', { claimId, itemId: resolvedId, quantity, reason: 'save_failed', recoverable: false, displayName: pending.displayName });
+    }
     return rewardResult(status, { claimId, itemId: resolvedId, quantity, reason, recoverable: true, pending: true, displayName: pending.displayName });
   }
 
