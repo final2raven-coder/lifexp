@@ -458,16 +458,46 @@ function presentPendingTaskResult() {
   const result = getPendingTaskResult();
   if (!result) return false;
   const task = gameState.tasks.find(candidate => candidate.id === result.taskId) || null;
-  if (!task) return false;
+  if (!task) {
+    showToast('The saved result needs review because its task is no longer available.', 'gold');
+    return false;
+  }
   renderTaskResultModal(result, task);
   return true;
+}
+
+// Canonical recovery entry point for every navigation path. A pending result
+// always returns to the task screen before its modal is presented, and the
+// modal is represented by exactly one browser-history entry.
+function showPendingTaskResult(options = {}) {
+  const result = getPendingTaskResult();
+  if (!result) return false;
+  const task = gameState.tasks.find(candidate => candidate.id === result.taskId) || null;
+  if (!task) {
+    showToast('The saved result needs review because its task is no longer available.', 'gold');
+    return false;
+  }
+
+  currentTask = task;
+  currentCatFilter = task.cat;
+  currentIsOverflow = Boolean(result.isOverflow);
+  allowManualCooldownCompletion = Boolean(result.allowCooldownCompletion);
+  renderTaskScreen();
+  showScreen('task', {
+    fromHistory: Boolean(options.fromHistory),
+    replaceHistory: Boolean(options.replaceHistory)
+  });
+  return presentPendingTaskResult();
 }
 
 function renderTaskResultModal(result, task) {
   const overlay = document.getElementById('complete-overlay');
   overlay.setAttribute('aria-label', 'Task result');
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay.setAttribute('aria-modal', 'true');
   overlay.dataset.resultStatus = result.status;
   overlay.classList.add('show');
+  if (typeof pushTaskResultHistory === 'function') pushTaskResultHistory();
 
   document.getElementById('complete-icon').textContent = result.status === 'awaiting_side_quest'
     ? (result.isOverflow ? '⚡' : '\uD83C\uDFC6')
@@ -821,14 +851,5 @@ function dismissComplete() {
 }
 
 function restorePendingTaskResult() {
-  const result = getPendingTaskResult();
-  if (!result) return false;
-  const task = gameState.tasks.find(candidate => candidate.id === result.taskId) || null;
-  if (task) {
-    currentTask = task;
-    currentIsOverflow = Boolean(result.isOverflow);
-    renderTaskScreen();
-    showScreen('task', { replaceHistory: true });
-  }
-  return presentPendingTaskResult();
+  return showPendingTaskResult({ replaceHistory: true });
 }
