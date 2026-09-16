@@ -80,7 +80,7 @@ function showClassChangeModal() {
     info.textContent = `You reached level ${level}. It is time to choose your first class!`;
   } else {
     const currentCls = CLASS_TREE[classId];
-    info.textContent = `Puedes avanzar desde ${currentCls.name} a una de estas especializaciones:`;
+    info.textContent = `You can advance from ${currentCls.name} to one of these specializations:`;
   }
   
   options.innerHTML = '';
@@ -315,7 +315,7 @@ function generateContentSuggestions() {
     suggestions.push({
       type: 'cleanup',
       priority: 'low',
-      message: taskMetrics.neverCompleted.length + ' tareas nunca completadas. Revisa si son relevantes o si necesitan ajustes.'
+      message: taskMetrics.neverCompleted.length + ' tasks have never been completed. Review whether they are still relevant or need adjustment.'
     });
   }
   
@@ -337,10 +337,11 @@ function importDataText(text) {
     throw new Error('The file does not contain a valid save.');
   }
   if (!('level' in data) && !('tasks' in data) && !('taskHistory' in data)) {
-    throw new Error('Faltan datos reconocibles de LifeXP.');
+    throw new Error('The file does not contain recognizable LifeXP data.');
   }
   backupCurrentSave('before-import');
   gameState = { ...gameState, ...data };
+  if (typeof migrateOfficialTaskText === 'function') migrateOfficialTaskText(gameState);
   gameState.inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
   gameState.stash = Array.isArray(gameState.stash) ? gameState.stash : [];
   gameState.taskHistory = Array.isArray(gameState.taskHistory) ? gameState.taskHistory : [];
@@ -359,7 +360,7 @@ function showImportModal() {
     if (!file) return;
     try {
       importDataText(await file.text());
-      alert('Datos importados correctamente');
+      alert('Data imported successfully');
       location.reload();
     } catch (err) {
       alert('Import error: ' + err.message);

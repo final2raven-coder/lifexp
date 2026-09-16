@@ -399,12 +399,12 @@ function forceAppUpdate() {
 function renderSettings() {
   const content = document.getElementById('settings-content');
   content.innerHTML = `
-    <div class="section-title">Datos</div>
+    <div class="section-title">Data</div>
     <div class="card">
       <button class="btn btn-gold mb-8" onclick="forceAppUpdate()">↻ Update version</button>
       <button class="btn btn-secondary mb-8" onclick="exportData()">\uD83D\uDCE4 Export save</button>
       <button class="btn btn-secondary mb-8" onclick="showImportModal()">\uD83D\uDCE5 Import save</button>
-      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Resetear progreso</button>
+      <button class="btn btn-ghost" onclick="resetGame()" style="color: var(--red)">\uD83D\uDDD1️ Reset progress</button>
     </div>
     
     <div class="section-title">Tasks</div>

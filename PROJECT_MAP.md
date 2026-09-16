@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-0f48d3b4be1c788a4b304fe5f52903398282b578
+3688714428baa7767a083015d16e62f39f40deab
 
 Build efectiva
 
@@ -531,9 +531,9 @@ Cupos fijados: `personal_project: 3` y `guild_order: 1`; las misiones diarias se
 
 F4
 
-Parcial
+Implementada localmente; pendiente de colocacion y verificacion manual
 
-Se corrigieron partes de la UI; falta barrido completo de contenido visible
+Se corrigen las superficies visibles en espanol y se anade una migracion determinista de textos de tareas oficiales persistidas. Se conservan IDs, historial, balance, drops y tareas personalizadas. La entrega queda preparada para la rama `fix/f4-english-content-v1`.
 
 F5
 
@@ -561,9 +561,9 @@ Disponibilidad, proxima fecha, limites por tarea, historial completo y bloqueo a
 
 F9
 
-Pendiente
+Completada
 
-Las listas existen; queda mejorar formato e informacion util
+PR fusionado en main; no se reabre durante F4.
 
 F10
 
@@ -573,9 +573,9 @@ Habilidades, requisitos, dificultad legible y formaciones jugables implementados
 
 F11
 
-En curso
+Implementada; pendiente de verificacion manual
 
-El flujo canonico de progreso ya actualiza misiones al completar tareas; este bloque local persiste objetivos por capitulo, conserva completionId contra duplicados, recupera estados legacy y corrige la visibilidad del boton de accion. Falta verificacion manual como jugador antes de marcarla completada
+PR #80 ya esta integrado. El flujo canonico persiste objetivos por capitulo, conserva completionId contra duplicados, recupera estados legacy y corrige la visibilidad del boton de accion. No se verifica ni se reabre durante F4.
 
 F12
 
@@ -773,6 +773,10 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-16 - F4: se prepara localmente `fix/f4-english-content-v1`. El motor reconciliara por ID los nombres y descripciones de las tareas oficiales persistidas, incluidos los textos de side quests, usando los catalogos actuales como fuente declarativa. Las tareas personalizadas y los datos de progreso quedan intactos. Tambien se corrigen las superficies de UI que aun mostraban espanol. Pendiente de colocar y verificar como jugador.
+
+2026-09-16 - Reconciliacion operativa: main auditada en `3688714428baa7767a083015d16e62f39f40deab`; F9 queda marcada como completada tras su PR fusionado; F11 queda implementada en PR #80 y pendiente de verificacion manual; F12 continua bloqueada.
 
 2026-09-06 - DT-25: se prepara un arreglo local para el aviso de tareas guardadas. La accion se delega una sola vez desde el contenedor estable del Hub, de modo que las reconstrucciones de alertas no dependan de listeners directos sobre botones dinamicos. Pendiente de colocar y verificar como jugador.
 
