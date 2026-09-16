@@ -63,7 +63,7 @@ function renderQuests() {
         </div>
         <div style="margin-top: 12px;">
           <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
-            <span>Progreso</span>
+            <span>Progress</span>
             <span>${percent}%</span>
           </div>
           <div style="height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">

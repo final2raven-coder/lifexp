@@ -2,7 +2,7 @@
 // LifeXP RPG - engine.js
 // Nucleo del motor: gameState, variables de UI, utilidades, persistencia,
 // migracion de save, updateStreak y showScreen.
-// Depende de: classes.js, quests.js (globals), data_tasks.js.
+// Depende de: classes.js, quests.js (globals), data_tasks.js y expansion_tasks.js.
 // ===========================================================================
 
 // ===========================================================================
@@ -1251,6 +1251,48 @@ function migrateV1ToV2(state) {
   return state;
 }
 
+function getOfficialTaskDefinitions() {
+  const catalogs = [];
+  if (typeof DEFAULT_TASKS !== 'undefined' && Array.isArray(DEFAULT_TASKS)) catalogs.push(DEFAULT_TASKS);
+  if (typeof EXPANSION_TASKS_V1 !== 'undefined' && Array.isArray(EXPANSION_TASKS_V1)) catalogs.push(EXPANSION_TASKS_V1);
+  const definitions = new Map();
+  for (const catalog of catalogs) {
+    for (const task of catalog) {
+      if (!isPlainObject(task) || typeof task.id !== 'string' || definitions.has(task.id)) continue;
+      definitions.set(task.id, task);
+    }
+  }
+  return definitions;
+}
+
+function migrateOfficialTaskText(state) {
+  if (!isPlainObject(state) || !Array.isArray(state.tasks)) return false;
+  const definitions = getOfficialTaskDefinitions();
+  let changed = false;
+  state.tasks = state.tasks.map(task => {
+    if (!isPlainObject(task)) return task;
+    const official = definitions.get(task.id);
+    if (!official) return task;
+    const migrated = { ...task };
+    if (typeof official.name === 'string' && migrated.name !== official.name) {
+      migrated.name = official.name;
+      changed = true;
+    }
+    if (typeof official.desc === 'string' && migrated.desc !== official.desc) {
+      migrated.desc = official.desc;
+      changed = true;
+    }
+    if (isPlainObject(migrated.sideQuest) && isPlainObject(official.sideQuest)
+      && typeof official.sideQuest.desc === 'string'
+      && migrated.sideQuest.desc !== official.sideQuest.desc) {
+      migrated.sideQuest = { ...migrated.sideQuest, desc: official.sideQuest.desc };
+      changed = true;
+    }
+    return migrated;
+  });
+  return changed;
+}
+
 function normalizeTaskDefinition(task) {
   if (!isPlainObject(task)) return task;
   const normalized = { ...task };
@@ -1307,6 +1349,7 @@ function migrateV2ToV3(state, context = {}) {
 
 function migrateV4ToCurrent(state) {
   if (state.name === 'Aventurero') state.name = 'Adventurer';
+  migrateOfficialTaskText(state);
   normalizeQuestPersistence(state);
   return state;
 }
@@ -1373,9 +1416,10 @@ function saveGame() {
 }
 
 function finalizeLoadedState() {
-  let changed = false;
+  let changed = migrateOfficialTaskText(gameState);
   if (!gameState.tasks || gameState.tasks.length === 0) {
     gameState.tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+    changed = true;
   }
 
   // Recover legacy item entries before rendering the inventory.
