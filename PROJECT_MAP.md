@@ -37,11 +37,11 @@ main
 
 Commit actual de main
 
-d13acbf73901c3d6863463d41e9c6026404c4caf
+cfa4b0c1f70542d6e8c66e01d4a723e45ead35bf
 
 M0 del sistema de misiones
 
-Contrato aprobado y entregado localmente en `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md`. El modelo nuevo usa `mission actions` como unidad narrativa canónica dentro de `gameState.quests`; objectives legacy y stages DT-24 permanecen compatibles durante la transición. No se ha cambiado código runtime ni `saveVersion`. Siguiente fase: M1, fundamento persistente de acciones.
+Contrato aprobado e integrado en `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md`. El modelo nuevo usa `mission actions` como unidad narrativa canónica dentro de `gameState.quests`; objectives legacy y stages DT-24 solo son entradas de migración. No se cambia `saveVersion`. M1 sustituye el motor de ejecución y traduce las instancias existentes al modelo de actions.
 
 Build efectiva
 
@@ -74,6 +74,10 @@ saveVersion: 4
 Version del modelo de tareas
 
 taskModelVersion: 1
+
+Version del modelo de misiones
+
+questModelVersion: 3; actions es el unico modelo canonico de ejecucion. Las instancias antiguas con objectives o stages se traducen una vez al cargar; no existe un segundo camino de progreso.
 
 Cache conocida
 
@@ -439,7 +443,7 @@ rewardLedger evita duplicados.
 
 6.4 Quests
 
-Las recompensas aseguradas de una quest son independientes del loot normal. Las quests desconocidas o parcialmente migrables no se borran silenciosamente.
+Las recompensas aseguradas de una quest son independientes del loot normal. Las quests desconocidas o parcialmente migrables no se borran silenciosamente. El motor canonico usa `gameState.quests[questId].actions`, `routeNodes`, `consumedEventIds`, `discoveredRevealIds`, `consequenceClaims` y `recovery`. `objectives` y `stages` solo se leen en la frontera de traduccion y no se ejecutan.
 
 6.4.1 Politica de misiones activas
 
@@ -603,7 +607,13 @@ M0 — Mission System
 
 Completada
 
-Contrato aprobado y entregado localmente en `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md`. No se modificó código runtime ni `saveVersion`; objectives legacy y stages DT-24 quedan compatibles. M1 es el siguiente bloque.
+Contrato integrado mediante PR #83. Define actions como unidad narrativa y deja objectives/stages como formatos de entrada de migración. No cambia `saveVersion`.
+
+M1 — Persistent action engine
+
+Implementada localmente; pendiente de colocacion y verificacion manual
+
+`engine.js` introduce `questModelVersion: 3`, traduce instancias legacy y DT-24 a `actions` y `routeNodes`, conserva progreso y claims, registra eventos consumidos y marca instancias no resolubles con recuperacion. `quests.js` delega el avance a `updateMissionProgress`; no mantiene un segundo motor de objectives/stages. La prueba de migraciones cubre traduccion, idempotencia, rollback, recuperacion y progreso sin duplicados. La conversion declarativa completa del catalogo estatico queda para el siguiente bloque, sin cambiar el motor.
 
 F6 - Contrato de publicación
 
@@ -783,6 +793,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-17 - M1: sustitucion local del motor de progreso de misiones. `engine.js` fija `questModelVersion: 3`; las instancias con `objectives`, `chapters` o `stages` se traducen deterministamente a `actions` y `routeNodes`, se conserva el origen de migracion y se eliminan los campos legacy de la instancia ejecutable. `quests.js` delega el avance en el resolver de actions; los eventos se consumen por ID estable e idempotente. Se anaden pruebas para DT-24, recuperacion, recarga y duplicados. La conversion completa del catalogo estatico queda separada para el siguiente bloque.
 
 2026-09-17 - M0 Mission System: se cierra el contrato de acciones narrativas. `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md` define la separación entre catálogo y save, mission instances, route nodes, mission actions, eventos canónicos, tareas derivadas, revelaciones, consecuencias, follow-ups, fuentes pasivas/gremiales y recuperación. Se conserva la compatibilidad con objectives legacy y stages DT-24; no se cambia código runtime ni `saveVersion`. Siguiente fase: M1, fundamento persistente de acciones.
 
