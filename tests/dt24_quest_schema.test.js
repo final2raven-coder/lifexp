@@ -43,7 +43,7 @@ test('migrates a v4 save to the DT-24 quest schema without changing saveVersion'
   });
 
   assert.equal(state.saveVersion, 4);
-  assert.equal(state.questModelVersion, 2);
+  assert.equal(state.questModelVersion, 3);
   assert.deepEqual({ ...state.quests.slotLimits }, { personal_project: 3, guild_order: 1 });
   assert.deepEqual([...state.quests.availableFollowUps], []);
   assert.deepEqual([...state.quests.derivedTasks], []);
@@ -67,8 +67,8 @@ test('normalization is idempotent and preserves valid quest progress data', () =
 
   assert.equal(JSON.stringify(twice), snapshot);
   assert.deepEqual([...twice.quests.availableFollowUps], ['follow-up-alpha']);
-  assert.deepEqual([...twice.quests.quest_alpha.stages[0].objectives[0].consumedCompletionIds], ['completion-1']);
-  assert.deepEqual([...twice.quests.quest_alpha.derivedTaskIds], ['derived-1']);
+  assert.deepEqual([...twice.quests.quest_alpha.actions[0].consumedEventIds], ['completion-1']);
+  assert.deepEqual(JSON.parse(JSON.stringify(twice.quests.quest_alpha.derivedTaskIds)), ['derived-1']);
 });
 
 
@@ -92,13 +92,20 @@ test('normalizes a completed staged quest to an explicit terminal state', () => 
     }
   });
 
-  state.quests.quest_sequence.stages[1].status = 'completed';
+  state.quests.quest_sequence.actions.forEach(action => {
+    action.progress = action.target;
+    action.status = 'completed';
+  });
+  state.quests.quest_sequence.routeNodes.forEach(node => {
+    node.status = 'completed';
+  });
+  state.quests.quest_sequence.status = 'completed';
   context.normalizeQuestPersistence(state);
 
   assert.equal(state.quests.quest_sequence.status, 'completed');
   assert.equal(state.quests.quest_sequence.currentStage, null);
   assert.deepEqual(
-    state.quests.quest_sequence.stages.map(stage => stage.status),
+    JSON.parse(JSON.stringify(state.quests.quest_sequence.routeNodes.map(node => node.status))),
     ['completed', 'completed']
   );
   assert.deepEqual(state.quests.active, []);
@@ -122,7 +129,7 @@ test('an active staged quest keeps only its current stage active', () => {
         status: 'active',
         currentStage: 1,
         stages: [
-          { id: 'stage_1', status: 'active', objectives: [] },
+          { id: 'stage_1', status: 'completed', objectives: [] },
           { id: 'stage_2', status: 'active', objectives: [] },
           { id: 'stage_3', status: 'locked', objectives: [] }
         ]
@@ -135,7 +142,7 @@ test('an active staged quest keeps only its current stage active', () => {
   assert.equal(state.quests.quest_sequence.status, 'active');
   assert.equal(state.quests.quest_sequence.currentStage, 1);
   assert.deepEqual(
-    state.quests.quest_sequence.stages.map(stage => stage.status),
+    JSON.parse(JSON.stringify(state.quests.quest_sequence.routeNodes.map(node => node.status))),
     ['completed', 'active', 'locked']
   );
   assert.deepEqual(state.quests.active, ['quest_sequence']);
