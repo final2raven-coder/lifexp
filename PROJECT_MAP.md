@@ -277,6 +277,10 @@ tests/dt24_quest_slots.test.js
 
 Cupos independientes de proyectos personales y encargos de guild
 
+tests/mission_action_task_integration.test.js
+
+Integracion del flujo canonico de completado con tareas derivadas, deduplicacion, persistencia transaccional y referencias no resolubles
+
 manifest.json
 
 Metadatos PWA
@@ -611,9 +615,15 @@ Contrato integrado mediante PR #83. Define actions como unidad narrativa y deja 
 
 M1 — Persistent action engine
 
-Implementada localmente; pendiente de colocacion y verificacion manual
+Completada localmente; pendiente de colocacion y verificacion manual
 
 `engine.js` introduce `questModelVersion: 3`, traduce instancias legacy y DT-24 a `actions` y `routeNodes`, conserva progreso y claims, registra eventos consumidos y marca instancias no resolubles con recuperacion. `quests.js` delega el avance a `updateMissionProgress`; no mantiene un segundo motor de objectives/stages. La prueba de migraciones cubre traduccion, idempotencia, rollback, recuperacion y progreso sin duplicados. La conversion declarativa completa del catalogo estatico queda para el siguiente bloque, sin cambiar el motor.
+
+M2 — Canonical task integration
+
+Implementada localmente; pendiente de colocacion y verificacion manual
+
+`engine.js` materializa tareas derivadas aceptadas desde `gameState.quests.derivedTasks`, conserva su origen, aplica el ciclo de vida y marca la finalizacion por `completionId`. `ui_tasks.js` mantiene `finalizeCompletion()` como unico flujo y emite eventos normalizados con `source`, `derivedTaskId` y `themes`. El guardado de progreso de misiones se difiere dentro de la transaccion de completado y se confirma junto con XP, historial, recompensa y resultado. La prueba de integracion cubre materializacion, evento derivado, duplicados, persistencia y referencias no resolubles.
 
 F6 - Contrato de publicación
 
@@ -793,6 +803,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-17 - M2: integracion local de tareas normales y derivadas con el flujo canonico. Las tareas derivadas aceptadas se materializan sin sustituir tareas existentes; `finalizeCompletion()` emite eventos con origen y `derivedTaskId`; la persistencia del progreso de misiones queda dentro de la transaccion del completado y los eventos repetidos no duplican progreso. Pendiente de colocar y verificar manualmente.
 
 2026-09-17 - M1: sustitucion local del motor de progreso de misiones. `engine.js` fija `questModelVersion: 3`; las instancias con `objectives`, `chapters` o `stages` se traducen deterministamente a `actions` y `routeNodes`, se conserva el origen de migracion y se eliminan los campos legacy de la instancia ejecutable. `quests.js` delega el avance en el resolver de actions; los eventos se consumen por ID estable e idempotente. Se anaden pruebas para DT-24, recuperacion, recarga y duplicados. La conversion completa del catalogo estatico queda separada para el siguiente bloque.
 

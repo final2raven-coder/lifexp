@@ -852,6 +852,8 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
   const totalXp = Math.round(baseXp + sideXp);
   const goldEarned = Math.max(1, Math.floor(totalXp / 4));
 
+  if (typeof beginLifeXPTransaction === 'function') beginLifeXPTransaction();
+  try {
   const leveledUp = addXp(totalXp);
   gameState.gold += goldEarned;
 
@@ -926,11 +928,14 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
   // Trigger all post-completion state changes before persisting the visible result.
   triggerEncounterAfterTask(task);
   if (typeof updateQuestProgress === 'function') {
-    updateQuestProgress('task_complete', {
+    updateQuestProgress('task_completed', {
       category: task.cat,
       taskId: task.id,
       date: today,
-      completionId: historyEntry.completionId
+      completionId: historyEntry.completionId,
+      source: task.source === 'derived_task' ? 'derived_task' : 'standard_task',
+      derivedTaskId: typeof task.derivedTaskId === 'string' ? task.derivedTaskId : null,
+      themes: Array.isArray(task.themes) ? task.themes : []
     });
   }
   if (typeof recordItemAttunementFromTask === 'function') recordItemAttunementFromTask(task);
@@ -954,12 +959,15 @@ function finalizeCompletion(sideQuestCompleted, pendingResult = getPendingTaskRe
   };
 
   // Persist the complete result before opening any result UI.
-  if (!saveGame()) {
+  if (!saveGame({ force: true })) {
     if (stateBeforeCompletion) gameState = stateBeforeCompletion;
     pendingEncounter = pendingEncounterBeforeCompletion;
     if (gameState.pendingTaskResult?.status === 'awaiting_side_quest') presentPendingTaskResult();
     showToast('The result could not be saved. It was not shown; complete the task again to retry.', 'error');
     return;
+  }
+  } finally {
+    if (typeof endLifeXPTransaction === 'function') endLifeXPTransaction();
   }
   renderTaskResultModal(gameState.pendingTaskResult, task);
 }

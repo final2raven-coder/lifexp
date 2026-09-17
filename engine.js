@@ -113,6 +113,19 @@ let gameState = cloneSaveState(DEFAULT_GAME_STATE);
 let lifeXPSaveLoadState = 'not_started';
 const lifeXPContentInstallers = [];
 let lifeXPContentInstallersRun = false;
+let lifeXPSaveDeferred = 0;
+
+function beginLifeXPTransaction() {
+  lifeXPSaveDeferred += 1;
+}
+
+function endLifeXPTransaction() {
+  lifeXPSaveDeferred = Math.max(0, lifeXPSaveDeferred - 1);
+}
+
+function isLifeXPTransactionDeferred() {
+  return lifeXPSaveDeferred > 0;
+}
 
 function isLifeXPSaveReady() {
   return lifeXPSaveLoadState === 'ready';
@@ -851,6 +864,7 @@ function normalizeMissionActionInstance(value, context = {}) {
   }
   normalized.consumedEventIds = normalizeCompletionIds(normalized.consumedEventIds);
   normalized.completedActionIds = normalizeCompletionIds(normalized.completedActionIds).filter(id => actionIds.has(id));
+  normalized.derivedTaskIds = normalizeCompletionIds(normalized.derivedTaskIds);
   normalized.discoveredRevealIds = normalizeCompletionIds(normalized.discoveredRevealIds);
   normalized.consequenceClaims = isPlainObject(normalized.consequenceClaims) ? normalized.consequenceClaims : {};
   normalized.recovery = isPlainObject(normalized.recovery)
@@ -892,18 +906,140 @@ function normalizeQuestInstanceState(value, context = {}) {
   return normalizeMissionActionInstance(translated, context);
 }
 
+const DERIVED_TASK_STATUSES = Object.freeze({
+  pending: 'pending',
+  accepted: 'accepted',
+  completed: 'completed',
+  expired: 'expired',
+  needsReview: 'needs_review'
+});
+
+function normalizeDerivedTaskDefinition(value) {
+  if (!isPlainObject(value)) return null;
+  const definition = cloneSaveState(value);
+  if (typeof definition.name !== 'string' || !definition.name.trim()) return null;
+  if (typeof definition.desc !== 'string' || !definition.desc.trim()) return null;
+  if (typeof definition.cat !== 'string' || !definition.cat.trim()) return null;
+  if (!isPlainObject(definition.stats)) return null;
+  if (!isFiniteNumber(Number(definition.xp)) || Number(definition.xp) < 0) return null;
+  definition.xp = Number(definition.xp);
+  definition.availability = isPlainObject(definition.availability)
+    ? definition.availability
+    : { type: 'once', intervalDays: null, limit: 1, repeatable: false };
+  definition.freq = typeof definition.freq === 'string' && definition.freq ? definition.freq : 'once';
+  return definition;
+}
+
 function normalizeDerivedTaskState(value) {
   if (!isPlainObject(value)) {
-    return { status: 'needs_review', rawValue: value === undefined ? null : cloneSaveState(value), taskHistory: [] };
+    return { status: DERIVED_TASK_STATUSES.needsReview, rawValue: value === undefined ? null : cloneSaveState(value), taskHistory: [] };
   }
   const normalized = { ...value };
-  if (typeof normalized.id !== 'string' || !normalized.id) normalized.status = 'needs_review';
-  if (!['pending', 'accepted', 'completed', 'expired', 'needs_review'].includes(normalized.status)) normalized.status = 'pending';
-  if (typeof normalized.sourceQuestId !== 'string' || !normalized.sourceQuestId) normalized.status = 'needs_review';
-  if (typeof normalized.sourceActionId !== 'string' || !normalized.sourceActionId) normalized.status = 'needs_review';
-  if (typeof normalized.templateId !== 'string' || !normalized.templateId) normalized.status = 'needs_review';
+  if (typeof normalized.id !== 'string' || !normalized.id) normalized.status = DERIVED_TASK_STATUSES.needsReview;
+  if (!Object.values(DERIVED_TASK_STATUSES).includes(normalized.status)) normalized.status = DERIVED_TASK_STATUSES.pending;
+  if (typeof normalized.sourceQuestId !== 'string' || !normalized.sourceQuestId) normalized.status = DERIVED_TASK_STATUSES.needsReview;
+  if (typeof normalized.sourceActionId !== 'string' || !normalized.sourceActionId) normalized.status = DERIVED_TASK_STATUSES.needsReview;
+  if (typeof normalized.templateId !== 'string' || !normalized.templateId) normalized.status = DERIVED_TASK_STATUSES.needsReview;
   if (!Array.isArray(normalized.taskHistory)) normalized.taskHistory = [];
+  if (normalized.taskDefinition !== undefined && !normalizeDerivedTaskDefinition(normalized.taskDefinition)) {
+    normalized.status = DERIVED_TASK_STATUSES.needsReview;
+  }
   return normalized;
+}
+
+function getDerivedTaskById(derivedTaskId) {
+  if (typeof derivedTaskId !== 'string' || !derivedTaskId || !Array.isArray(gameState.quests?.derivedTasks)) return null;
+  return gameState.quests.derivedTasks.find(task => task && task.id === derivedTaskId) || null;
+}
+
+function createDerivedTaskId(sourceQuestId, sourceActionId, templateId) {
+  return ['derived', sourceQuestId, sourceActionId, templateId]
+    .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''))
+    .join('_');
+}
+
+function materializeDerivedTask(derivedTask) {
+  if (!isPlainObject(derivedTask)) return false;
+  if (![DERIVED_TASK_STATUSES.accepted, DERIVED_TASK_STATUSES.completed].includes(derivedTask.status)) return false;
+  const definition = normalizeDerivedTaskDefinition(derivedTask.taskDefinition);
+  if (!definition) {
+    derivedTask.status = DERIVED_TASK_STATUSES.needsReview;
+    derivedTask.reviewReason = 'invalid_task_definition';
+    return true;
+  }
+  const existing = getTaskById(derivedTask.id);
+  if (existing) {
+    if (existing.derivedTaskId === derivedTask.id) return false;
+    derivedTask.status = DERIVED_TASK_STATUSES.needsReview;
+    derivedTask.reviewReason = 'task_id_collision';
+    return true;
+  }
+  gameState.tasks.push({
+    ...definition,
+    id: derivedTask.id,
+    source: 'derived_task',
+    derivedTaskId: derivedTask.id,
+    sourceQuestId: derivedTask.sourceQuestId,
+    sourceActionId: derivedTask.sourceActionId,
+    templateId: derivedTask.templateId,
+    derivedTaskStatus: derivedTask.status,
+    availability: definition.availability
+  });
+  return true;
+}
+
+function reconcileDerivedTasks() {
+  if (!gameState.quests || !Array.isArray(gameState.quests.derivedTasks)) return false;
+  let changed = false;
+  for (const derivedTask of gameState.quests.derivedTasks) {
+    changed = materializeDerivedTask(derivedTask) || changed;
+  }
+  return changed;
+}
+
+function createDerivedTask(template, options = {}) {
+  const sourceQuestId = typeof options.sourceQuestId === 'string' ? options.sourceQuestId : null;
+  const sourceActionId = typeof options.sourceActionId === 'string' ? options.sourceActionId : null;
+  const templateId = typeof options.templateId === 'string' ? options.templateId : (template?.id || null);
+  const definition = normalizeDerivedTaskDefinition(template);
+  if (!sourceQuestId || !sourceActionId || !templateId || !definition) return null;
+  if (!gameState.quests || !Array.isArray(gameState.quests.derivedTasks)) return null;
+  const id = typeof options.id === 'string' && options.id ? options.id : createDerivedTaskId(sourceQuestId, sourceActionId, templateId);
+  const existing = getDerivedTaskById(id);
+  if (existing) return existing;
+  const derivedTask = normalizeDerivedTaskState({
+    id,
+    sourceQuestId,
+    sourceActionId,
+    templateId,
+    status: options.status === DERIVED_TASK_STATUSES.pending ? DERIVED_TASK_STATUSES.pending : DERIVED_TASK_STATUSES.accepted,
+    createdAt: typeof options.createdAt === 'string' ? options.createdAt : new Date().toISOString(),
+    taskDefinition: definition,
+    taskHistory: []
+  });
+  gameState.quests.derivedTasks.push(derivedTask);
+  materializeDerivedTask(derivedTask);
+  return derivedTask;
+}
+
+function markDerivedTaskCompleted(derivedTaskId, completionId, data = {}) {
+  const derivedTask = getDerivedTaskById(derivedTaskId);
+  if (!derivedTask || !completionId || derivedTask.status === DERIVED_TASK_STATUSES.completed) return false;
+  if (derivedTask.taskHistory.some(entry => entry && entry.completionId === completionId)) return false;
+  derivedTask.status = DERIVED_TASK_STATUSES.completed;
+  derivedTask.completedAt = typeof data.date === 'string' ? data.date : todayStr();
+  derivedTask.completionId = completionId;
+  derivedTask.taskHistory.push({
+    completionId,
+    taskId: derivedTask.id,
+    date: derivedTask.completedAt
+  });
+  const task = getTaskById(derivedTask.id);
+  if (task) {
+    task.derivedTaskStatus = DERIVED_TASK_STATUSES.completed;
+    task.lastDone = derivedTask.completedAt;
+  }
+  return true;
 }
 
 function normalizeQuestPersistence(state, warnings = []) {
@@ -956,6 +1092,17 @@ function getMissionEventCompletionId(data = {}) {
   return [data.completionId, data.claimId, data.eventId].find(value => typeof value === 'string' && value.length > 0) || null;
 }
 
+function normalizeMissionEvent(eventType, data = {}) {
+  const normalizedType = eventType === 'task_complete' ? 'task_completed' : eventType;
+  const event = { ...data, type: normalizedType };
+  if (normalizedType === 'task_completed') {
+    event.source = event.source === 'derived_task' ? 'derived_task' : 'standard_task';
+    event.derivedTaskId = typeof event.derivedTaskId === 'string' && event.derivedTaskId ? event.derivedTaskId : null;
+    event.themes = Array.isArray(event.themes) ? [...new Set(event.themes.filter(theme => typeof theme === 'string' && theme))] : [];
+  }
+  return event;
+}
+
 function missionActionMatchesEvent(action, eventType, data = {}) {
   if (!action || action.status === MISSION_ACTION_STATUSES.completed || action.status === MISSION_ACTION_STATUSES.blocked) return false;
   const criterion = action.criterion || {};
@@ -987,6 +1134,7 @@ function applyMissionEventToAction(action, eventType, data = {}, completionId) {
 function advanceMissionActionInstance(questId, questState, eventType, data = {}) {
   if (!questState || questState.status === QUEST_INSTANCE_STATUS.completed || !Array.isArray(questState.actions)) return false;
   const completionId = getMissionEventCompletionId(data);
+  if (!Array.isArray(questState.consumedEventIds)) questState.consumedEventIds = [];
   if (!completionId || questState.consumedEventIds.includes(completionId)) return false;
   const nodeId = questState.currentNodeId;
   const candidates = questState.actions.filter(action => action.nodeId === nodeId);
@@ -1020,14 +1168,20 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
 }
 
 function updateMissionProgress(eventType, data = {}) {
-  if (!gameState.quests || !Array.isArray(gameState.quests.active)) return false;
+  const event = normalizeMissionEvent(eventType, data);
   let updated = false;
-  [...gameState.quests.active].forEach(questId => {
-    const questState = gameState.quests[questId];
-    if (!questState) return;
-    updated = advanceMissionActionInstance(questId, questState, eventType, data) || updated;
-  });
-  if (updated) saveGame();
+  const completionId = getMissionEventCompletionId(event);
+  if (event.type === 'task_completed' && event.derivedTaskId && completionId) {
+    updated = markDerivedTaskCompleted(event.derivedTaskId, completionId, event) || updated;
+  }
+  if (gameState.quests && Array.isArray(gameState.quests.active)) {
+    [...gameState.quests.active].forEach(questId => {
+      const questState = gameState.quests[questId];
+      if (!questState) return;
+      updated = advanceMissionActionInstance(questId, questState, event.type, event) || updated;
+    });
+  }
+  if (updated && !isLifeXPTransactionDeferred()) saveGame();
   return updated;
 }
 
@@ -1720,11 +1874,12 @@ function runMigrations(parsed, from, warnings) {
   return candidate;
 }
 
-function saveGame() {
+function saveGame(options = {}) {
   if (!isLifeXPSaveReady()) {
     console.warn('Save blocked until the current save has finished loading.');
     return false;
   }
+  if (lifeXPSaveDeferred > 0 && options.force !== true) return true;
   try {
     localStorage.setItem('lifexp_save', JSON.stringify(gameState));
     return localStorage.getItem('lifexp_save') === JSON.stringify(gameState);
@@ -1754,6 +1909,7 @@ function finalizeLoadedState() {
     }
   }
 
+  changed = reconcileDerivedTasks() || changed;
   updateStreak();
   if (typeof window !== 'undefined' && window.LifeXPMaterialInteractions && typeof window.LifeXPMaterialInteractions.reconcile === 'function') {
     changed = window.LifeXPMaterialInteractions.reconcile() || changed;
