@@ -6,11 +6,186 @@
 
 // ===========================================================================
 
+let selectedMissionActionId = null;
+
+function missionUiEscape(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function getMissionQuestState(questId) {
+  if (!gameState?.quests || !isPlainObject(gameState.quests[questId])) return null;
+  return gameState.quests[questId];
+}
+
+function getMissionCurrentRouteNode(questState) {
+  if (!questState || !Array.isArray(questState.routeNodes)) return null;
+  return questState.routeNodes.find(node => node.id === questState.currentNodeId) || null;
+}
+
+function getMissionActionStatusLabel(status) {
+  const labels = {
+    available: 'Available',
+    in_progress: 'In progress',
+    awaiting_task: 'Awaiting a task',
+    completed: 'Completed',
+    blocked: 'Blocked',
+    needs_recovery: 'Needs investigation'
+  };
+  return labels[status] || 'In progress';
+}
+
+function getMissionActionTitle(action, index) {
+  const declared = action?.title || action?.name || action?.label;
+  if (typeof declared === 'string' && declared.trim()) return declared.trim();
+  if (action?.status === 'completed') return `Action ${index + 1} complete`;
+  return index === 0 ? 'Current action' : `Available action ${index + 1}`;
+}
+
+function getMissionActionDescription(action) {
+  const declared = action?.description || action?.desc || action?.prompt || action?.narrative;
+  if (typeof declared === 'string' && declared.trim()) return declared.trim();
+  if (action?.status === 'completed') return 'This step has already changed the course of the mission.';
+  if (action?.status === 'blocked') return 'This route is not available yet.';
+  if (action?.status === 'needs_recovery') return 'Further investigation is needed before this route can continue.';
+  return 'Choose a compatible task to advance the current route.';
+}
+
+function missionActionMatchesTask(action, task) {
+  const criterion = action?.criterion || {};
+  if (criterion.eventType && !['task_completed', 'task_complete'].includes(criterion.eventType)) return false;
+  if (criterion.taskId && criterion.taskId !== task.id) return false;
+  if (criterion.derivedTaskId && criterion.derivedTaskId !== task.derivedTaskId) return false;
+  if (criterion.category && criterion.category !== task.cat) return false;
+  if (criterion.theme && !(Array.isArray(task.themes) && task.themes.includes(criterion.theme))) return false;
+  return true;
+}
+
+function getMissionActionTasks(action) {
+  if (!action || ['completed', 'blocked', 'needs_recovery'].includes(action.status)) return [];
+  return (Array.isArray(gameState.tasks) ? gameState.tasks : [])
+    .filter(task => task && !isTaskArchived(task) && missionActionMatchesTask(action, task))
+    .map(task => ({ task, availability: getTaskAvailability(task) }))
+    .sort((left, right) => {
+      const leftAvailable = left.availability.status === 'available' ? 0 : 1;
+      const rightAvailable = right.availability.status === 'available' ? 0 : 1;
+      return leftAvailable - rightAvailable || String(left.task.name).localeCompare(String(right.task.name));
+    });
+}
+
+function getMissionActionProgressLabel(action) {
+  const target = Math.max(1, Number(action?.target) || 1);
+  const progress = Math.min(target, Math.max(0, Number(action?.progress) || 0));
+  return `${progress}/${target}`;
+}
+
+function renderMissionReveals(quest, questState) {
+  const discoveredIds = Array.isArray(questState?.discoveredRevealIds) ? questState.discoveredRevealIds : [];
+  const reveals = Array.isArray(quest?.reveals)
+    ? quest.reveals.filter(reveal => reveal && discoveredIds.includes(reveal.id))
+    : [];
+  if (reveals.length === 0) return '';
+  return `
+    <section class="quest-detail-section" aria-labelledby="quest-discoveries-title">
+      <div class="quest-detail-kicker" id="quest-discoveries-title">Discovered information</div>
+      ${reveals.map(reveal => `
+        <article class="quest-reveal">
+          <div class="quest-reveal-title">${missionUiEscape(reveal.title || 'Discovery')}</div>
+          <div class="quest-reveal-body">${missionUiEscape(reveal.body || reveal.description || '')}</div>
+        </article>
+      `).join('')}
+    </section>
+  `;
+}
+
+function renderMissionRecovery(questState) {
+  const recovery = questState?.recovery;
+  if (!recovery || !['needs_recovery', 'available'].includes(recovery.status)) return '';
+  const message = typeof recovery.message === 'string' && recovery.message.trim()
+    ? recovery.message
+    : 'The next route is not clear yet. Investigate the mission when a new lead becomes available.';
+  return `
+    <section class="quest-recovery-panel" role="status">
+      <div class="quest-detail-kicker">Investigation support</div>
+      <div class="quest-recovery-copy">${missionUiEscape(message)}</div>
+    </section>
+  `;
+}
+
+function openMissionTask(taskId, actionId = null) {
+  const task = gameState.tasks.find(candidate => candidate.id === taskId);
+  if (!task) return;
+  const availability = getTaskAvailability(task);
+  if (availability.status !== 'available') {
+    if (typeof showToast === 'function') showToast('This task is not available right now.', 'gold');
+    return;
+  }
+  selectedMissionActionId = actionId || selectedMissionActionId;
+  if (typeof completeTaskFromCategory !== 'function') return;
+  completeTaskFromCategory(taskId);
+}
+
+function focusMissionAction(questId, actionId) {
+  selectedMissionActionId = actionId;
+  showQuestDetail(questId);
+}
+
+function renderMissionActionTask(taskRecord, actionId) {
+  const task = taskRecord.task;
+  const availability = taskRecord.availability;
+  const safeTaskId = missionUiEscape(task.id);
+  const safeActionId = missionUiEscape(actionId);
+  const available = availability.status === 'available';
+  const status = typeof getTaskCatalogStatus === 'function'
+    ? getTaskCatalogStatus(task, availability)
+    : (available ? 'Available' : 'Unavailable');
+  return `
+    <article class="mission-task-card">
+      <div class="mission-task-main">
+        <div class="mission-task-name">${missionUiEscape(task.name)}</div>
+        <div class="mission-task-desc">${missionUiEscape(task.desc)}</div>
+        <div class="mission-task-status">${missionUiEscape(status)}</div>
+      </div>
+      <button class="btn ${available ? 'btn-primary' : 'btn-ghost'} btn-small" type="button" onclick="openMissionTask('${safeTaskId}', '${safeActionId}')" ${available ? '' : 'disabled'}>${available ? 'Open task' : 'Unavailable'}</button>
+    </article>
+  `;
+}
+
+function renderMissionActionCard(action, index, questId, selected) {
+  const status = action?.status || 'available';
+  const statusLabel = getMissionActionStatusLabel(status);
+  const title = getMissionActionTitle(action, index);
+  const tasks = getMissionActionTasks(action);
+  const taskMarkup = tasks.length > 0
+    ? tasks.map(record => renderMissionActionTask(record, action.id)).join('')
+    : `<div class="mission-action-empty">${status === 'completed' ? 'No further task is needed for this step.' : 'No compatible task is available right now.'}</div>`;
+  const progress = getMissionActionProgressLabel(action);
+  const safeQuestId = missionUiEscape(questId);
+  const safeActionId = missionUiEscape(action.id);
+  return `
+    <article class="mission-action-card ${selected ? 'mission-action-card-selected' : ''}" data-action-status="${missionUiEscape(status)}">
+      <div class="mission-action-header">
+        <div>
+          <div class="mission-action-status">${missionUiEscape(statusLabel)}</div>
+          <h4 class="mission-action-title">${missionUiEscape(title)}</h4>
+        </div>
+        <div class="mission-action-progress">${missionUiEscape(progress)}</div>
+      </div>
+      <div class="mission-action-description">${missionUiEscape(getMissionActionDescription(action))}</div>
+      ${status !== 'completed' && status !== 'blocked' && status !== 'needs_recovery' && !selected ? `<button class="btn btn-ghost btn-small mission-action-focus" type="button" onclick="focusMissionAction('${safeQuestId}', '${safeActionId}')">Focus action</button>` : ''}
+      <div class="mission-action-tasks">${taskMarkup}</div>
+    </article>
+  `;
+}
+
 function renderQuests() {
   const container = document.getElementById('quests-container');
   if (!container) return;
-  
-  // Update count in header
+
   const countEl = document.getElementById('quests-count');
   if (typeof initQuestState === 'function') initQuestState();
   if (typeof checkDailyQuestReset === 'function') checkDailyQuestReset();
@@ -18,17 +193,16 @@ function renderQuests() {
   if (countEl) {
     countEl.textContent = `${active.length} active${active.length !== 1 ? 's' : ''}`;
   }
-  
-  // Check if quests.js loaded
+
   if (typeof QUESTS === 'undefined') {
     container.innerHTML = '<div class="text-muted text-center">Quest system loading...</div>';
     return;
   }
-  
+
   if (active.length === 0) {
     container.innerHTML = `
       <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 32px; margin-bottom: 12px;">\uD83D\uDCDC</div>
+        <div style="font-size: 32px; margin-bottom: 12px;">📜</div>
         <div style="color: var(--text-muted);">No active quests</div>
         <button class="btn btn-primary" style="margin-top: 16px;" onclick="showAvailableQuests()">
           View available quests
@@ -37,33 +211,33 @@ function renderQuests() {
     `;
     return;
   }
-  
+
   container.innerHTML = '';
-  
+
   for (const quest of active) {
     const questId = quest.id;
-    // getQuestProgress uses gameState.quests[questId] internally
     const prog = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
-    const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : { name: quest.type, icon: '\uD83D\uDCDC', color: 'var(--gold)' };
+    const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : { name: quest.type, icon: '📜', color: 'var(--gold)' };
     const percent = prog?.percent || 0;
     const isStory = quest.type === 'story';
     const chapterInfo = isStory && quest.chapters ? `Chapter ${(quest.currentChapter || 0) + 1}/${quest.chapters.length}` : '';
-    
+    const safeQuestId = missionUiEscape(questId);
+
     container.innerHTML += `
-      <div class="card quest-card" style="border-left: 3px solid ${typeInfo.color || 'var(--gold)'}; margin-bottom: 12px; cursor: pointer;" onclick="showQuestDetail('${questId}')">
+      <div class="card quest-card" style="border-left: 3px solid ${typeInfo.color || 'var(--gold)'}; margin-bottom: 12px; cursor: pointer;" onclick="showQuestDetail('${safeQuestId}')">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
           <div style="flex: 1; min-width: 0;">
             <div style="font-size: 11px; color: ${typeInfo.color || 'var(--gold)'}; text-transform: uppercase; letter-spacing: 1px;">
-              ${typeInfo.icon || '\uD83D\uDCDC'} ${typeInfo.name || quest.type} ${chapterInfo ? `· ${chapterInfo}` : ''}
+              ${typeInfo.icon || '📜'} ${typeInfo.name || quest.type} ${chapterInfo ? `· ${chapterInfo}` : ''}
             </div>
-            <div style="font-size: 16px; font-weight: 700; margin-top: 4px;">${quest.name}</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${quest.desc || ''}</div>
+            <div style="font-size: 16px; font-weight: 700; margin-top: 4px;">${missionUiEscape(quest.name)}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${missionUiEscape(quest.desc || '')}</div>
           </div>
-          <div style="font-size: 20px;">${quest.icon || '\uD83D\uDCDC'}</div>
+          <div style="font-size: 20px;">${quest.icon || '📜'}</div>
         </div>
         <div style="margin-top: 12px;">
           <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
-            <span>Progress</span>
+            <span>Route progress</span>
             <span>${percent}%</span>
           </div>
           <div style="height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
@@ -71,8 +245,8 @@ function renderQuests() {
           </div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px;">
-          <span style="color: var(--text-muted);">Ver detalles</span>
-          <span style="color: var(--gold);">+${quest.rewards?.xp || 0} XP · +${quest.rewards?.gold || 0} \uD83E\uDE99</span>
+          <span style="color: var(--text-muted);">Open mission actions</span>
+          <span style="color: var(--gold);">Continue →</span>
         </div>
       </div>
     `;
@@ -96,7 +270,6 @@ function showAvailableQuests() {
             <div style="font-weight:700;margin-top:4px;">${quest.name}</div>
             <div style="font-size:12px;color:var(--text-muted);">${quest.desc || ''}</div>
           </div>
-          <div style="color:var(--gold);font-size:12px;">+${quest.rewards?.xp || 0} XP</div>
         </div>
       </div>
     `;
@@ -123,62 +296,71 @@ function acceptQuest(questId) {
 function showQuestDetail(questId) {
   if (typeof QUESTS === 'undefined') return;
   const quest = QUESTS[questId];
-  if (!quest) return;
+  const questState = getMissionQuestState(questId);
+  if (!quest || !questState) return;
 
-  const prog = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
-  const rewardStatus = typeof getQuestRewardStatus === 'function' ? getQuestRewardStatus(questId) : null;
+  const progress = typeof getQuestProgress === 'function' ? getQuestProgress(questId) : null;
   const typeInfo = typeof getQuestTypeInfo === 'function' ? getQuestTypeInfo(quest.type) : {};
   const color = typeInfo.color || 'var(--gold)';
-
-  let objectivesHtml = '';
-  if (prog && prog.objectives) {
-    objectivesHtml = prog.objectives.map(obj => {
-      const fmt = typeof formatObjective === 'function' ? formatObjective(obj) : { text: obj.type, progress: `${obj.progress}/${obj.count}`, done: false };
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-        <span style="font-size:12px;color:${fmt.done ? 'var(--green)' : 'var(--text)'};">${fmt.done ? '\u2713 ' : ''}${escapeHtml(fmt.text)}</span>
-        <span style="font-size:11px;color:var(--text-muted);">${fmt.progress}</span>
-      </div>`;
-    }).join('');
-  }
+  const currentNode = getMissionCurrentRouteNode(questState);
+  const currentNodeActionIds = new Set(Array.isArray(currentNode?.actionIds) ? currentNode.actionIds : []);
+  const actions = (Array.isArray(progress?.actions) ? progress.actions : [])
+    .filter(action => currentNodeActionIds.size === 0 || currentNodeActionIds.has(action.id))
+    .filter(action => action.status !== 'blocked' || currentNodeActionIds.has(action.id));
+  const activeActionId = selectedMissionActionId && actions.some(action => action.id === selectedMissionActionId)
+    ? selectedMissionActionId
+    : (questState.activeActionId && actions.some(action => action.id === questState.activeActionId)
+      ? questState.activeActionId
+      : actions.find(action => ['in_progress', 'awaiting_task', 'available'].includes(action.status))?.id);
 
   const contentEl = document.getElementById('modal-item-content');
+  const actionMarkup = actions.length > 0
+    ? actions.map((action, index) => renderMissionActionCard(action, index, questId, action.id === activeActionId)).join('')
+    : `
+      <div class="quest-action-empty" role="status">
+        <div class="quest-action-empty-title">No action is available right now</div>
+        <div class="quest-action-empty-copy">Return when the mission has a new lead.</div>
+      </div>
+    `;
+
+  const currentSituation = typeof quest.desc === 'string' && quest.desc.trim()
+    ? quest.desc
+    : 'The mission is waiting for your next decision.';
+  const currentNodeLabel = currentNode?.title || currentNode?.name || null;
+  const situationMarkup = `
+    <section class="quest-detail-section quest-situation" aria-labelledby="quest-situation-title">
+      <div class="quest-detail-kicker" id="quest-situation-title">Current situation</div>
+      <div class="quest-situation-title">${missionUiEscape(currentNodeLabel || quest.name)}</div>
+      <div class="quest-situation-copy">${missionUiEscape(currentSituation)}</div>
+    </section>
+  `;
+  const revealsMarkup = renderMissionReveals(quest, questState);
+  const recoveryMarkup = renderMissionRecovery(questState);
+  const progressMarkup = progress
+    ? `<div class="quest-route-progress" aria-label="Route progress">Route progress: ${missionUiEscape(`${progress.percent || 0}%`)}</div>`
+    : '';
+
   contentEl.innerHTML = `
-    <div style="text-align:center;margin-bottom:16px;">
-      <div style="font-size:48px;">${quest.icon || '\uD83D\uDCDC'}</div>
-      <h3 style="margin-top:8px;color:${color};">${escapeHtml(quest.name)}</h3>
-      <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(quest.desc || '')}</div>
-    </div>
-    ${objectivesHtml ? `<div style="margin-bottom:12px;">${objectivesHtml}</div>` : ''}
-    <div style="font-size:12px;color:var(--gold);">
-      Reward: +${quest.rewards?.xp || 0} XP | +${quest.rewards?.gold || 0} \uD83E\uDE99
+    <div class="quest-detail" data-quest-id="${missionUiEscape(questId)}">
+      <div class="quest-detail-heading" style="border-color:${missionUiEscape(color)};">
+        <div class="quest-detail-type">${missionUiEscape(typeInfo.icon || '📜')} ${missionUiEscape(typeInfo.name || quest.type)}</div>
+        <h3 class="quest-detail-title" style="color:${missionUiEscape(color)};">${missionUiEscape(quest.name)}</h3>
+      </div>
+      ${situationMarkup}
+      ${revealsMarkup}
+      <section class="quest-detail-section" aria-labelledby="quest-actions-title">
+        <div class="quest-detail-kicker" id="quest-actions-title">Available actions</div>
+        ${progressMarkup}
+        <div class="quest-actions-list">${actionMarkup}</div>
+      </section>
+      ${recoveryMarkup}
     </div>
   `;
-
-  const rewardApplications = [
-    ...(rewardStatus?.final ? [{ label: 'Final reward', ...rewardStatus.final }] : []),
-    ...(rewardStatus?.chapters || []).map(chapter => ({
-      label: `Chapter reward ${chapter.rewardKey}`,
-      ...chapter
-    }))
-  ];
-  const statusLabel = status => status === 'granted'
-    ? 'granted'
-    : status === 'pending'
-      ? 'pending - not enough space'
-      : 'requires recovery';
-  const recoveryApplications = rewardApplications.filter(application => application.status !== 'granted');
-  const rewardStatusHtml = rewardApplications.length
-    ? `<div style="margin-top:12px;font-size:12px;">
-        ${rewardApplications.map(application => `<div style="color:${application.status === 'granted' ? 'var(--green)' : 'var(--orange)'};margin-top:4px;">${escapeHtml(application.label)}: ${statusLabel(application.status)}</div>`).join('')}
-        ${recoveryApplications.length ? `<button class="btn btn-ghost" style="margin-top:8px;width:100%;" onclick="retryQuestRewards('${questId}'); showQuestDetail('${questId}');">Retry recoverable rewards</button>` : ''}
-      </div>`
-    : '';
-  contentEl.innerHTML += rewardStatusHtml;
 
   const actionBtn = document.getElementById('btn-item-action');
   actionBtn.style.display = '';
   actionBtn.disabled = false;
-  actionBtn.textContent = '\u274C Abandon quest';
+  actionBtn.textContent = '❌ Abandon quest';
   actionBtn.onclick = () => abandonQuest(questId);
   openModal('modal-item');
 }

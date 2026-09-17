@@ -625,6 +625,12 @@ Implementada localmente; pendiente de colocacion y verificacion manual
 
 `engine.js` materializa tareas derivadas aceptadas desde `gameState.quests.derivedTasks`, conserva su origen, aplica el ciclo de vida y marca la finalizacion por `completionId`. `ui_tasks.js` mantiene `finalizeCompletion()` como unico flujo y emite eventos normalizados con `source`, `derivedTaskId` y `themes`. El guardado de progreso de misiones se difiere dentro de la transaccion de completado y se confirma junto con XP, historial, recompensa y resultado. La prueba de integracion cubre materializacion, evento derivado, duplicados, persistencia y referencias no resolubles.
 
+M3 — Mission action UI
+
+Implementada localmente; pendiente de colocacion y verificacion manual
+
+`ui_quests.js` presenta la situacion actual, las acciones del nodo activo, su estado y progreso, las tareas compatibles y los estados vacios o de investigacion. Abrir una tarea desde una mision delega en `completeTaskFromCategory()` y por tanto conserva el flujo canonico. Se retira la previsualizacion de recompensas en las superficies de misiones. No se muestran nodos futuros, IDs tecnicos ni recompensas no descubiertas.
+
 F6 - Contrato de publicación
 
 GitHub Pages debe publicar el artefacto generado por `.github/workflows/deploy-pages.yml`, no la raíz de `main`. `tools/build_release.js` genera `build-info.json` y `build-info.js` usando el commit de GitHub Actions. `data_tasks.js`, `main.js`, `ui_hub.js` y `sw.js` consumen ese manifiesto; el save no participa en el versionado.
@@ -803,6 +809,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-17 - M3 Mission action UI: `ui_quests.js` deja de presentar objetivos tecnicos como pantalla pasiva y muestra la situacion actual, acciones del nodo activo, progreso, tareas compatibles, estados de disponibilidad y recuperacion. La apertura de tareas usa el flujo canonico de `ui_tasks.js`; no se crea un boton de completado alternativo. Se eliminan las previsualizaciones de recompensas en las pantallas de misiones. Pendiente de colocar y verificar manualmente.
 
 2026-09-17 - M2: integracion local de tareas normales y derivadas con el flujo canonico. Las tareas derivadas aceptadas se materializan sin sustituir tareas existentes; `finalizeCompletion()` emite eventos con origen y `derivedTaskId`; la persistencia del progreso de misiones queda dentro de la transaccion del completado y los eventos repetidos no duplican progreso. Pendiente de colocar y verificar manualmente.
 
