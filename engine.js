@@ -87,7 +87,12 @@ const DEFAULT_GAME_STATE = {
     },
     availableFollowUps: [],
     derivedTasks: [],
-    journalEntries: []
+    journalEntries: [],
+    missionSources: {
+      version: 1,
+      states: {},
+      claims: {}
+    }
   },
 
   // Item system
@@ -615,6 +620,69 @@ const QUEST_INSTANCE_STATUS = Object.freeze({
   needsReview: 'needs_review'
 });
 
+
+const MISSION_SOURCE_TYPES = Object.freeze({
+  recovery: 'recovery',
+  passive: 'passive',
+  guild: 'guild'
+});
+
+const MISSION_SOURCE_STATUSES = Object.freeze({
+  available: 'available',
+  accepted: 'accepted',
+  consumed: 'consumed',
+  expired: 'expired',
+  needsReview: 'needs_review'
+});
+
+function normalizeMissionSourceClaim(value, sourceId) {
+  const source = isPlainObject(value) ? { ...value } : {};
+  const status = ['granted', 'pending', 'rejected'].includes(source.status) ? source.status : 'rejected';
+  return {
+    ...source,
+    sourceId: typeof source.sourceId === 'string' && source.sourceId ? source.sourceId : sourceId,
+    status,
+    claimId: typeof source.claimId === 'string' && source.claimId ? source.claimId : `source:${sourceId}`
+  };
+}
+
+function normalizeMissionSourceState(value, sourceId) {
+  const source = isPlainObject(value) ? { ...value } : {};
+  const status = Object.values(MISSION_SOURCE_STATUSES).includes(source.status)
+    ? source.status
+    : MISSION_SOURCE_STATUSES.available;
+  return {
+    ...source,
+    sourceId: typeof source.sourceId === 'string' && source.sourceId ? source.sourceId : sourceId,
+    status,
+    claimId: typeof source.claimId === 'string' && source.claimId ? source.claimId : null,
+    options: Array.isArray(source.options) ? source.options : [],
+    rewardApplication: isPlainObject(source.rewardApplication) ? source.rewardApplication : null,
+    costApplication: isPlainObject(source.costApplication) ? source.costApplication : null
+  };
+}
+
+function normalizeMissionSourcePersistence(value) {
+  const source = isPlainObject(value) ? value : {};
+  const states = {};
+  if (isPlainObject(source.states)) {
+    Object.entries(source.states).forEach(([sourceId, state]) => {
+      if (typeof sourceId === 'string' && sourceId) states[sourceId] = normalizeMissionSourceState(state, sourceId);
+    });
+  }
+  const claims = {};
+  if (isPlainObject(source.claims)) {
+    Object.entries(source.claims).forEach(([claimId, claim]) => {
+      if (typeof claimId === 'string' && claimId) claims[claimId] = normalizeMissionSourceClaim(claim, claim?.sourceId || claimId);
+    });
+  }
+  return {
+    version: Number.isInteger(source.version) && source.version >= 1 ? source.version : 1,
+    states,
+    claims
+  };
+}
+
 const MISSION_ACTION_STATUSES = Object.freeze({
   available: 'available',
   inProgress: 'in_progress',
@@ -1077,6 +1145,7 @@ function normalizeQuestPersistence(state, warnings = []) {
   questState.slotLimits = normalizeQuestSlotLimits(questState.slotLimits, warnings);
   questState.availableFollowUps = Array.isArray(questState.availableFollowUps) ? [...new Set(questState.availableFollowUps.filter(id => typeof id === 'string' && id))] : [];
   questState.derivedTasks = Array.isArray(questState.derivedTasks) ? questState.derivedTasks.map(normalizeDerivedTaskState) : [];
+  questState.missionSources = normalizeMissionSourcePersistence(questState.missionSources);
   questState.journalEntries = Array.isArray(questState.journalEntries)
     ? questState.journalEntries.filter(entry => isPlainObject(entry) && typeof entry.id === 'string' && entry.id)
       .map(entry => ({ ...entry, title: typeof entry.title === 'string' ? entry.title : '', body: typeof entry.body === 'string' ? entry.body : '' }))
@@ -1644,6 +1713,288 @@ function retryMissionConsequences(questId) {
     }, { retry: true }));
     const flattened = results.flatMap(result => result.results || []);
     return { status: getMissionConsequenceStatus(flattened), applied: flattened.length > 0, results, claims: flattened.map(result => result.claimId) };
+  });
+}
+
+
+
+function getMissionSourceCatalog() {
+  return typeof MISSION_SOURCES !== 'undefined' && isPlainObject(MISSION_SOURCES) ? MISSION_SOURCES : {};
+}
+
+function getMissionSourceDefinition(sourceId) {
+  if (typeof sourceId !== 'string' || !sourceId) return null;
+  const source = getMissionSourceCatalog()[sourceId];
+  return isPlainObject(source) ? source : null;
+}
+
+function getMissionSourceMissionId(source) {
+  if (!isPlainObject(source)) return null;
+  const missionId = source.questId || source.missionId || source.followUpQuestId;
+  return typeof missionId === 'string' && missionId ? missionId : null;
+}
+
+function getMissionSourceState(sourceId, create = false) {
+  if (!gameState.quests) return null;
+  gameState.quests.missionSources = normalizeMissionSourcePersistence(gameState.quests.missionSources);
+  if (!gameState.quests.missionSources.states[sourceId] && create) {
+    gameState.quests.missionSources.states[sourceId] = normalizeMissionSourceState({}, sourceId);
+  }
+  return gameState.quests.missionSources.states[sourceId] || null;
+}
+
+function getMissionSourceRequirementValue(source, key) {
+  if (!isPlainObject(source)) return undefined;
+  if (source[key] !== undefined) return source[key];
+  return isPlainObject(source.requirements) ? source.requirements[key] : undefined;
+}
+
+function getWorldStatePathValue(path) {
+  if (typeof path !== 'string' || !path) return undefined;
+  return path.split('.').reduce((value, key) => value === undefined || value === null ? undefined : value[key], gameState.worldState || {});
+}
+
+function missionSourceValueMatches(actual, expected) {
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function isMissionSourceConditionMet(source) {
+  if (!isPlainObject(source)) return false;
+  if (source.type === MISSION_SOURCE_TYPES.guild && !gameState.guildId) return false;
+  const minLevel = getMissionSourceRequirementValue(source, 'minLevel');
+  if (minLevel !== undefined && (!Number.isFinite(Number(minLevel)) || gameState.level < Number(minLevel))) return false;
+  const requiresGuild = getMissionSourceRequirementValue(source, 'requiresGuild');
+  if (requiresGuild === true && !gameState.guildId) return false;
+  const completedQuest = getMissionSourceRequirementValue(source, 'completedQuest');
+  const completedQuests = getMissionSourceRequirementValue(source, 'completedQuests');
+  const requiredCompleted = completedQuests !== undefined ? completedQuests : completedQuest;
+  if (requiredCompleted !== undefined) {
+    const ids = Array.isArray(requiredCompleted) ? requiredCompleted : [requiredCompleted];
+    if (ids.some(id => typeof id !== 'string' || !gameState.quests.completed.includes(id))) return false;
+  }
+  const worldRequirement = getMissionSourceRequirementValue(source, 'worldState');
+  if (isPlainObject(worldRequirement)) {
+    for (const [path, expected] of Object.entries(worldRequirement)) {
+      if (!missionSourceValueMatches(getWorldStatePathValue(path), expected)) return false;
+    }
+  }
+  const discoveryRequirement = getMissionSourceRequirementValue(source, 'discovery');
+  if (discoveryRequirement !== undefined) {
+    const discoveries = Array.isArray(gameState.quests.journalEntries) ? gameState.quests.journalEntries : [];
+    const ids = Array.isArray(discoveryRequirement) ? discoveryRequirement : [discoveryRequirement];
+    if (ids.some(id => !discoveries.some(entry => entry && (entry.id === id || entry.revealId === id)))) return false;
+  }
+  return true;
+}
+
+function validateMissionSourceReward(reward, path) {
+  const errors = [];
+  if (reward === undefined) return errors;
+  if (!isPlainObject(reward)) return [`${path}: reward must be an object`];
+  for (const key of ['xp', 'gold']) {
+    if (reward[key] !== undefined && (!Number.isFinite(Number(reward[key])) || Number(reward[key]) < 0)) {
+      errors.push(`${path}: ${key} must be a non-negative number`);
+    }
+  }
+  if (reward.items !== undefined) {
+    if (!Array.isArray(reward.items)) errors.push(`${path}: items must be an array`);
+    else reward.items.forEach((itemId, index) => {
+      if (typeof itemId !== 'string' || !itemId || typeof ITEMS === 'undefined' || !ITEMS[itemId]) {
+        errors.push(`${path}: item ${index + 1} is not resolvable`);
+      }
+    });
+  }
+  return errors;
+}
+
+function validateMissionSourceDefinition(source, context = {}) {
+  const path = context.path || 'mission source';
+  const errors = [];
+  if (!isPlainObject(source)) return [`${path}: source must be an object`];
+  if (typeof source.id !== 'string' || !source.id.trim()) errors.push(`${path}: stable id is required`);
+  if (!Object.values(MISSION_SOURCE_TYPES).includes(source.type)) errors.push(`${path}: unsupported source type`);
+  const missionId = getMissionSourceMissionId(source);
+  if (typeof missionId !== 'string' || !missionId) errors.push(`${path}: mission id is required`);
+  else if (typeof QUESTS === 'undefined' || !isPlainObject(QUESTS[missionId])) errors.push(`${path}: mission is not resolvable`);
+  else if (QUESTS[missionId].archived === true || QUESTS[missionId].catalogStatus === 'retired') errors.push(`${path}: mission is retired`);
+  if (source.delivery !== undefined && !['available', 'automatic'].includes(source.delivery)) errors.push(`${path}: delivery must be available or automatic`);
+  if (source.expiresAfterDays !== undefined && (!Number.isInteger(source.expiresAfterDays) || source.expiresAfterDays <= 0)) errors.push(`${path}: expiresAfterDays must be a positive integer`);
+  if (source.cost !== undefined) {
+    if (!isPlainObject(source.cost)) errors.push(`${path}: cost must be an object`);
+    else {
+      if (source.cost.gold !== undefined && (!Number.isFinite(Number(source.cost.gold)) || Number(source.cost.gold) < 0)) errors.push(`${path}: cost.gold must be non-negative`);
+      if (source.cost.items !== undefined && (!Array.isArray(source.cost.items) || source.cost.items.some(itemId => typeof itemId !== 'string' || !itemId || typeof ITEMS === 'undefined' || !ITEMS[itemId]))) errors.push(`${path}: cost.items contains an invalid item`);
+    }
+  }
+  errors.push(...validateMissionSourceReward(source.reward || source.rewards, `${path} reward`));
+  if (source.type === MISSION_SOURCE_TYPES.recovery) {
+    if (typeof source.questId !== 'string' || !source.questId) errors.push(`${path}: recovery questId is required`);
+    if (typeof source.message !== 'string' || !source.message.trim()) errors.push(`${path}: recovery message is required`);
+    if (source.targetActionId !== undefined && (typeof source.targetActionId !== 'string' || !source.targetActionId)) errors.push(`${path}: targetActionId must be a string`);
+  }
+  if (source.type === MISSION_SOURCE_TYPES.guild) {
+    if (source.requiresGuild === false) errors.push(`${path}: guild sources require guild membership`);
+    if (source.slotGroup !== undefined && source.slotGroup !== 'guild_order') errors.push(`${path}: guild sources must use the guild_order slot group`);
+  }
+  return errors;
+}
+
+function getMissionSourceAvailability(source) {
+  const errors = validateMissionSourceDefinition(source, { path: `mission source ${source?.id || 'unknown'}` });
+  if (errors.length > 0) return { available: false, status: MISSION_SOURCE_STATUSES.needsReview, errors };
+  const sourceState = getMissionSourceState(source.id, false);
+  const missionId = getMissionSourceMissionId(source);
+  const repeatable = source.repeatable === true;
+  if (sourceState?.status === MISSION_SOURCE_STATUSES.accepted && !repeatable) return { available: false, status: sourceState.status, reason: 'already_accepted' };
+  if (sourceState?.status === MISSION_SOURCE_STATUSES.consumed && !repeatable) return { available: false, status: sourceState.status, reason: 'already_consumed' };
+  if (sourceState?.expiresAt && todayStr() > sourceState.expiresAt) return { available: false, status: MISSION_SOURCE_STATUSES.expired, reason: 'source_expired' };
+  if (!isMissionSourceConditionMet(source)) return { available: false, status: 'locked', reason: 'requirements_not_met' };
+  if (gameState.quests.active.includes(missionId)) return { available: false, status: 'active', reason: 'mission_already_active' };
+  if (gameState.quests.completed.includes(missionId) && !repeatable) return { available: false, status: 'completed', reason: 'mission_already_completed' };
+  return { available: true, status: MISSION_SOURCE_STATUSES.available, reason: null };
+}
+
+function getAvailableMissionSources(type = null) {
+  return Object.values(getMissionSourceCatalog()).filter(source => {
+    if (type && source?.type !== type) return false;
+    return getMissionSourceAvailability(source).available;
+  });
+}
+
+function getMissionSourceCost(source) {
+  const cost = isPlainObject(source?.cost) ? source.cost : {};
+  return {
+    gold: Number.isFinite(Number(cost.gold)) ? Math.max(0, Number(cost.gold)) : 0,
+    items: Array.isArray(cost.items) ? [...cost.items] : []
+  };
+}
+
+function getContainerEntryItemId(entry) {
+  if (typeof entry === 'string') return getMissionItemId(entry) || entry;
+  if (!isPlainObject(entry)) return null;
+  return getMissionItemId(entry.itemId || entry.id) || entry.itemId || entry.id || null;
+}
+
+function applyMissionSourceCost(source) {
+  const cost = getMissionSourceCost(source);
+  if (!Number.isFinite(Number(gameState.gold)) || Number(gameState.gold) < cost.gold) return { status: 'rejected', reason: 'insufficient_gold', recoverable: true };
+  const inventory = Array.isArray(gameState.inventory) ? gameState.inventory : [];
+  const usedIndexes = new Set();
+  for (const itemId of cost.items) {
+    const resolved = getMissionItemId(itemId) || itemId;
+    const index = inventory.findIndex((entry, entryIndex) => !usedIndexes.has(entryIndex) && getContainerEntryItemId(entry) === resolved);
+    if (index < 0) return { status: 'rejected', reason: 'missing_cost_item', itemId, recoverable: true };
+    usedIndexes.add(index);
+  }
+  gameState.gold -= cost.gold;
+  [...usedIndexes].sort((a, b) => b - a).forEach(index => inventory.splice(index, 1));
+  gameState.inventory = inventory;
+  return { status: 'granted', cost, consumedItems: [...usedIndexes].map(index => cost.items[index] || null) };
+}
+
+function recordMissionSourceAcceptance(source, questId, costResult, rewardResult) {
+  const state = getMissionSourceState(source.id, true);
+  const claimId = `source:${source.id}`;
+  const rewardStatus = rewardResult?.status || 'granted';
+  state.status = rewardStatus === 'pending' ? MISSION_SOURCE_STATUSES.accepted : MISSION_SOURCE_STATUSES.consumed;
+  state.sourceType = source.type;
+  state.missionId = questId;
+  state.claimId = claimId;
+  state.acceptedAt = new Date().toISOString();
+  state.costApplication = { status: 'granted', cost: getMissionSourceCost(source) };
+  state.rewardApplication = rewardResult || null;
+  if (source.expiresAfterDays) state.expiresAt = addDaysToDate(todayStr(), source.expiresAfterDays);
+  gameState.quests.missionSources.claims[claimId] = normalizeMissionSourceClaim({
+    claimId,
+    sourceId: source.id,
+    sourceType: source.type,
+    missionId: questId,
+    status: rewardStatus,
+    cost: getMissionSourceCost(source),
+    reward: rewardResult || null,
+    updatedAt: state.acceptedAt
+  }, source.id);
+  return state;
+}
+
+function runMissionSourceTransaction(callback) {
+  const deferred = isLifeXPTransactionDeferred();
+  const previousState = cloneSaveState(gameState);
+  const previousRawSave = typeof localStorage === 'undefined' ? null : localStorage.getItem('lifexp_save');
+  if (!deferred) beginLifeXPTransaction();
+  try {
+    const result = callback();
+    if (result?.commit === false) {
+      gameState = previousState;
+      return result;
+    }
+    if (!deferred && !saveGame({ force: true })) throw new Error('save_failed');
+    return result;
+  } catch (error) {
+    gameState = previousState;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        if (previousRawSave === null) localStorage.removeItem('lifexp_save');
+        else localStorage.setItem('lifexp_save', previousRawSave);
+      } catch (restoreError) { console.warn('Could not restore mission source save bytes:', restoreError); }
+    }
+    return { success: false, commit: false, reason: error.message || 'mission_source_transaction_failed', recoverable: false };
+  } finally {
+    if (!deferred) endLifeXPTransaction();
+  }
+}
+
+function getMissionRecoverySourceDefinitions(questId) {
+  return Object.values(getMissionSourceCatalog()).filter(source => source?.type === MISSION_SOURCE_TYPES.recovery && source.questId === questId);
+}
+
+function getMissionRecoveryOptions(questId, questState = null) {
+  const options = [];
+  const persisted = Array.isArray(questState?.recovery?.options) ? questState.recovery.options : [];
+  persisted.forEach(option => {
+    if (isPlainObject(option) && typeof option.id === 'string' && option.id) options.push(option);
+  });
+  getMissionRecoverySourceDefinitions(questId).forEach(source => {
+    if (getMissionSourceAvailability(source).available) options.push(source);
+  });
+  const seen = new Set();
+  return options.filter(option => {
+    if (seen.has(option.id)) return false;
+    seen.add(option.id);
+    return true;
+  });
+}
+
+function startMissionRecovery(questId, sourceId) {
+  const questState = gameState.quests?.[questId];
+  if (!questState || !gameState.quests.active.includes(questId)) return { success: false, reason: 'mission_not_active' };
+  const options = getMissionRecoveryOptions(questId, questState);
+  const source = options.find(option => option.id === sourceId);
+  if (!source) return { success: false, reason: 'recovery_source_unavailable' };
+  if (source.type === MISSION_SOURCE_TYPES.recovery) {
+    const availability = getMissionSourceAvailability(source);
+    if (!availability.available) return { success: false, reason: availability.reason || 'recovery_source_locked' };
+  }
+  return runMissionSourceTransaction(() => {
+    const currentState = gameState.quests[questId];
+    const message = typeof source.message === 'string' && source.message.trim() ? source.message : (source.description || 'A new investigative direction is available.');
+    currentState.recovery = {
+      ...(isPlainObject(currentState.recovery) ? currentState.recovery : {}),
+      status: 'available',
+      sourceId: source.id,
+      message,
+      startedAt: new Date().toISOString(),
+      options: options.map(option => ({ id: option.id, title: option.title, description: option.description, message: option.message, type: option.type, targetActionId: option.targetActionId }))
+    };
+    if (source.targetActionId) {
+      const target = currentState.actions.find(action => action.id === source.targetActionId);
+      if (!target) return { success: false, commit: false, reason: 'recovery_target_unavailable' };
+      target.status = MISSION_ACTION_STATUSES.inProgress;
+      currentState.activeActionId = target.id;
+      const node = currentState.routeNodes.find(candidate => candidate.id === target.nodeId);
+      if (node && node.status === MISSION_ROUTE_NODE_STATUSES.blocked) node.status = MISSION_ROUTE_NODE_STATUSES.active;
+    }
+    return { success: true, sourceId: source.id, questId };
   });
 }
 

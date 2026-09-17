@@ -160,7 +160,8 @@ function renderMissionFollowUps() {
 function renderMissionJournalSummary() {
   const entries = typeof getMissionJournalEntries === 'function' ? getMissionJournalEntries() : [];
   const followUpsMarkup = renderMissionFollowUps();
-  if (entries.length === 0) return followUpsMarkup;
+  const sourceMarkup = renderMissionSources();
+  if (entries.length === 0) return sourceMarkup + followUpsMarkup;
   return `
     <section class="card mission-journal-summary" aria-labelledby="mission-journal-title" style="margin-bottom:12px;">
       <div class="quest-detail-kicker" id="mission-journal-title">Journal</div>
@@ -171,22 +172,103 @@ function renderMissionJournalSummary() {
         </article>
       `).join('')}
     </section>
+    ${sourceMarkup}
     ${followUpsMarkup}
   `;
 }
 
-function renderMissionRecovery(questState) {
+function renderMissionRecovery(questId, questState) {
   const recovery = questState?.recovery;
   if (!recovery || !['needs_recovery', 'available'].includes(recovery.status)) return '';
   const message = typeof recovery.message === 'string' && recovery.message.trim()
     ? recovery.message
     : 'The next route is not clear yet. Investigate the mission when a new lead becomes available.';
+  const options = typeof getMissionRecoveryOptions === 'function'
+    ? getMissionRecoveryOptions(questId, questState)
+    : [];
+  const optionsMarkup = options.length > 0
+    ? options.map(option => {
+        const safeQuestId = missionUiEscape(questId);
+        const safeSourceId = missionUiEscape(option.id);
+        const title = option.title || 'Investigate a new lead';
+        const description = option.description || option.message || 'Follow this discovered direction.';
+        return `
+          <article class="mission-recovery-option">
+            <div class="mission-recovery-option-copy">
+              <div class="mission-recovery-option-title">${missionUiEscape(title)}</div>
+              <div class="mission-recovery-option-description">${missionUiEscape(description)}</div>
+            </div>
+            <button class="btn btn-primary btn-small" type="button" onclick="startMissionRecoveryFromUi('${safeQuestId}', '${safeSourceId}')">Investigate</button>
+          </article>
+        `;
+      }).join('')
+    : '<div class="quest-recovery-copy">No discovered lead is available yet.</div>';
   return `
-    <section class="quest-recovery-panel" role="status">
-      <div class="quest-detail-kicker">Investigation support</div>
+    <section class="quest-recovery-panel" aria-labelledby="quest-recovery-title">
+      <div class="quest-detail-kicker" id="quest-recovery-title">Investigation support</div>
       <div class="quest-recovery-copy">${missionUiEscape(message)}</div>
+      <div class="mission-recovery-options">${optionsMarkup}</div>
     </section>
   `;
+}
+
+function startMissionRecoveryFromUi(questId, sourceId) {
+  if (typeof startMissionRecovery !== 'function') return;
+  const result = startMissionRecovery(questId, sourceId);
+  if (!result?.success) {
+    if (typeof showToast === 'function') showToast(result?.message || 'This investigation cannot start yet.', 'error');
+    return;
+  }
+  if (typeof showToast === 'function') showToast('A new direction has been uncovered.', 'gold');
+  showQuestDetail(questId);
+}
+
+function renderMissionSources() {
+  const sources = typeof getAvailableMissionSourceEntries === 'function'
+    ? getAvailableMissionSourceEntries()
+    : [];
+  if (sources.length === 0) return '';
+  return `
+    <section class="card mission-source-list" aria-labelledby="mission-sources-title" style="margin-bottom:12px;">
+      <div class="quest-detail-kicker" id="mission-sources-title">New leads</div>
+      ${sources.map(source => {
+        const safeSourceId = missionUiEscape(source.id);
+        const title = source.title || source.name || 'A new lead';
+        const description = source.description || source.message || 'A new direction is available.';
+        const cost = Number(source.cost?.gold) > 0 ? `<div class="mission-source-cost">Cost: ${Number(source.cost.gold)} gold</div>` : '';
+        return `
+          <article class="mission-source-card">
+            <div class="mission-source-copy">
+              <div class="mission-source-title">${missionUiEscape(title)}</div>
+              <div class="mission-source-description">${missionUiEscape(description)}</div>
+              ${cost}
+            </div>
+            <button class="btn btn-primary btn-small" type="button" onclick="acceptMissionSourceFromUi('${safeSourceId}')">Accept</button>
+          </article>
+        `;
+      }).join('')}
+    </section>
+  `;
+}
+
+function acceptMissionSourceFromUi(sourceId, confirmed = false) {
+  if (typeof acceptMissionSource !== 'function') return;
+  const source = typeof getMissionSourceDefinition === 'function' ? getMissionSourceDefinition(sourceId) : null;
+  if (source?.type === 'guild' && !confirmed) {
+    const cost = Number(source.cost?.gold) > 0 ? `
+
+Cost: ${Number(source.cost.gold)} gold.` : '';
+    if (!window.confirm(`Accept this guild order?${cost}`)) return;
+    confirmed = true;
+  }
+  const result = acceptMissionSource(sourceId, { confirmed });
+  if (!result?.success) {
+    if (typeof showToast === 'function') showToast(result?.message || 'This lead cannot be accepted yet.', 'error');
+    return;
+  }
+  if (typeof showToast === 'function') showToast('New mission accepted.', 'gold');
+  closeModal('modal-item');
+  renderQuests();
 }
 
 function openMissionTask(taskId, actionId = null) {
@@ -409,7 +491,7 @@ function showQuestDetail(questId) {
     </section>
   `;
   const revealsMarkup = renderMissionReveals(quest, questState);
-  const recoveryMarkup = renderMissionRecovery(questState);
+  const recoveryMarkup = renderMissionRecovery(questId, questState);
   const progressMarkup = progress
     ? `<div class="quest-route-progress" aria-label="Route progress">Route progress: ${missionUiEscape(`${progress.percent || 0}%`)}</div>`
     : '';
