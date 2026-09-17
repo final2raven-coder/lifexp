@@ -731,6 +731,27 @@ function validateQuestReferences() {
   const errors = [];
   
   Object.values(QUESTS).forEach(quest => {
+    const checkReveals = (reveals, context) => {
+      if (!Array.isArray(reveals)) return;
+      reveals.forEach((reveal, index) => {
+        if (!reveal || typeof reveal !== 'object' || typeof reveal.id !== 'string' || !reveal.id.trim()) {
+          errors.push(`Quest ${quest.id} ${context} reveal ${index + 1}: stable id is required`);
+        }
+        if (!reveal || typeof reveal.title !== 'string' || !reveal.title.trim()) {
+          errors.push(`Quest ${quest.id} ${context} reveal ${index + 1}: English title is required`);
+        }
+        const body = reveal && (reveal.body || reveal.description);
+        if (typeof body !== 'string' || !body.trim()) {
+          errors.push(`Quest ${quest.id} ${context} reveal ${index + 1}: English body is required`);
+        }
+      });
+    };
+
+    checkReveals(quest.reveals, 'quest');
+    checkReveals(quest.actions?.flatMap(action => action?.reveals || []), 'action');
+    checkReveals(quest.routeNodes?.flatMap(node => node?.reveals || []), 'route node');
+    quest.chapters?.forEach(chapter => checkReveals(chapter?.reveals, `chapter ${chapter?.id || 'unknown'}`));
+
     // Check item references in rewards
     const checkItems = (items, context) => {
       if (!items) return;

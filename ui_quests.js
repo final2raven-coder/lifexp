@@ -84,18 +84,42 @@ function getMissionActionProgressLabel(action) {
 }
 
 function renderMissionReveals(quest, questState) {
-  const discoveredIds = Array.isArray(questState?.discoveredRevealIds) ? questState.discoveredRevealIds : [];
-  const reveals = Array.isArray(quest?.reveals)
-    ? quest.reveals.filter(reveal => reveal && discoveredIds.includes(reveal.id))
+  const questId = quest?.id || null;
+  const entries = typeof getMissionJournalEntries === 'function'
+    ? getMissionJournalEntries(questId)
     : [];
-  if (reveals.length === 0) return '';
+  if (entries.length === 0) return '';
   return `
     <section class="quest-detail-section" aria-labelledby="quest-discoveries-title">
       <div class="quest-detail-kicker" id="quest-discoveries-title">Discovered information</div>
-      ${reveals.map(reveal => `
+      ${entries.map(entry => `
         <article class="quest-reveal">
-          <div class="quest-reveal-title">${missionUiEscape(reveal.title || 'Discovery')}</div>
-          <div class="quest-reveal-body">${missionUiEscape(reveal.body || reveal.description || '')}</div>
+          <div class="quest-reveal-title">${missionUiEscape(entry.title || 'Discovery')}</div>
+          <div class="quest-reveal-body">${missionUiEscape(entry.body || '')}</div>
+        </article>
+      `).join('')}
+    </section>
+  `;
+}
+
+function showMissionRevealNotice(entry) {
+  if (!entry) return;
+  const title = typeof entry.title === 'string' && entry.title.trim() ? entry.title.trim() : 'New information discovered';
+  const body = typeof entry.body === 'string' && entry.body.trim() ? entry.body.trim() : '';
+  const message = body ? `${title}: ${body}` : title;
+  if (typeof showToast === 'function') showToast(message, 'gold');
+}
+
+function renderMissionJournalSummary() {
+  const entries = typeof getMissionJournalEntries === 'function' ? getMissionJournalEntries() : [];
+  if (entries.length === 0) return '';
+  return `
+    <section class="card mission-journal-summary" aria-labelledby="mission-journal-title" style="margin-bottom:12px;">
+      <div class="quest-detail-kicker" id="mission-journal-title">Journal</div>
+      ${entries.map(entry => `
+        <article class="quest-reveal">
+          <div class="quest-reveal-title">${missionUiEscape(entry.title || 'Discovery')}</div>
+          <div class="quest-reveal-body">${missionUiEscape(entry.body || '')}</div>
         </article>
       `).join('')}
     </section>
@@ -199,8 +223,9 @@ function renderQuests() {
     return;
   }
 
+  const journalMarkup = renderMissionJournalSummary();
   if (active.length === 0) {
-    container.innerHTML = `
+    container.innerHTML = journalMarkup + `
       <div class="card" style="text-align: center; padding: 24px;">
         <div style="font-size: 32px; margin-bottom: 12px;">📜</div>
         <div style="color: var(--text-muted);">No active quests</div>
@@ -212,7 +237,7 @@ function renderQuests() {
     return;
   }
 
-  container.innerHTML = '';
+  container.innerHTML = journalMarkup;
 
   for (const quest of active) {
     const questId = quest.id;
