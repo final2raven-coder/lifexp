@@ -25,6 +25,14 @@ const QUEST_STATUS = {
 };
 
 // ===========================================================================
+// MISSION SOURCES
+// ===========================================================================
+
+// Source definitions are declarative. Content phases can add entries without
+// changing the mission engine or creating a second quest state store.
+const MISSION_SOURCES = Object.freeze({});
+
+// ===========================================================================
 // QUEST DATABASE
 // ===========================================================================
 
@@ -350,6 +358,89 @@ function getAvailableFollowUpQuests() {
   }).filter(Boolean);
 }
 
+
+function getAvailableMissionSourceEntries(type = null) {
+  initQuestState();
+  if (typeof getAvailableMissionSources !== 'function') return [];
+  return getAvailableMissionSources(type);
+}
+
+function acceptMissionSource(sourceId, options = {}) {
+  initQuestState();
+  const source = typeof getMissionSourceDefinition === 'function' ? getMissionSourceDefinition(sourceId) : null;
+  if (!source) return { success: false, reason: 'mission_source_not_found', message: 'This lead is no longer available.' };
+  const missionId = typeof getMissionSourceMissionId === 'function' ? getMissionSourceMissionId(source) : null;
+  const availability = typeof getMissionSourceAvailability === 'function' ? getMissionSourceAvailability(source) : { available: false, reason: 'mission_source_engine_unavailable' };
+  if (!availability.available) {
+    return { success: false, reason: availability.reason || 'mission_source_unavailable', message: 'This lead is not available right now.' };
+  }
+  if (source.type === 'guild' && options.confirmed !== true) {
+    return { success: false, reason: 'confirmation_required', message: 'Guild orders require confirmation before the cost is paid.' };
+  }
+  if (typeof runMissionSourceTransaction !== 'function') return { success: false, reason: 'mission_source_transaction_unavailable' };
+  return runMissionSourceTransaction(() => {
+    const costResult = typeof applyMissionSourceCost === 'function' ? applyMissionSourceCost(source) : { status: 'granted' };
+    if (costResult.status !== 'granted') {
+      return { success: false, commit: false, reason: costResult.reason, message: costResult.reason === 'insufficient_gold' ? 'You do not have enough gold for this order.' : 'The required cost is not available.' };
+    }
+    const questResult = acceptQuest(missionId, {
+      deferSave: true,
+      sourceId: source.id,
+      sourceType: source.type,
+      slotGroup: source.slotGroup || (source.type === 'guild' ? 'guild_order' : undefined)
+    });
+    if (!questResult || questResult.success !== true) {
+      return { success: false, commit: false, reason: questResult?.reason || 'mission_acceptance_failed', message: questResult?.message || 'The mission could not be accepted.' };
+    }
+    let rewardResult = { status: 'granted', results: [], rewardPackage: {} };
+    const reward = source.reward || source.rewards;
+    if (reward && typeof grantQuestRewards === 'function') {
+      const questState = gameState.quests[missionId];
+      rewardResult = grantQuestRewards(reward, {
+        questId: missionId,
+        questState,
+        rewardKey: `source_${source.id}`,
+        claimId: `source:${source.id}:reward`,
+        source: 'mission_source'
+      });
+      if (rewardResult.status === 'rejected') {
+        return { success: false, commit: false, reason: 'mission_source_reward_failed', message: 'The order could not deliver its reward.' };
+      }
+    }
+    const sourceState = recordMissionSourceAcceptance(source, missionId, costResult, rewardResult);
+    return {
+      success: true,
+      questId: missionId,
+      sourceId: source.id,
+      sourceType: source.type,
+      sourceState,
+      rewardResult,
+      message: questResult.message
+    };
+  });
+}
+
+function retryMissionSourceReward(sourceId) {
+  const source = typeof getMissionSourceDefinition === 'function' ? getMissionSourceDefinition(sourceId) : null;
+  const sourceState = typeof getMissionSourceState === 'function' ? getMissionSourceState(sourceId, false) : null;
+  if (!source || !sourceState?.rewardApplication?.rewardPackage) return { success: false, reason: 'source_reward_unavailable' };
+  const missionId = sourceState.missionId || getMissionSourceMissionId(source);
+  return runMissionSourceTransaction(() => {
+    const result = grantQuestRewards(sourceState.rewardApplication.rewardPackage, {
+      questId: missionId,
+      questState: gameState.quests[missionId],
+      rewardKey: `source_${source.id}`,
+      claimId: `source:${source.id}:reward`,
+      source: 'mission_source',
+      retryRejected: true
+    });
+    sourceState.rewardApplication = result;
+    const claim = gameState.quests.missionSources.claims[`source:${source.id}`];
+    if (claim) claim.status = result.status;
+    return { success: result.status !== 'rejected', sourceId, result };
+  });
+}
+
 let questRewardSequence = 0;
 
 function createQuestInstanceId(questId) {
@@ -526,7 +617,7 @@ function grantQuestRewards(rewards, options = {}) {
   return { status, claimId, results, rewardPackage };
 }
 
-function acceptQuest(questId) {
+function acceptQuest(questId, options = {}) {
   initQuestState();
   const quest = QUESTS[questId];
   if (!quest) return false;
@@ -534,7 +625,11 @@ function acceptQuest(questId) {
     return { success: false, reason: 'quest_retired', message: 'This quest is no longer available.' };
   }
   
-  const acceptance = getQuestAcceptanceStatus(quest);
+  const acceptance = getQuestAcceptanceStatus({
+    ...quest,
+    slotGroup: options.slotGroup || quest.slotGroup,
+    origin: options.origin || quest.origin
+  });
   if (!acceptance.allowed) {
     const message = acceptance.slotGroup === 'guild_order'
       ? 'You already have the maximum number of active guild orders.'
@@ -557,9 +652,15 @@ function acceptQuest(questId) {
   }
   gameState.quests.active.push(questId);
   gameState.quests.availableFollowUps = gameState.quests.availableFollowUps.filter(id => id !== questId);
+  if (options.sourceId) {
+    questState.source = {
+      sourceId: options.sourceId,
+      sourceType: options.sourceType || null
+    };
+  }
   gameState.quests[questId] = questState;
   
-  saveGame();
+  if (options.deferSave !== true) saveGame();
   return { success: true, message: `Quest "${quest.name}" accepted!` };
 }
 
@@ -741,6 +842,12 @@ function isQuestActive(questId) {
 
 function validateQuestReferences() {
   const errors = [];
+  
+  if (typeof validateMissionSourceDefinition === 'function') {
+    Object.values(typeof MISSION_SOURCES !== 'undefined' ? MISSION_SOURCES : {}).forEach(source => {
+      errors.push(...validateMissionSourceDefinition(source, { path: `Mission source ${source?.id || 'unknown'}` }));
+    });
+  }
   
   Object.values(QUESTS).forEach(quest => {
     const checkReveals = (reveals, context) => {

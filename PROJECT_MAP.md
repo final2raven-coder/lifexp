@@ -643,6 +643,12 @@ Implementada localmente; pendiente de colocacion y verificacion manual
 
 `engine.js` anade `worldState`, normaliza `consequenceClaims` con estados `granted`, `pending` y `rejected`, valida referencias antes de guardar y resuelve de forma declarativa las consecuencias de acciones, nodos de ruta y quest. `grant_reward` delega en las fronteras canonicas de recompensas e inventario; `unlock_item_use` exige que el material este legitimamente descubierto; `make_follow_up_available` deja el follow-up visible sin aceptarlo automaticamente; `create_derived_task` materializa tareas con IDs estables e idempotentes; `set_world_state` persiste cambios declarativos. `retryMissionConsequences()` reintenta claims recuperables. El flujo se integra en `updateMissionProgress()` y conserva rollback de memoria, notices y bytes exactos del save si falla la transaccion. `quests.js` valida el contrato y elimina un follow-up solo cuando el jugador lo acepta. `ui_quests.js` presenta avisos y detalles sin revelar contenido no descubierto. No se anaden misiones, narrativa ni contenido nuevo y no se cambia `saveVersion: 4` ni `questModelVersion: 3`.
 
+M6 - Recovery and mission sources
+
+Implementada localmente; pendiente de colocacion y verificacion manual
+
+`engine.js` anade el submodelo persistente `gameState.quests.missionSources` con estados y claims normalizados. Las fuentes declarativas soportan recuperacion, eventos pasivos y encargos de guild sin crear un segundo almacen de misiones. `getMissionSourceAvailability()` valida requisitos de nivel, guild, quests completadas, descubrimientos y `worldState`; las fuentes de guild exigen pertenencia y el grupo declarativo `guild_order`. `acceptMissionSource()` reutiliza `acceptQuest()` y aplica coste, cupo, recompensa, claim y rollback dentro de una unica transaccion idempotente. `startMissionRecovery()` materializa una direccion descubierta sobre la mision activa y puede reactivar una accion declarativa sin revelar el grafo futuro. `ui_quests.js` muestra fuentes disponibles y opciones de investigacion con confirmacion explicita para guild. No se anade contenido narrativo nuevo; `MISSION_SOURCES` queda como catalogo declarativo para el siguiente bloque de contenido. No se cambia `saveVersion: 4` ni `questModelVersion: 3`.
+
 F6 - Contrato de publicación
 
 GitHub Pages debe publicar el artefacto generado por `.github/workflows/deploy-pages.yml`, no la raíz de `main`. `tools/build_release.js` genera `build-info.json` y `build-info.js` usando el commit de GitHub Actions. `data_tasks.js`, `main.js`, `ui_hub.js` y `sw.js` consumen ese manifiesto; el save no participa en el versionado.
@@ -823,6 +829,9 @@ cambios recientes que afectan al trabajo futuro.
 Changelog operativo
 
 2026-09-17 - M5 Mission consequences, object uses and follow-ups: implementacion local de consecuencias declarativas e idempotentes para recompensas, usos de materiales, follow-ups, tareas derivadas y `worldState`. `updateMissionProgress()` es el flujo canonico para acciones, nodos y quest; `consequenceClaims` conserva `granted`, `pending` y `rejected`, y `retryMissionConsequences()` permite recuperar resultados pendientes o rechazados. Se verifica rollback de memoria y bytes del save, validacion previa de referencias, entrega de objetos, aceptacion explicita de follow-ups y no duplicacion. Sin contenido nuevo, sin cambio de `saveVersion` y pendiente de colocar y verificar manualmente.
+
+
+2026-09-17 - M6 Mission sources and recovery: implementacion local de fuentes declarativas de recuperacion, pasivas y guild. Se anade persistencia normalizada de estados y claims, requisitos de disponibilidad, aceptacion transaccional con costes y recompensas, confirmacion explicita para guild, uso del cupo `guild_order`, rollback de memoria y save, y opciones de investigacion accionables sin revelar contenido futuro. `MISSION_SOURCES` queda vacio hasta una fase de contenido; no se anaden misiones ni narrativa en este bloque. Pendiente de colocar y verificar manualmente.
 
 2026-09-17 - M4 Mission reveals and journal: `engine.js` registra revelaciones declarativas al completar acciones o nodos, conserva snapshots en el diario persistente, evita duplicados mediante IDs estables y restaura el estado si falla el guardado. `ui_quests.js` muestra solo descubrimientos legitimos en el detalle de mision, en el listado del diario y mediante aviso posterior al descubrimiento. `quests.js` valida el contrato de revelaciones. Pendiente de colocar y verificar manualmente.
 
