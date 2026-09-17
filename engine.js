@@ -85,7 +85,8 @@ const DEFAULT_GAME_STATE = {
       guild_order: 1
     },
     availableFollowUps: [],
-    derivedTasks: []
+    derivedTasks: [],
+    journalEntries: []
   },
 
   // Item system
@@ -108,6 +109,7 @@ const DEFAULT_GAME_STATE = {
 };
 
 let gameState = cloneSaveState(DEFAULT_GAME_STATE);
+let pendingMissionRevealNotices = [];
 
 // Save loading is a mandatory barrier before content installers may persist.
 let lifeXPSaveLoadState = 'not_started';
@@ -834,6 +836,7 @@ function translateQuestInstanceToActions(value, questId, context = {}) {
   translated.completedActionIds = actions.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id);
   translated.consumedEventIds = normalizeCompletionIds(source.consumedEventIds);
   translated.discoveredRevealIds = normalizeCompletionIds(source.discoveredRevealIds);
+  translated.revealClaims = isPlainObject(source.revealClaims) ? cloneSaveState(source.revealClaims) : {};
   translated.consequenceClaims = isPlainObject(source.consequenceClaims) ? cloneSaveState(source.consequenceClaims) : {};
   translated.recovery = isPlainObject(source.recovery)
     ? { ...source.recovery }
@@ -866,6 +869,7 @@ function normalizeMissionActionInstance(value, context = {}) {
   normalized.completedActionIds = normalizeCompletionIds(normalized.completedActionIds).filter(id => actionIds.has(id));
   normalized.derivedTaskIds = normalizeCompletionIds(normalized.derivedTaskIds);
   normalized.discoveredRevealIds = normalizeCompletionIds(normalized.discoveredRevealIds);
+  normalized.revealClaims = isPlainObject(normalized.revealClaims) ? normalized.revealClaims : {};
   normalized.consequenceClaims = isPlainObject(normalized.consequenceClaims) ? normalized.consequenceClaims : {};
   normalized.recovery = isPlainObject(normalized.recovery)
     ? { status: typeof normalized.recovery.status === 'string' ? normalized.recovery.status : 'none', ...normalized.recovery }
@@ -1052,6 +1056,16 @@ function normalizeQuestPersistence(state, warnings = []) {
   questState.slotLimits = normalizeQuestSlotLimits(questState.slotLimits, warnings);
   questState.availableFollowUps = Array.isArray(questState.availableFollowUps) ? [...new Set(questState.availableFollowUps.filter(id => typeof id === 'string' && id))] : [];
   questState.derivedTasks = Array.isArray(questState.derivedTasks) ? questState.derivedTasks.map(normalizeDerivedTaskState) : [];
+  questState.journalEntries = Array.isArray(questState.journalEntries)
+    ? questState.journalEntries.filter(entry => isPlainObject(entry) && typeof entry.id === 'string' && entry.id)
+      .map(entry => ({ ...entry, title: typeof entry.title === 'string' ? entry.title : '', body: typeof entry.body === 'string' ? entry.body : '' }))
+    : [];
+  const journalIds = new Set();
+  questState.journalEntries = questState.journalEntries.filter(entry => {
+    if (journalIds.has(entry.id)) return false;
+    journalIds.add(entry.id);
+    return true;
+  });
   const questIds = new Set([...questState.active, ...questState.completed, ...questState.failed]);
   for (const questId of questIds) {
     if (typeof questId !== 'string' || !isPlainObject(questState[questId])) continue;
@@ -1061,6 +1075,8 @@ function normalizeQuestPersistence(state, warnings = []) {
       completed: questState.completed.includes(questId),
       failed: questState.failed.includes(questId)
     });
+    normalized.journalEntryIds = normalizeCompletionIds(normalized.journalEntryIds);
+    normalized.revealClaims = isPlainObject(normalized.revealClaims) ? normalized.revealClaims : {};
     questState[questId] = normalized;
     if (normalized.status === QUEST_INSTANCE_STATUS.completed) {
       questState.active = questState.active.filter(id => id !== questId);
@@ -1090,6 +1106,157 @@ function completeMissionInstanceState(questState) {
 
 function getMissionEventCompletionId(data = {}) {
   return [data.completionId, data.claimId, data.eventId].find(value => typeof value === 'string' && value.length > 0) || null;
+}
+
+
+function normalizeMissionRevealDefinition(value, index = 0) {
+  if (!isPlainObject(value)) return null;
+  const reveal = { ...value };
+  reveal.id = typeof reveal.id === 'string' && reveal.id.trim() ? reveal.id.trim() : `reveal_${index + 1}`;
+  reveal.title = typeof reveal.title === 'string' ? reveal.title.trim() : '';
+  reveal.body = typeof reveal.body === 'string'
+    ? reveal.body.trim()
+    : (typeof reveal.description === 'string' ? reveal.description.trim() : '');
+  if (!reveal.title || !reveal.body) return null;
+  const when = reveal.when || reveal.trigger || 'action_completed';
+  reveal.when = ['action_completed', 'node_completed'].includes(when) ? when : 'action_completed';
+  if (reveal.relatedReference !== undefined && !isPlainObject(reveal.relatedReference)) {
+    delete reveal.relatedReference;
+  }
+  return reveal;
+}
+
+function getMissionActionCatalogDefinition(quest, action) {
+  if (!isPlainObject(quest) || !isPlainObject(action)) return null;
+  const candidates = [];
+  if (Array.isArray(quest.actions)) candidates.push(...quest.actions);
+  if (Array.isArray(quest.chapters)) {
+    quest.chapters.forEach(chapter => {
+      if (Array.isArray(chapter?.actions)) candidates.push(...chapter.actions);
+    });
+  }
+  return candidates.find(candidate => candidate && candidate.id === action.id) || null;
+}
+
+function getMissionNodeCatalogDefinition(quest, node) {
+  if (!isPlainObject(quest) || !isPlainObject(node)) return null;
+  const candidates = Array.isArray(quest.routeNodes) ? quest.routeNodes : [];
+  return candidates.find(candidate => candidate && candidate.id === node.id) || null;
+}
+
+function getMissionRevealDefinitionsForAction(quest, action) {
+  const catalogAction = getMissionActionCatalogDefinition(quest, action);
+  const declared = [
+    ...(Array.isArray(catalogAction?.reveals) ? catalogAction.reveals : []),
+    ...(Array.isArray(action?.reveals) ? action.reveals : [])
+  ];
+  const seen = new Set();
+  return declared.map(normalizeMissionRevealDefinition).filter(reveal => {
+    if (!reveal || seen.has(reveal.id)) return false;
+    seen.add(reveal.id);
+    return true;
+  });
+}
+
+function getMissionRevealDefinitionsForNode(quest, node) {
+  const catalogNode = getMissionNodeCatalogDefinition(quest, node);
+  const declared = [
+    ...(Array.isArray(catalogNode?.reveals) ? catalogNode.reveals : []),
+    ...(Array.isArray(node?.reveals) ? node.reveals : [])
+  ];
+  const seen = new Set();
+  return declared.map(normalizeMissionRevealDefinition).filter(reveal => {
+    if (!reveal || reveal.when !== 'node_completed' || seen.has(reveal.id)) return false;
+    seen.add(reveal.id);
+    return true;
+  });
+}
+
+function getMissionRevealDiscoveryId(questId, reveal) {
+  return `${questId}:${reveal.id}`;
+}
+
+function getMissionJournalEntries(questId = null) {
+  const entries = Array.isArray(gameState.quests?.journalEntries) ? gameState.quests.journalEntries : [];
+  return entries
+    .filter(entry => entry && (questId === null || entry.missionId === questId))
+    .map(entry => ({ ...entry, relatedReference: isPlainObject(entry.relatedReference) ? cloneSaveState(entry.relatedReference) : undefined }))
+    .sort((left, right) => String(left.discoveredAt || '').localeCompare(String(right.discoveredAt || '')));
+}
+
+function getMissionJournalEntryById(entryId) {
+  if (typeof entryId !== 'string' || !entryId) return null;
+  return getMissionJournalEntries().find(entry => entry.id === entryId) || null;
+}
+
+function applyMissionReveal(questId, questState, reveal, source = {}) {
+  if (!isPlainObject(questState) || !isPlainObject(reveal)) return null;
+  const normalized = normalizeMissionRevealDefinition(reveal);
+  if (!normalized || !gameState.quests) return null;
+  const discoveryId = getMissionRevealDiscoveryId(questId, normalized);
+  if (!Array.isArray(questState.discoveredRevealIds)) questState.discoveredRevealIds = [];
+  if (!isPlainObject(questState.revealClaims)) questState.revealClaims = {};
+  const claimId = `${questState.instanceId || `quest:${questId}`}:reveal:${normalized.id}`;
+  const existingEntry = getMissionJournalEntryById(discoveryId);
+  const alreadyDiscovered = questState.discoveredRevealIds.includes(discoveryId);
+  if (alreadyDiscovered && existingEntry) return existingEntry;
+
+  const entry = existingEntry || {
+    id: discoveryId,
+    revealId: normalized.id,
+    missionId: questId,
+    instanceId: typeof questState.instanceId === 'string' ? questState.instanceId : null,
+    sourceActionId: typeof source.actionId === 'string' ? source.actionId : null,
+    sourceNodeId: typeof source.nodeId === 'string' ? source.nodeId : null,
+    title: normalized.title,
+    body: normalized.body,
+    relatedReference: normalized.relatedReference ? cloneSaveState(normalized.relatedReference) : undefined,
+    discoveredAt: new Date().toISOString()
+  };
+
+  if (!alreadyDiscovered) questState.discoveredRevealIds.push(discoveryId);
+  questState.revealClaims[claimId] = {
+    status: 'granted',
+    discoveryId,
+    revealId: normalized.id,
+    missionId: questId,
+    updatedAt: entry.discoveredAt
+  };
+  if (!Array.isArray(gameState.quests.journalEntries)) gameState.quests.journalEntries = [];
+  if (!existingEntry) gameState.quests.journalEntries.push(entry);
+  if (!Array.isArray(questState.journalEntryIds)) questState.journalEntryIds = [];
+  if (!questState.journalEntryIds.includes(discoveryId)) questState.journalEntryIds.push(discoveryId);
+  return entry;
+}
+
+function applyMissionRevealsForAction(questId, questState, action) {
+  const quest = getQuestCatalogDefinition(questId);
+  if (!quest || !action || action.status !== MISSION_ACTION_STATUSES.completed) return [];
+  const entries = [];
+  for (const reveal of getMissionRevealDefinitionsForAction(quest, action)) {
+    const entry = applyMissionReveal(questId, questState, reveal, { actionId: action.id, nodeId: action.nodeId });
+    if (entry) entries.push(entry);
+  }
+  return entries;
+}
+
+function applyMissionRevealsForNode(questId, questState, node) {
+  const quest = getQuestCatalogDefinition(questId);
+  if (!quest || !node || node.status !== MISSION_ROUTE_NODE_STATUSES.completed) return [];
+  const entries = [];
+  for (const reveal of getMissionRevealDefinitionsForNode(quest, node)) {
+    const entry = applyMissionReveal(questId, questState, reveal, { nodeId: node.id });
+    if (entry) entries.push(entry);
+  }
+  return entries;
+}
+
+function announceMissionReveals(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return;
+  const uniqueEntries = entries.filter((entry, index, list) => entry && list.findIndex(candidate => candidate?.id === entry.id) === index);
+  if (typeof showMissionRevealNotice === 'function') {
+    uniqueEntries.forEach(entry => showMissionRevealNotice(entry));
+  }
 }
 
 function normalizeMissionEvent(eventType, data = {}) {
@@ -1138,15 +1305,25 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
   if (!completionId || questState.consumedEventIds.includes(completionId)) return false;
   const nodeId = questState.currentNodeId;
   const candidates = questState.actions.filter(action => action.nodeId === nodeId);
+  const previouslyCompleted = new Set(candidates.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id));
   let updated = false;
   for (const action of candidates) updated = applyMissionEventToAction(action, eventType, data, completionId) || updated;
   if (!updated) return false;
+  const newlyCompletedActionIds = candidates
+    .filter(action => action.status === MISSION_ACTION_STATUSES.completed && !previouslyCompleted.has(action.id))
+    .map(action => action.id);
+  const revealEntries = [];
+  newlyCompletedActionIds.forEach(actionId => {
+    const action = questState.actions.find(candidate => candidate.id === actionId);
+    revealEntries.push(...applyMissionRevealsForAction(questId, questState, action));
+  });
   questState.consumedEventIds.push(completionId);
   questState.completedActionIds = questState.actions.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id);
   const currentNode = questState.routeNodes.find(node => node.id === nodeId);
   const nodeComplete = currentNode && currentNode.actionIds.length > 0 && currentNode.actionIds.every(actionId => questState.completedActionIds.includes(actionId));
   if (nodeComplete) {
     currentNode.status = MISSION_ROUTE_NODE_STATUSES.completed;
+    revealEntries.push(...applyMissionRevealsForNode(questId, questState, currentNode));
     const currentIndex = questState.routeNodes.findIndex(node => node.id === currentNode.id);
     const nextNode = questState.routeNodes[currentIndex + 1];
     if (nextNode) {
@@ -1164,11 +1341,17 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
     }
   }
   questState.activeActionId = questState.actions.find(action => action.status === MISSION_ACTION_STATUSES.inProgress || action.status === MISSION_ACTION_STATUSES.awaitingTask)?.id || null;
+  const uniqueRevealEntries = revealEntries.filter((entry, index, list) => entry && list.findIndex(candidate => candidate?.id === entry.id) === index);
+  pendingMissionRevealNotices.push(...uniqueRevealEntries);
   return true;
 }
 
 function updateMissionProgress(eventType, data = {}) {
   const event = normalizeMissionEvent(eventType, data);
+  const deferred = isLifeXPTransactionDeferred();
+  const previousState = deferred ? null : cloneSaveState(gameState);
+  const previousRawSave = deferred || typeof localStorage === 'undefined' ? null : localStorage.getItem('lifexp_save');
+  const previousNotices = pendingMissionRevealNotices.slice();
   let updated = false;
   const completionId = getMissionEventCompletionId(event);
   if (event.type === 'task_completed' && event.derivedTaskId && completionId) {
@@ -1181,7 +1364,17 @@ function updateMissionProgress(eventType, data = {}) {
       updated = advanceMissionActionInstance(questId, questState, event.type, event) || updated;
     });
   }
-  if (updated && !isLifeXPTransactionDeferred()) saveGame();
+  if (updated && !deferred) {
+    const saved = saveGame();
+    if (!saved) {
+      gameState = previousState;
+      pendingMissionRevealNotices = previousNotices;
+      if (typeof localStorage !== 'undefined' && previousRawSave !== null) {
+        try { localStorage.setItem('lifexp_save', previousRawSave); } catch (restoreError) { console.error('Could not restore the mission state:', restoreError); }
+      }
+      return false;
+    }
+  }
   return updated;
 }
 
@@ -1882,7 +2075,13 @@ function saveGame(options = {}) {
   if (lifeXPSaveDeferred > 0 && options.force !== true) return true;
   try {
     localStorage.setItem('lifexp_save', JSON.stringify(gameState));
-    return localStorage.getItem('lifexp_save') === JSON.stringify(gameState);
+    const saved = localStorage.getItem('lifexp_save') === JSON.stringify(gameState);
+    if (saved && pendingMissionRevealNotices.length > 0) {
+      const notices = pendingMissionRevealNotices;
+      pendingMissionRevealNotices = [];
+      announceMissionReveals(notices);
+    }
+    return saved;
   } catch (e) {
     console.warn('Could not save game:', e);
     return false;

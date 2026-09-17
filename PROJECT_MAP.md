@@ -615,21 +615,27 @@ Contrato integrado mediante PR #83. Define actions como unidad narrativa y deja 
 
 M1 — Persistent action engine
 
-Completada localmente; pendiente de colocacion y verificacion manual
+Completada en el codigo de main; pendiente de verificacion manual
 
 `engine.js` introduce `questModelVersion: 3`, traduce instancias legacy y DT-24 a `actions` y `routeNodes`, conserva progreso y claims, registra eventos consumidos y marca instancias no resolubles con recuperacion. `quests.js` delega el avance a `updateMissionProgress`; no mantiene un segundo motor de objectives/stages. La prueba de migraciones cubre traduccion, idempotencia, rollback, recuperacion y progreso sin duplicados. La conversion declarativa completa del catalogo estatico queda para el siguiente bloque, sin cambiar el motor.
 
 M2 — Canonical task integration
 
-Implementada localmente; pendiente de colocacion y verificacion manual
+Completada en el codigo de main; pendiente de verificacion manual
 
 `engine.js` materializa tareas derivadas aceptadas desde `gameState.quests.derivedTasks`, conserva su origen, aplica el ciclo de vida y marca la finalizacion por `completionId`. `ui_tasks.js` mantiene `finalizeCompletion()` como unico flujo y emite eventos normalizados con `source`, `derivedTaskId` y `themes`. El guardado de progreso de misiones se difiere dentro de la transaccion de completado y se confirma junto con XP, historial, recompensa y resultado. La prueba de integracion cubre materializacion, evento derivado, duplicados, persistencia y referencias no resolubles.
 
 M3 — Mission action UI
 
-Implementada localmente; pendiente de colocacion y verificacion manual
+Completada en el codigo de main; pendiente de verificacion manual
 
 `ui_quests.js` presenta la situacion actual, las acciones del nodo activo, su estado y progreso, las tareas compatibles y los estados vacios o de investigacion. Abrir una tarea desde una mision delega en `completeTaskFromCategory()` y por tanto conserva el flujo canonico. Se retira la previsualizacion de recompensas en las superficies de misiones. No se muestran nodos futuros, IDs tecnicos ni recompensas no descubiertas.
+
+M4 — Narrative reveals and journal
+
+Implementada localmente; pendiente de colocacion y verificacion manual
+
+`engine.js` anade revelaciones declarativas por accion y nodo, registro persistente de diario dentro de `gameState.quests`, claims idempotentes, snapshots de texto para recuperacion y rollback si falla el guardado. `ui_quests.js` muestra solo entradas descubiertas, las mantiene accesibles aunque la mision activa desaparezca y anuncia una revelacion unicamente despues de su descubrimiento legitimo. `quests.js` valida el contrato de titulo, cuerpo e ID estable. No se anade contenido narrativo nuevo en esta fase.
 
 F6 - Contrato de publicación
 
@@ -809,6 +815,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-17 - M4 Mission reveals and journal: `engine.js` registra revelaciones declarativas al completar acciones o nodos, conserva snapshots en el diario persistente, evita duplicados mediante IDs estables y restaura el estado si falla el guardado. `ui_quests.js` muestra solo descubrimientos legitimos en el detalle de mision, en el listado del diario y mediante aviso posterior al descubrimiento. `quests.js` valida el contrato de revelaciones. Pendiente de colocar y verificar manualmente.
 
 2026-09-17 - M3 Mission action UI: `ui_quests.js` deja de presentar objetivos tecnicos como pantalla pasiva y muestra la situacion actual, acciones del nodo activo, progreso, tareas compatibles, estados de disponibilidad y recuperacion. La apertura de tareas usa el flujo canonico de `ui_tasks.js`; no se crea un boton de completado alternativo. Se eliminan las previsualizaciones de recompensas en las pantallas de misiones. Pendiente de colocar y verificar manualmente.
 
