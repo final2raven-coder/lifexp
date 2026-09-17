@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-cfa4b0c1f70542d6e8c66e01d4a723e45ead35bf
+771f4fc108256b2badc52f926103248fcd7dc5ef
 
 M0 del sistema de misiones
 
@@ -447,7 +447,7 @@ rewardLedger evita duplicados.
 
 6.4 Quests
 
-Las recompensas aseguradas de una quest son independientes del loot normal. Las quests desconocidas o parcialmente migrables no se borran silenciosamente. El motor canonico usa `gameState.quests[questId].actions`, `routeNodes`, `consumedEventIds`, `discoveredRevealIds`, `consequenceClaims` y `recovery`. `objectives` y `stages` solo se leen en la frontera de traduccion y no se ejecutan.
+Las recompensas aseguradas de una quest son independientes del loot normal. Las quests desconocidas o parcialmente migrables no se borran silenciosamente. El motor canonico usa `gameState.quests[questId].actions`, `routeNodes`, `consumedEventIds`, `discoveredRevealIds`, `consequenceClaims` y `recovery`. `objectives` y `stages` solo se leen en la frontera de traduccion y no se ejecutan. Las consecuencias M5 son declarativas y se resuelven desde `updateMissionProgress()` mediante un unico resolver transaccional para acciones, nodos de ruta y quest; los tipos soportados son `grant_reward`, `unlock_item_use`, `make_follow_up_available`, `create_derived_task` y `set_world_state`. Los claims usan estados `granted`, `pending` o `rejected`, conservan el resultado y pueden reintentarse sin duplicar entregas.
 
 6.4.1 Politica de misiones activas
 
@@ -637,6 +637,12 @@ Implementada localmente; pendiente de colocacion y verificacion manual
 
 `engine.js` anade revelaciones declarativas por accion y nodo, registro persistente de diario dentro de `gameState.quests`, claims idempotentes, snapshots de texto para recuperacion y rollback si falla el guardado. `ui_quests.js` muestra solo entradas descubiertas, las mantiene accesibles aunque la mision activa desaparezca y anuncia una revelacion unicamente despues de su descubrimiento legitimo. `quests.js` valida el contrato de titulo, cuerpo e ID estable. No se anade contenido narrativo nuevo en esta fase.
 
+M5 - Consequences, object uses and follow-ups
+
+Implementada localmente; pendiente de colocacion y verificacion manual
+
+`engine.js` anade `worldState`, normaliza `consequenceClaims` con estados `granted`, `pending` y `rejected`, valida referencias antes de guardar y resuelve de forma declarativa las consecuencias de acciones, nodos de ruta y quest. `grant_reward` delega en las fronteras canonicas de recompensas e inventario; `unlock_item_use` exige que el material este legitimamente descubierto; `make_follow_up_available` deja el follow-up visible sin aceptarlo automaticamente; `create_derived_task` materializa tareas con IDs estables e idempotentes; `set_world_state` persiste cambios declarativos. `retryMissionConsequences()` reintenta claims recuperables. El flujo se integra en `updateMissionProgress()` y conserva rollback de memoria, notices y bytes exactos del save si falla la transaccion. `quests.js` valida el contrato y elimina un follow-up solo cuando el jugador lo acepta. `ui_quests.js` presenta avisos y detalles sin revelar contenido no descubierto. No se anaden misiones, narrativa ni contenido nuevo y no se cambia `saveVersion: 4` ni `questModelVersion: 3`.
+
 F6 - Contrato de publicación
 
 GitHub Pages debe publicar el artefacto generado por `.github/workflows/deploy-pages.yml`, no la raíz de `main`. `tools/build_release.js` genera `build-info.json` y `build-info.js` usando el commit de GitHub Actions. `data_tasks.js`, `main.js`, `ui_hub.js` y `sw.js` consumen ese manifiesto; el save no participa en el versionado.
@@ -815,6 +821,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-17 - M5 Mission consequences, object uses and follow-ups: implementacion local de consecuencias declarativas e idempotentes para recompensas, usos de materiales, follow-ups, tareas derivadas y `worldState`. `updateMissionProgress()` es el flujo canonico para acciones, nodos y quest; `consequenceClaims` conserva `granted`, `pending` y `rejected`, y `retryMissionConsequences()` permite recuperar resultados pendientes o rechazados. Se verifica rollback de memoria y bytes del save, validacion previa de referencias, entrega de objetos, aceptacion explicita de follow-ups y no duplicacion. Sin contenido nuevo, sin cambio de `saveVersion` y pendiente de colocar y verificar manualmente.
 
 2026-09-17 - M4 Mission reveals and journal: `engine.js` registra revelaciones declarativas al completar acciones o nodos, conserva snapshots en el diario persistente, evita duplicados mediante IDs estables y restaura el estado si falla el guardado. `ui_quests.js` muestra solo descubrimientos legitimos en el detalle de mision, en el listado del diario y mediante aviso posterior al descubrimiento. `quests.js` valida el contrato de revelaciones. Pendiente de colocar y verificar manualmente.
 

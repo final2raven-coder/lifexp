@@ -339,6 +339,17 @@ function getAvailableQuests() {
   });
 }
 
+function getAvailableFollowUpQuests() {
+  initQuestState();
+  const ids = Array.isArray(gameState.quests.availableFollowUps) ? gameState.quests.availableFollowUps : [];
+  return ids.map(questId => {
+    const quest = QUESTS[questId];
+    if (!quest || quest.archived === true || quest.catalogStatus === 'retired') return null;
+    if (gameState.quests.active.includes(questId) || gameState.quests.completed.includes(questId)) return null;
+    return { ...quest, isFollowUp: true };
+  }).filter(Boolean);
+}
+
 let questRewardSequence = 0;
 
 function createQuestInstanceId(questId) {
@@ -545,6 +556,7 @@ function acceptQuest(questId) {
     questState = translateQuestInstanceToActions(questState, questId, { active: true });
   }
   gameState.quests.active.push(questId);
+  gameState.quests.availableFollowUps = gameState.quests.availableFollowUps.filter(id => id !== questId);
   gameState.quests[questId] = questState;
   
   saveGame();
@@ -751,6 +763,23 @@ function validateQuestReferences() {
     checkReveals(quest.actions?.flatMap(action => action?.reveals || []), 'action');
     checkReveals(quest.routeNodes?.flatMap(node => node?.reveals || []), 'route node');
     quest.chapters?.forEach(chapter => checkReveals(chapter?.reveals, `chapter ${chapter?.id || 'unknown'}`));
+
+    const checkConsequences = (consequences, context) => {
+      if (!Array.isArray(consequences) || typeof validateMissionConsequenceDefinition !== 'function') return;
+      consequences.forEach((consequence, index) => {
+        const errorsForConsequence = validateMissionConsequenceDefinition(consequence, {
+          path: `Quest ${quest.id} ${context} consequence ${index + 1}`
+        });
+        errors.push(...errorsForConsequence);
+      });
+    };
+    checkConsequences(quest.consequences, 'quest');
+    checkConsequences(quest.actions?.flatMap(action => action?.consequences || []), 'action');
+    checkConsequences(quest.routeNodes?.flatMap(node => node?.consequences || []), 'route node');
+    quest.chapters?.forEach(chapter => {
+      checkConsequences(chapter?.consequences, `chapter ${chapter?.id || 'unknown'}`);
+      checkConsequences(chapter?.actions?.flatMap(action => action?.consequences || []), `chapter ${chapter?.id || 'unknown'} action`);
+    });
 
     // Check item references in rewards
     const checkItems = (items, context) => {

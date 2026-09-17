@@ -48,6 +48,7 @@ const DEFAULT_GAME_STATE = {
   inventoryCapacityBonus: 0,
   pendingLoot: { version: 1, entries: [] },
   rewardLedger: {},
+  worldState: {},
   materialInteractions: { version: 1, ledger: {}, discoveredUses: {} },
   pendingTaskResult: null,
   saveVersion: 4, // v4 is the current canonical version (migration in loadGame handles v<4 saves)
@@ -110,6 +111,7 @@ const DEFAULT_GAME_STATE = {
 
 let gameState = cloneSaveState(DEFAULT_GAME_STATE);
 let pendingMissionRevealNotices = [];
+let pendingMissionFollowUpNotices = [];
 
 // Save loading is a mandatory barrier before content installers may persist.
 let lifeXPSaveLoadState = 'not_started';
@@ -587,6 +589,25 @@ function normalizeCompletionIds(value) {
   return [...new Set(value.filter(id => typeof id === 'string' && id.length > 0))];
 }
 
+function normalizeWorldState(value) {
+  return isPlainObject(value) ? cloneSaveState(value) : {};
+}
+
+function normalizeMissionConsequenceClaims(value) {
+  if (!isPlainObject(value)) return {};
+  const normalized = {};
+  for (const [claimId, rawClaim] of Object.entries(value)) {
+    if (!isPlainObject(rawClaim)) continue;
+    const status = ['granted', 'pending', 'rejected'].includes(rawClaim.status) ? rawClaim.status : 'rejected';
+    normalized[claimId] = {
+      ...rawClaim,
+      status,
+      claimId: typeof rawClaim.claimId === 'string' && rawClaim.claimId ? rawClaim.claimId : claimId
+    };
+  }
+  return normalized;
+}
+
 const QUEST_INSTANCE_STATUS = Object.freeze({
   active: 'active',
   completed: 'completed',
@@ -870,7 +891,7 @@ function normalizeMissionActionInstance(value, context = {}) {
   normalized.derivedTaskIds = normalizeCompletionIds(normalized.derivedTaskIds);
   normalized.discoveredRevealIds = normalizeCompletionIds(normalized.discoveredRevealIds);
   normalized.revealClaims = isPlainObject(normalized.revealClaims) ? normalized.revealClaims : {};
-  normalized.consequenceClaims = isPlainObject(normalized.consequenceClaims) ? normalized.consequenceClaims : {};
+  normalized.consequenceClaims = normalizeMissionConsequenceClaims(normalized.consequenceClaims);
   normalized.recovery = isPlainObject(normalized.recovery)
     ? { status: typeof normalized.recovery.status === 'string' ? normalized.recovery.status : 'none', ...normalized.recovery }
     : { status: 'none', reason: null, options: [] };
@@ -1259,6 +1280,373 @@ function announceMissionReveals(entries) {
   }
 }
 
+function announceMissionFollowUps(notices) {
+  if (!Array.isArray(notices) || notices.length === 0) return;
+  const uniqueNotices = notices.filter((notice, index, list) => {
+    const questId = notice?.questId;
+    return typeof questId === 'string'
+      && questId
+      && list.findIndex(candidate => candidate?.questId === questId) === index;
+  });
+  if (typeof showMissionFollowUpNotice === 'function') {
+    uniqueNotices.forEach(notice => showMissionFollowUpNotice(notice));
+  }
+}
+
+const MISSION_CONSEQUENCE_TYPES = Object.freeze({
+  grantReward: 'grant_reward',
+  unlockItemUse: 'unlock_item_use',
+  makeFollowUpAvailable: 'make_follow_up_available',
+  createDerivedTask: 'create_derived_task',
+  setWorldState: 'set_world_state'
+});
+
+function getMissionConsequenceRewardPackage(consequence) {
+  if (!isPlainObject(consequence)) return {};
+  if (isPlainObject(consequence.reward)) return cloneSaveState(consequence.reward);
+  if (isPlainObject(consequence.rewards)) return cloneSaveState(consequence.rewards);
+  const direct = {};
+  for (const key of ['xp', 'gold', 'items']) {
+    if (consequence[key] !== undefined) direct[key] = cloneSaveState(consequence[key]);
+  }
+  return direct;
+}
+
+function getMissionConsequenceTaskTemplate(consequence) {
+  if (!isPlainObject(consequence)) return null;
+  return isPlainObject(consequence.taskTemplate)
+    ? consequence.taskTemplate
+    : (isPlainObject(consequence.template) ? consequence.template : null);
+}
+
+function validateMissionConsequenceDefinition(consequence, context = {}) {
+  const errors = [];
+  const prefix = context.path || 'mission consequence';
+  if (!isPlainObject(consequence)) return [`${prefix}: consequence must be an object`];
+  if (typeof consequence.id !== 'string' || !consequence.id.trim()) errors.push(`${prefix}: stable id is required`);
+  if (!Object.values(MISSION_CONSEQUENCE_TYPES).includes(consequence.type)) {
+    errors.push(`${prefix}: unsupported consequence type`);
+    return errors;
+  }
+
+  if (consequence.type === MISSION_CONSEQUENCE_TYPES.grantReward) {
+    const reward = getMissionConsequenceRewardPackage(consequence);
+    const hasRewardField = ['xp', 'gold', 'items'].some(key => reward[key] !== undefined);
+    if (!hasRewardField) errors.push(`${prefix}: reward package is required`);
+    for (const key of ['xp', 'gold']) {
+      if (reward[key] !== undefined && (!Number.isFinite(Number(reward[key])) || Number(reward[key]) < 0)) {
+        errors.push(`${prefix}: ${key} must be a non-negative number`);
+      }
+    }
+    if (reward.items !== undefined) {
+      if (!Array.isArray(reward.items)) errors.push(`${prefix}: reward items must be an array`);
+      else reward.items.forEach((itemId, index) => {
+        if (typeof itemId !== 'string' || !itemId || typeof ITEMS === 'undefined' || !ITEMS[itemId]) {
+          errors.push(`${prefix}: reward item ${index + 1} is not resolvable`);
+        }
+      });
+    }
+  }
+
+  if (consequence.type === MISSION_CONSEQUENCE_TYPES.unlockItemUse) {
+    const itemId = consequence.materialId || consequence.itemId;
+    if (typeof itemId !== 'string' || !itemId) errors.push(`${prefix}: materialId is required`);
+    else if (typeof ITEMS === 'undefined' || !ITEMS[itemId]) errors.push(`${prefix}: material reference is not resolvable`);
+    else if (ITEMS[itemId].type !== 'material') errors.push(`${prefix}: item use requires a material reference`);
+    if (typeof consequence.useId !== 'string' || !consequence.useId) errors.push(`${prefix}: useId is required`);
+  }
+
+  if (consequence.type === MISSION_CONSEQUENCE_TYPES.makeFollowUpAvailable) {
+    const questId = consequence.questId || consequence.followUpQuestId;
+    if (typeof questId !== 'string' || !questId) errors.push(`${prefix}: questId is required`);
+    else if (typeof QUESTS === 'undefined' || !isPlainObject(QUESTS[questId])) errors.push(`${prefix}: follow-up quest is not resolvable`);
+    else if (QUESTS[questId].archived === true || QUESTS[questId].catalogStatus === 'retired') errors.push(`${prefix}: follow-up quest is retired`);
+  }
+
+  if (consequence.type === MISSION_CONSEQUENCE_TYPES.createDerivedTask) {
+    const template = getMissionConsequenceTaskTemplate(consequence);
+    if (!template || !normalizeDerivedTaskDefinition(template)) errors.push(`${prefix}: derived task template is invalid`);
+    const templateId = consequence.templateId || template?.id || consequence.id;
+    if (typeof templateId !== 'string' || !templateId) errors.push(`${prefix}: templateId is required`);
+    if (consequence.status !== undefined && !['accepted', 'pending'].includes(consequence.status)) errors.push(`${prefix}: derived task status is invalid`);
+  }
+
+  if (consequence.type === MISSION_CONSEQUENCE_TYPES.setWorldState) {
+    const key = consequence.path || consequence.key;
+    if (typeof key !== 'string' || !key || !/^[A-Za-z0-9_.-]+$/.test(key)) errors.push(`${prefix}: world state path is invalid`);
+    if (!Object.prototype.hasOwnProperty.call(consequence, 'value')) errors.push(`${prefix}: world state value is required`);
+    else {
+      try { JSON.stringify(consequence.value); } catch (error) { errors.push(`${prefix}: world state value is not serializable`); }
+    }
+  }
+  return errors;
+}
+
+function getMissionConsequenceDefinitionsForAction(quest, action) {
+  const catalogAction = getMissionActionCatalogDefinition(quest, action);
+  return Array.isArray(catalogAction?.consequences) ? catalogAction.consequences : [];
+}
+
+function getMissionConsequenceDefinitionsForNode(quest, node) {
+  const catalogNode = getMissionNodeCatalogDefinition(quest, node);
+  return Array.isArray(catalogNode?.consequences) ? catalogNode.consequences : [];
+}
+
+function getMissionConsequenceDefinitionsForQuest(quest) {
+  return Array.isArray(quest?.consequences) ? quest.consequences : [];
+}
+
+function getMissionConsequenceClaimId(questId, questState, sourceType, sourceId, consequence) {
+  const instanceId = typeof questState?.instanceId === 'string' && questState.instanceId
+    ? questState.instanceId
+    : `quest:${questId}`;
+  return `${instanceId}:consequence:${sourceType}:${sourceId}:${consequence.id}`;
+}
+
+function getMissionConsequenceStatus(results) {
+  if (results.some(result => result.status === 'rejected')) return 'rejected';
+  if (results.some(result => result.status === 'pending')) return 'pending';
+  return 'granted';
+}
+
+function getMissionItemId(itemId) {
+  if (typeof LifeXPInventory !== 'undefined' && typeof LifeXPInventory.resolve === 'function') {
+    return LifeXPInventory.resolve(itemId);
+  }
+  return typeof itemId === 'string' && typeof ITEMS !== 'undefined' && ITEMS[itemId] ? itemId : null;
+}
+
+function isMissionMaterialDiscovered(itemId) {
+  const resolvedId = getMissionItemId(itemId);
+  if (!resolvedId) return false;
+  const ownedInContainer = container => Array.isArray(container)
+    && container.some(entry => getMissionItemId(entry) === resolvedId);
+  if (ownedInContainer(gameState.inventory) || ownedInContainer(gameState.stash)) return true;
+  if (Object.values(gameState.equipment || {}).some(entry => getMissionItemId(entry) === resolvedId)) return true;
+  const grantedReward = Object.values(gameState.rewardLedger || {}).some(entry => entry
+    && entry.status === 'granted'
+    && getMissionItemId(entry.itemId) === resolvedId);
+  if (grantedReward) return true;
+  const pendingReward = Array.isArray(gameState.pendingLoot?.entries)
+    && gameState.pendingLoot.entries.some(entry => entry
+      && ['pending', 'rejected'].includes(entry.status)
+      && getMissionItemId(entry.itemId) === resolvedId);
+  return pendingReward;
+}
+
+function getExistingMaterialUseState(itemId, useId) {
+  const resolvedId = getMissionItemId(itemId) || itemId;
+  return Boolean(gameState.materialInteractions?.discoveredUses?.[resolvedId]?.[useId]);
+}
+
+function getMissionConsequenceDerivedTaskId(questId, actionId, consequence) {
+  const template = getMissionConsequenceTaskTemplate(consequence) || {};
+  const templateId = consequence.templateId || template.id || consequence.id;
+  return typeof createDerivedTaskId === 'function'
+    ? createDerivedTaskId(questId, actionId, templateId)
+    : ['derived', questId, actionId, templateId].join('_');
+}
+
+function validateMissionConsequenceRuntimeCollision(questId, questState, consequence, source) {
+  const errors = [];
+  if (consequence.type !== MISSION_CONSEQUENCE_TYPES.createDerivedTask) return errors;
+  const derivedTaskId = getMissionConsequenceDerivedTaskId(questId, source.sourceId, consequence);
+  const existing = typeof getDerivedTaskById === 'function' ? getDerivedTaskById(derivedTaskId) : null;
+  if (existing && (existing.sourceQuestId !== questId || existing.sourceActionId !== source.sourceId || existing.templateId !== (consequence.templateId || getMissionConsequenceTaskTemplate(consequence)?.id || consequence.id))) {
+    errors.push(`${source.path}: derived task id collides with another source`);
+  }
+  const existingTask = typeof getTaskById === 'function' ? getTaskById(derivedTaskId) : null;
+  if (existingTask && existingTask.derivedTaskId !== derivedTaskId) errors.push(`${source.path}: task id collides with another task`);
+  return errors;
+}
+
+function applyMissionConsequence(consequence, questId, questState, source, options = {}) {
+  const claimId = getMissionConsequenceClaimId(questId, questState, source.sourceType, source.sourceId, consequence);
+  if (!isPlainObject(questState.consequenceClaims)) questState.consequenceClaims = {};
+  const previous = questState.consequenceClaims[claimId];
+  if (previous && previous.status === 'granted') return { status: 'granted', claimId, duplicate: true, result: previous.result || null };
+  if (previous && ['pending', 'rejected'].includes(previous.status) && options.retry !== true) {
+    return { status: previous.status, claimId, duplicate: true, result: previous.result || null };
+  }
+
+  let result;
+  if (consequence.type === MISSION_CONSEQUENCE_TYPES.grantReward) {
+    const rewardPackage = getMissionConsequenceRewardPackage(consequence);
+    result = typeof grantQuestRewards === 'function'
+      ? grantQuestRewards(rewardPackage, {
+          questId,
+          questState,
+          rewardKey: `consequence_${source.sourceId}_${consequence.id}`,
+          claimId: `${claimId}:reward`,
+          source: 'mission_consequence',
+          retryRejected: options.retry === true
+        })
+      : { status: 'rejected', reason: 'reward_boundary_unavailable', recoverable: false };
+  } else if (consequence.type === MISSION_CONSEQUENCE_TYPES.unlockItemUse) {
+    const itemId = consequence.materialId || consequence.itemId;
+    const resolvedItemId = getMissionItemId(itemId) || itemId;
+    if (getExistingMaterialUseState(resolvedItemId, consequence.useId)) {
+      result = { status: 'granted', duplicate: true, itemId: resolvedItemId, useId: consequence.useId };
+    } else if (!isMissionMaterialDiscovered(resolvedItemId)) {
+      result = { status: 'rejected', reason: 'material_not_discovered', recoverable: true, itemId: resolvedItemId, useId: consequence.useId };
+    } else if (typeof LifeXPMaterialInteractions === 'undefined' || typeof LifeXPMaterialInteractions.discoverUse !== 'function') {
+      result = { status: 'rejected', reason: 'material_use_boundary_unavailable', recoverable: true, itemId: resolvedItemId, useId: consequence.useId };
+    } else if (LifeXPMaterialInteractions.discoverUse(resolvedItemId, consequence.useId)) {
+      result = { status: 'granted', duplicate: false, itemId: resolvedItemId, useId: consequence.useId };
+    } else if (getExistingMaterialUseState(resolvedItemId, consequence.useId)) {
+      result = { status: 'granted', duplicate: true, itemId: resolvedItemId, useId: consequence.useId };
+    } else {
+      result = { status: 'rejected', reason: 'material_use_rejected', recoverable: true, itemId: resolvedItemId, useId: consequence.useId };
+    }
+  } else if (consequence.type === MISSION_CONSEQUENCE_TYPES.makeFollowUpAvailable) {
+    const followUpId = consequence.questId || consequence.followUpQuestId;
+    if (!Array.isArray(gameState.quests.availableFollowUps)) gameState.quests.availableFollowUps = [];
+    const duplicate = gameState.quests.availableFollowUps.includes(followUpId);
+    if (!duplicate) {
+      gameState.quests.availableFollowUps.push(followUpId);
+      pendingMissionFollowUpNotices.push({ questId: followUpId });
+    }
+    result = { status: 'granted', duplicate, questId: followUpId };
+  } else if (consequence.type === MISSION_CONSEQUENCE_TYPES.createDerivedTask) {
+    const template = cloneSaveState(getMissionConsequenceTaskTemplate(consequence));
+    const derivedTaskId = getMissionConsequenceDerivedTaskId(questId, source.sourceId, consequence);
+    const existingDerivedTask = typeof getDerivedTaskById === 'function' ? getDerivedTaskById(derivedTaskId) : null;
+    const derivedTask = typeof createDerivedTask === 'function'
+      ? createDerivedTask(template, {
+          sourceQuestId: questId,
+          sourceActionId: source.sourceId,
+          templateId: consequence.templateId || template.id || consequence.id,
+          id: derivedTaskId,
+          status: consequence.status === 'pending' ? 'pending' : 'accepted'
+        })
+      : null;
+    result = derivedTask
+      ? { status: 'granted', duplicate: Boolean(existingDerivedTask), derivedTaskId: derivedTask.id }
+      : { status: 'rejected', reason: 'derived_task_boundary_unavailable', recoverable: true };
+  } else if (consequence.type === MISSION_CONSEQUENCE_TYPES.setWorldState) {
+    const key = consequence.path || consequence.key;
+    if (!isPlainObject(gameState.worldState)) gameState.worldState = {};
+    const previousValue = gameState.worldState[key];
+    gameState.worldState[key] = cloneSaveState(consequence.value);
+    result = { status: 'granted', duplicate: JSON.stringify(previousValue) === JSON.stringify(consequence.value), key };
+  } else {
+    result = { status: 'rejected', reason: 'unsupported_consequence_type', recoverable: false };
+  }
+
+  const status = result.status === 'pending' ? 'pending' : result.status === 'granted' ? 'granted' : 'rejected';
+  questState.consequenceClaims[claimId] = {
+    claimId,
+    type: consequence.type,
+    status,
+    sourceType: source.sourceType,
+    sourceId: source.sourceId,
+    definition: cloneSaveState(consequence),
+    result: cloneSaveState(result),
+    updatedAt: new Date().toISOString()
+  };
+  return { status, claimId, duplicate: result.duplicate === true, result };
+}
+
+function applyMissionConsequenceDefinitions(questId, questState, definitions, source, options = {}) {
+  const list = Array.isArray(definitions) ? definitions : [];
+  if (list.length === 0) return { status: 'granted', applied: false, results: [], claims: [] };
+  const validationErrors = [];
+  list.forEach((consequence, index) => {
+    const path = `${source.path || 'mission'} consequence ${index + 1}`;
+    validationErrors.push(...validateMissionConsequenceDefinition(consequence, { path }));
+    if (isPlainObject(consequence)) validationErrors.push(...validateMissionConsequenceRuntimeCollision(questId, questState, consequence, { ...source, path }));
+  });
+  if (validationErrors.length > 0) return { status: 'rejected', applied: false, results: [], claims: [], validationErrors };
+  const results = list.map(consequence => applyMissionConsequence(consequence, questId, questState, source, options));
+  return {
+    status: getMissionConsequenceStatus(results),
+    applied: results.some(result => result.duplicate !== true),
+    results,
+    claims: results.map(result => result.claimId)
+  };
+}
+
+function runMissionConsequenceTransaction(callback) {
+  const deferred = isLifeXPTransactionDeferred();
+  const previousState = cloneSaveState(gameState);
+  const previousRawSave = typeof localStorage === 'undefined' ? null : localStorage.getItem('lifexp_save');
+  const previousRevealNotices = pendingMissionRevealNotices.slice();
+  const previousFollowUpNotices = pendingMissionFollowUpNotices.slice();
+  if (!deferred) beginLifeXPTransaction();
+  try {
+    const result = callback();
+    if (result?.validationErrors?.length) return result;
+    if (!deferred && !saveGame({ force: true })) throw new Error('save_failed');
+    return result;
+  } catch (error) {
+    gameState = previousState;
+    pendingMissionRevealNotices = previousRevealNotices;
+    pendingMissionFollowUpNotices = previousFollowUpNotices;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        if (previousRawSave === null) localStorage.removeItem('lifexp_save');
+        else localStorage.setItem('lifexp_save', previousRawSave);
+      } catch (restoreError) { console.warn('Could not restore consequence save bytes:', restoreError); }
+    }
+    return { status: 'rejected', applied: false, results: [], claims: [], reason: error.message || 'consequence_transaction_failed', recoverable: false };
+  } finally {
+    if (!deferred) endLifeXPTransaction();
+  }
+}
+
+function resolveMissionConsequences(questId, questState, definitions, source = {}, options = {}) {
+  if (!questState || !gameState?.quests) return { status: 'rejected', applied: false, results: [], claims: [], reason: 'quest_state_unavailable' };
+  const normalizedSource = {
+    sourceType: typeof source.sourceType === 'string' && source.sourceType ? source.sourceType : 'action',
+    sourceId: typeof source.sourceId === 'string' && source.sourceId ? source.sourceId : 'root',
+    path: source.path || `quest ${questId}`
+  };
+  return runMissionConsequenceTransaction(() => applyMissionConsequenceDefinitions(questId, questState, definitions, normalizedSource, options));
+}
+
+function applyMissionConsequencesForAction(questId, questState, action) {
+  const quest = getQuestCatalogDefinition(questId);
+  return resolveMissionConsequences(questId, questState, getMissionConsequenceDefinitionsForAction(quest, action), {
+    sourceType: 'action', sourceId: action.id, path: `quest ${questId} action ${action.id}`
+  });
+}
+
+function applyMissionConsequencesForNode(questId, questState, node) {
+  const quest = getQuestCatalogDefinition(questId);
+  return resolveMissionConsequences(questId, questState, getMissionConsequenceDefinitionsForNode(quest, node), {
+    sourceType: 'node', sourceId: node.id, path: `quest ${questId} route node ${node.id}`
+  });
+}
+
+function applyMissionConsequencesForQuest(questId, questState) {
+  const quest = getQuestCatalogDefinition(questId);
+  return resolveMissionConsequences(questId, questState, getMissionConsequenceDefinitionsForQuest(quest), {
+    sourceType: 'quest', sourceId: questId, path: `quest ${questId}`
+  });
+}
+
+function retryMissionConsequences(questId) {
+  const questState = gameState.quests?.[questId];
+  const quest = getQuestCatalogDefinition(questId);
+  if (!questState || !quest) return { status: 'rejected', reason: 'quest_state_unavailable', results: [] };
+  return runMissionConsequenceTransaction(() => {
+    const results = [];
+    const activeActions = Array.isArray(questState.actions) ? questState.actions : [];
+    activeActions.forEach(action => results.push(applyMissionConsequenceDefinitions(questId, questState, getMissionConsequenceDefinitionsForAction(quest, action), {
+      sourceType: 'action', sourceId: action.id, path: `quest ${questId} action ${action.id}`
+    }, { retry: true })));
+    const nodes = Array.isArray(questState.routeNodes) ? questState.routeNodes : [];
+    nodes.forEach(node => results.push(applyMissionConsequenceDefinitions(questId, questState, getMissionConsequenceDefinitionsForNode(quest, node), {
+      sourceType: 'node', sourceId: node.id, path: `quest ${questId} route node ${node.id}`
+    }, { retry: true })));
+    if (questState.status === QUEST_INSTANCE_STATUS.completed) results.push(applyMissionConsequenceDefinitions(questId, questState, getMissionConsequenceDefinitionsForQuest(quest), {
+      sourceType: 'quest', sourceId: questId, path: `quest ${questId}`
+    }, { retry: true }));
+    const flattened = results.flatMap(result => result.results || []);
+    return { status: getMissionConsequenceStatus(flattened), applied: flattened.length > 0, results, claims: flattened.map(result => result.claimId) };
+  });
+}
+
 function normalizeMissionEvent(eventType, data = {}) {
   const normalizedType = eventType === 'task_complete' ? 'task_completed' : eventType;
   const event = { ...data, type: normalizedType };
@@ -1316,6 +1704,12 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
   newlyCompletedActionIds.forEach(actionId => {
     const action = questState.actions.find(candidate => candidate.id === actionId);
     revealEntries.push(...applyMissionRevealsForAction(questId, questState, action));
+    const consequenceResult = applyMissionConsequencesForAction(questId, questState, action);
+    if (consequenceResult.validationErrors?.length) {
+      const error = new Error('Invalid mission consequence definition.');
+      error.missionConsequenceResult = consequenceResult;
+      throw error;
+    }
   });
   questState.consumedEventIds.push(completionId);
   questState.completedActionIds = questState.actions.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id);
@@ -1324,6 +1718,12 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
   if (nodeComplete) {
     currentNode.status = MISSION_ROUTE_NODE_STATUSES.completed;
     revealEntries.push(...applyMissionRevealsForNode(questId, questState, currentNode));
+    const nodeConsequenceResult = applyMissionConsequencesForNode(questId, questState, currentNode);
+    if (nodeConsequenceResult.validationErrors?.length) {
+      const error = new Error('Invalid mission consequence definition.');
+      error.missionConsequenceResult = nodeConsequenceResult;
+      throw error;
+    }
     const currentIndex = questState.routeNodes.findIndex(node => node.id === currentNode.id);
     const nextNode = questState.routeNodes[currentIndex + 1];
     if (nextNode) {
@@ -1336,6 +1736,12 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
           : syncMissionActionPresentationState({ ...action, status: MISSION_ACTION_STATUSES.blocked });
       });
     } else {
+      const questConsequenceResult = applyMissionConsequencesForQuest(questId, questState);
+      if (questConsequenceResult.validationErrors?.length) {
+        const error = new Error('Invalid mission consequence definition.');
+        error.missionConsequenceResult = questConsequenceResult;
+        throw error;
+      }
       completeMissionInstanceState(questState);
       if (typeof completeQuest === 'function') completeQuest(questId);
     }
@@ -1349,33 +1755,49 @@ function advanceMissionActionInstance(questId, questState, eventType, data = {})
 function updateMissionProgress(eventType, data = {}) {
   const event = normalizeMissionEvent(eventType, data);
   const deferred = isLifeXPTransactionDeferred();
-  const previousState = deferred ? null : cloneSaveState(gameState);
-  const previousRawSave = deferred || typeof localStorage === 'undefined' ? null : localStorage.getItem('lifexp_save');
+  const previousState = cloneSaveState(gameState);
+  const previousRawSave = typeof localStorage === 'undefined' ? null : localStorage.getItem('lifexp_save');
   const previousNotices = pendingMissionRevealNotices.slice();
-  let updated = false;
+  const previousFollowUpNotices = pendingMissionFollowUpNotices.slice();
   const completionId = getMissionEventCompletionId(event);
-  if (event.type === 'task_completed' && event.derivedTaskId && completionId) {
-    updated = markDerivedTaskCompleted(event.derivedTaskId, completionId, event) || updated;
-  }
-  if (gameState.quests && Array.isArray(gameState.quests.active)) {
-    [...gameState.quests.active].forEach(questId => {
-      const questState = gameState.quests[questId];
-      if (!questState) return;
-      updated = advanceMissionActionInstance(questId, questState, event.type, event) || updated;
-    });
-  }
-  if (updated && !deferred) {
-    const saved = saveGame();
-    if (!saved) {
-      gameState = previousState;
-      pendingMissionRevealNotices = previousNotices;
-      if (typeof localStorage !== 'undefined' && previousRawSave !== null) {
-        try { localStorage.setItem('lifexp_save', previousRawSave); } catch (restoreError) { console.error('Could not restore the mission state:', restoreError); }
-      }
-      return false;
+  let updated = false;
+  let saveAttempted = false;
+  if (!deferred) beginLifeXPTransaction();
+  try {
+    if (event.type === 'task_completed' && event.derivedTaskId && completionId) {
+      updated = markDerivedTaskCompleted(event.derivedTaskId, completionId, event) || updated;
     }
+    if (gameState.quests && Array.isArray(gameState.quests.active)) {
+      [...gameState.quests.active].forEach(questId => {
+        const questState = gameState.quests[questId];
+        if (!questState) return;
+        updated = advanceMissionActionInstance(questId, questState, event.type, event) || updated;
+      });
+    }
+    if (updated && !deferred) {
+      saveAttempted = true;
+      if (!saveGame({ force: true })) throw new Error('save_failed');
+    }
+    return updated;
+  } catch (error) {
+    gameState = previousState;
+    pendingMissionRevealNotices = previousNotices;
+    pendingMissionFollowUpNotices = previousFollowUpNotices;
+    if (saveAttempted && typeof localStorage !== 'undefined') {
+      try {
+        if (previousRawSave === null) localStorage.removeItem('lifexp_save');
+        else localStorage.setItem('lifexp_save', previousRawSave);
+      } catch (restoreError) { console.error('Could not restore the mission state:', restoreError); }
+    }
+    if (error?.missionConsequenceResult?.validationErrors?.length) {
+      console.warn('Mission consequences rejected before save:', error.missionConsequenceResult.validationErrors);
+    } else {
+      console.warn('Mission progress transaction rolled back:', error);
+    }
+    return false;
+  } finally {
+    if (!deferred) endLifeXPTransaction();
   }
-  return updated;
 }
 
 // ===========================================================================
@@ -1669,6 +2091,7 @@ function applySchemaDefaults(input, warnings = []) {
     }
   }
   if (!isPlainObject(state.rewardLedger)) { state.rewardLedger = {}; recordSchemaDefault(warnings, 'rewardLedger'); }
+  if (!isPlainObject(state.worldState)) { state.worldState = {}; recordSchemaDefault(warnings, 'worldState'); } else state.worldState = normalizeWorldState(state.worldState);
   if (!isPlainObject(state.materialInteractions)) {
     state.materialInteractions = cloneSaveState(defaults.materialInteractions);
     recordSchemaDefault(warnings, 'materialInteractions');
@@ -2080,6 +2503,11 @@ function saveGame(options = {}) {
       const notices = pendingMissionRevealNotices;
       pendingMissionRevealNotices = [];
       announceMissionReveals(notices);
+    }
+    if (saved && pendingMissionFollowUpNotices.length > 0) {
+      const notices = pendingMissionFollowUpNotices;
+      pendingMissionFollowUpNotices = [];
+      announceMissionFollowUps(notices);
     }
     return saved;
   } catch (e) {
