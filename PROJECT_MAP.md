@@ -37,7 +37,11 @@ main
 
 Commit actual de main
 
-3688714428baa7767a083015d16e62f39f40deab
+d13acbf73901c3d6863463d41e9c6026404c4caf
+
+M0 del sistema de misiones
+
+Contrato aprobado y entregado localmente en `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md`. El modelo nuevo usa `mission actions` como unidad narrativa canónica dentro de `gameState.quests`; objectives legacy y stages DT-24 permanecen compatibles durante la transición. No se ha cambiado código runtime ni `saveVersion`. Siguiente fase: M1, fundamento persistente de acciones.
 
 Build efectiva
 
@@ -595,6 +599,12 @@ Pendiente
 
 QA final solo despues de cerrar las fases anteriores
 
+M0 — Mission System
+
+Completada
+
+Contrato aprobado y entregado localmente en `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md`. No se modificó código runtime ni `saveVersion`; objectives legacy y stages DT-24 quedan compatibles. M1 es el siguiente bloque.
+
 F6 - Contrato de publicación
 
 GitHub Pages debe publicar el artefacto generado por `.github/workflows/deploy-pages.yml`, no la raíz de `main`. `tools/build_release.js` genera `build-info.json` y `build-info.js` usando el commit de GitHub Actions. `data_tasks.js`, `main.js`, `ui_hub.js` y `sw.js` consumen ese manifiesto; el save no participa en el versionado.
@@ -773,6 +783,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-17 - M0 Mission System: se cierra el contrato de acciones narrativas. `LifeXP_MISSION_SYSTEM_CONTRACT_M0.md` define la separación entre catálogo y save, mission instances, route nodes, mission actions, eventos canónicos, tareas derivadas, revelaciones, consecuencias, follow-ups, fuentes pasivas/gremiales y recuperación. Se conserva la compatibilidad con objectives legacy y stages DT-24; no se cambia código runtime ni `saveVersion`. Siguiente fase: M1, fundamento persistente de acciones.
 
 2026-09-16 - F4: se prepara localmente `fix/f4-english-content-v1`. El motor reconciliara por ID los nombres y descripciones de las tareas oficiales persistidas, incluidos los textos de side quests, usando los catalogos actuales como fuente declarativa. Las tareas personalizadas y los datos de progreso quedan intactos. Tambien se corrigen las superficies de UI que aun mostraban espanol. Pendiente de colocar y verificar como jugador.
 
