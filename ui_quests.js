@@ -110,9 +110,57 @@ function showMissionRevealNotice(entry) {
   if (typeof showToast === 'function') showToast(message, 'gold');
 }
 
+function showMissionFollowUpNotice(notice) {
+  const quest = notice?.questId && typeof QUESTS !== 'undefined' ? QUESTS[notice.questId] : null;
+  const name = typeof quest?.name === 'string' && quest.name.trim() ? quest.name.trim() : 'A new follow-up';
+  if (typeof showToast === 'function') showToast(`Follow-up available: ${name}`, 'gold');
+}
+
+function showFollowUpQuestDetails(questId) {
+  const quest = typeof QUESTS !== 'undefined' ? QUESTS[questId] : null;
+  if (!quest || typeof getAvailableFollowUpQuests !== 'function' || !getAvailableFollowUpQuests().some(candidate => candidate.id === questId)) return;
+  const content = document.getElementById('modal-item-content');
+  if (!content) return;
+  const safeQuestId = missionUiEscape(questId);
+  const typeInfo = getQuestTypeInfo(quest.type);
+  content.innerHTML = `
+    <div class="quest-detail">
+      <div class="quest-detail-heading" style="border-color:${missionUiEscape(typeInfo.color || 'var(--gold)')};">
+        <div class="quest-detail-type">${missionUiEscape(typeInfo.icon || '📜')} Follow-up</div>
+        <h3 class="quest-detail-title" style="color:${missionUiEscape(typeInfo.color || 'var(--gold)')};">${missionUiEscape(quest.name)}</h3>
+      </div>
+      <section class="quest-detail-section">
+        <div class="quest-detail-kicker">New direction</div>
+        <div class="quest-situation-copy">${missionUiEscape(quest.desc || 'A new direction is available.')}</div>
+      </section>
+      <button class="btn btn-primary" type="button" onclick="acceptQuest('${safeQuestId}')">Accept follow-up</button>
+    </div>
+  `;
+  const actionBtn = document.getElementById('btn-item-action');
+  if (actionBtn) actionBtn.style.display = 'none';
+  openModal('modal-item');
+}
+
+function renderMissionFollowUps() {
+  const followUps = typeof getAvailableFollowUpQuests === 'function' ? getAvailableFollowUpQuests() : [];
+  if (followUps.length === 0) return '';
+  return `
+    <section class="card mission-follow-ups" aria-labelledby="mission-follow-ups-title" style="margin-bottom:12px;">
+      <div class="quest-detail-kicker" id="mission-follow-ups-title">Follow-ups available</div>
+      ${followUps.map(quest => `
+        <article class="quest-reveal" role="button" tabindex="0" onclick="showFollowUpQuestDetails('${missionUiEscape(quest.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showFollowUpQuestDetails('${missionUiEscape(quest.id)}')}">
+          <div class="quest-reveal-title">${missionUiEscape(quest.name)}</div>
+          <div class="quest-reveal-body">${missionUiEscape(quest.desc || '')}</div>
+        </article>
+      `).join('')}
+    </section>
+  `;
+}
+
 function renderMissionJournalSummary() {
   const entries = typeof getMissionJournalEntries === 'function' ? getMissionJournalEntries() : [];
-  if (entries.length === 0) return '';
+  const followUpsMarkup = renderMissionFollowUps();
+  if (entries.length === 0) return followUpsMarkup;
   return `
     <section class="card mission-journal-summary" aria-labelledby="mission-journal-title" style="margin-bottom:12px;">
       <div class="quest-detail-kicker" id="mission-journal-title">Journal</div>
@@ -123,6 +171,7 @@ function renderMissionJournalSummary() {
         </article>
       `).join('')}
     </section>
+    ${followUpsMarkup}
   `;
 }
 
