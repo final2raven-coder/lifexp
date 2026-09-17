@@ -74,7 +74,7 @@ const DEFAULT_GAME_STATE = {
   // Canonical quest state
   // questModelVersion is independent from saveVersion so DT-24 can evolve
   // without rewriting the global save migration chain.
-  questModelVersion: 2,
+  questModelVersion: 3,
   quests: {
     active: [],
     completed: [],
@@ -537,7 +537,7 @@ function getOverflowCount(cat) {
 // ===========================================================================
 
 const CURRENT_SAVE_VERSION = 4;
-const CURRENT_QUEST_MODEL_VERSION = 2;
+const CURRENT_QUEST_MODEL_VERSION = 3;
 const DEFAULT_QUEST_SLOT_LIMITS = Object.freeze({
   personal_project: 3,
   guild_order: 1
@@ -572,32 +572,6 @@ function normalizeCompletionIds(value) {
   return [...new Set(value.filter(id => typeof id === 'string' && id.length > 0))];
 }
 
-function normalizeQuestObjectiveState(objective) {
-  if (!isPlainObject(objective)) return objective;
-  const normalized = { ...objective };
-  normalized.consumedCompletionIds = normalizeCompletionIds(normalized.consumedCompletionIds);
-  return normalized;
-}
-
-function normalizeQuestStageState(stage, index) {
-  if (!isPlainObject(stage)) {
-    return {
-      id: `stage_${index + 1}`,
-      status: index === 0 ? 'active' : 'locked',
-      objectives: []
-    };
-  }
-  const normalized = { ...stage };
-  normalized.id = typeof normalized.id === 'string' && normalized.id ? normalized.id : `stage_${index + 1}`;
-  normalized.status = ['locked', 'active', 'completed'].includes(normalized.status)
-    ? normalized.status
-    : (index === 0 ? 'active' : 'locked');
-  normalized.objectives = Array.isArray(normalized.objectives)
-    ? normalized.objectives.map(normalizeQuestObjectiveState)
-    : [];
-  return normalized;
-}
-
 const QUEST_INSTANCE_STATUS = Object.freeze({
   active: 'active',
   completed: 'completed',
@@ -605,83 +579,328 @@ const QUEST_INSTANCE_STATUS = Object.freeze({
   needsReview: 'needs_review'
 });
 
+const MISSION_ACTION_STATUSES = Object.freeze({
+  available: 'available',
+  inProgress: 'in_progress',
+  awaitingTask: 'awaiting_task',
+  completed: 'completed',
+  blocked: 'blocked',
+  needsRecovery: 'needs_recovery'
+});
+
+const MISSION_ROUTE_NODE_STATUSES = Object.freeze({
+  locked: 'locked',
+  available: 'available',
+  active: 'active',
+  completed: 'completed',
+  blocked: 'blocked',
+  needsRecovery: 'needs_recovery'
+});
+
+function normalizeMissionActionCriterion(value, fallback = {}) {
+  const source = isPlainObject(value) ? value : {};
+  const criterion = { ...source, ...fallback };
+  if (criterion.eventType === 'task_complete') criterion.eventType = 'task_completed';
+  if (typeof criterion.eventType !== 'string' || !criterion.eventType) criterion.eventType = 'task_completed';
+  if (criterion.category !== undefined && criterion.category !== null && typeof criterion.category !== 'string') delete criterion.category;
+  if (criterion.taskId !== undefined && criterion.taskId !== null && typeof criterion.taskId !== 'string') delete criterion.taskId;
+  if (criterion.theme !== undefined && criterion.theme !== null && typeof criterion.theme !== 'string') delete criterion.theme;
+  if (criterion.derivedTaskId !== undefined && criterion.derivedTaskId !== null && typeof criterion.derivedTaskId !== 'string') delete criterion.derivedTaskId;
+  if (criterion.enemyId !== undefined && criterion.enemyId !== null && typeof criterion.enemyId !== 'string') delete criterion.enemyId;
+  if (criterion.level !== undefined && !Number.isFinite(Number(criterion.level))) delete criterion.level;
+  return criterion;
+}
+
+function getMissionActionTarget(action) {
+  if (action?.criterion?.eventType === 'level_up' && Number.isFinite(Number(action.criterion.level))) {
+    return Math.max(1, Number(action.criterion.level));
+  }
+  return Number.isFinite(Number(action?.target)) ? Math.max(1, Number(action.target)) : 1;
+}
+
+function syncMissionActionPresentationState(action) {
+  if (!isPlainObject(action)) return action;
+  // These fields are persisted only as stable presentation aliases. Their
+  // values must always be derived from the canonical action state.
+  action.type = action.legacyType || action.type || null;
+  action.category = action.criterion?.category ?? null;
+  action.taskId = action.criterion?.taskId ?? null;
+  action.enemyId = action.criterion?.enemyId ?? null;
+  action.level = action.criterion?.level ?? null;
+  action.count = action.target;
+  action.completed = action.status === MISSION_ACTION_STATUSES.completed;
+  action.consumedCompletionIds = [...(Array.isArray(action.consumedEventIds) ? action.consumedEventIds : [])];
+  return action;
+}
+
+function normalizeMissionActionState(value, index = 0) {
+  const source = isPlainObject(value) ? value : {};
+  const action = { ...source };
+  action.id = typeof action.id === 'string' && action.id ? action.id : `action_${index + 1}`;
+  action.nodeId = typeof action.nodeId === 'string' && action.nodeId ? action.nodeId : 'root';
+  action.criterion = normalizeMissionActionCriterion(action.criterion, {});
+  action.target = getMissionActionTarget({ ...action, criterion: action.criterion });
+  const rawProgress = Number.isFinite(Number(action.progress)) ? Math.max(0, Number(action.progress)) : 0;
+  action.progress = Math.min(action.target, rawProgress);
+  action.consumedEventIds = normalizeCompletionIds(action.consumedEventIds);
+  const validStatuses = Object.values(MISSION_ACTION_STATUSES);
+  action.status = validStatuses.includes(action.status) ? action.status : MISSION_ACTION_STATUSES.available;
+  if (action.progress >= action.target) action.status = MISSION_ACTION_STATUSES.completed;
+  if (!isPlainObject(action.requirements)) action.requirements = {};
+  syncMissionActionPresentationState(action);
+  return action;
+}
+
+function normalizeMissionRouteNode(value, index = 0) {
+  const source = isPlainObject(value) ? value : {};
+  const node = { ...source };
+  node.id = typeof node.id === 'string' && node.id ? node.id : `node_${index + 1}`;
+  node.actionIds = normalizeCompletionIds(node.actionIds);
+  const validStatuses = Object.values(MISSION_ROUTE_NODE_STATUSES);
+  node.status = validStatuses.includes(node.status) ? node.status : (index === 0 ? MISSION_ROUTE_NODE_STATUSES.active : MISSION_ROUTE_NODE_STATUSES.locked);
+  return node;
+}
+
+function getQuestCatalogDefinition(questId) {
+  if (typeof QUESTS === 'undefined' || !isPlainObject(QUESTS)) return null;
+  return isPlainObject(QUESTS[questId]) ? QUESTS[questId] : null;
+}
+
+function getObjectiveCriterion(objective) {
+  const source = isPlainObject(objective) ? objective : {};
+  const eventByType = {
+    complete_tasks: 'task_completed',
+    defeat_enemy: 'enemy_defeated',
+    defeat_boss: 'boss_defeated',
+    reach_level: 'level_up',
+    equip_item: 'item_equipped'
+  };
+  const criterion = {
+    eventType: eventByType[source.type] || source.eventType || 'task_completed'
+  };
+  for (const key of ['category', 'taskId', 'theme', 'derivedTaskId', 'enemyId']) {
+    if (source[key] !== undefined) criterion[key] = source[key];
+  }
+  if (source.level !== undefined) criterion.level = source.level;
+  return normalizeMissionActionCriterion(criterion);
+}
+
+function createTranslatedAction(objective, previous, nodeId, nodeStatus, index, terminal = false) {
+  const source = isPlainObject(objective) ? objective : {};
+  const old = isPlainObject(previous) ? previous : {};
+  const criterion = getObjectiveCriterion(source);
+  const target = criterion.eventType === 'level_up' && Number.isFinite(Number(source.level))
+    ? Math.max(1, Number(source.level))
+    : (Number.isFinite(Number(source.count)) ? Math.max(1, Number(source.count)) : 1);
+  const progress = terminal
+    ? target
+    : Math.min(target, Number.isFinite(Number(old.progress)) ? Math.max(0, Number(old.progress)) : (Number.isFinite(Number(source.progress)) ? Math.max(0, Number(source.progress)) : 0));
+  const completed = terminal || old.completed === true || source.completed === true || progress >= target;
+  let status;
+  if (completed) status = MISSION_ACTION_STATUSES.completed;
+  else if (nodeStatus === MISSION_ROUTE_NODE_STATUSES.locked) status = MISSION_ACTION_STATUSES.blocked;
+  else if (nodeStatus === MISSION_ROUTE_NODE_STATUSES.needsRecovery) status = MISSION_ACTION_STATUSES.needsRecovery;
+  else status = MISSION_ACTION_STATUSES.inProgress;
+  return normalizeMissionActionState({
+    id: typeof source.id === 'string' && source.id ? source.id : `objective_${index + 1}`,
+    nodeId,
+    status,
+    progress,
+    target,
+    criterion,
+    requirements: {},
+    consumedEventIds: old.consumedCompletionIds || old.consumedEventIds || [],
+    legacyType: typeof source.type === 'string' ? source.type : null
+  }, index);
+}
+
+function getDefinitionStage(quest, stageId, index) {
+  const stages = Array.isArray(quest?.stages) ? quest.stages : (Array.isArray(quest?.chapters) ? quest.chapters : []);
+  return stages.find(stage => stage && stage.id === stageId) || stages[index] || null;
+}
+
+function getLegacyStageSources(value, quest) {
+  if (Array.isArray(value.stages)) {
+    return value.stages.map((stage, index) => ({
+      id: isPlainObject(stage) && typeof stage.id === 'string' ? stage.id : `stage_${index + 1}`,
+      state: isPlainObject(stage) ? stage : {},
+      definition: getDefinitionStage(quest, stage?.id, index),
+      index
+    }));
+  }
+  if (Array.isArray(quest?.chapters)) {
+    const currentChapter = Number.isInteger(value.currentChapter) ? Math.max(0, value.currentChapter) : 0;
+    const chapterObjectives = isPlainObject(value.chapterObjectives) ? value.chapterObjectives : {};
+    return quest.chapters.map((chapter, index) => ({
+      id: typeof chapter.id === 'string' ? chapter.id : `chapter_${index + 1}`,
+      state: {
+        id: chapter.id,
+        status: index < currentChapter ? 'completed' : index === currentChapter ? 'active' : 'locked',
+        objectives: index === currentChapter
+          ? (Array.isArray(value.objectives) && value.objectives.length > 0 ? value.objectives : chapterObjectives[String(index)] || chapter.objectives || [])
+          : (chapterObjectives[String(index)] || chapter.objectives || [])
+      },
+      definition: chapter,
+      index
+    }));
+  }
+  return [];
+}
+
+function translateQuestInstanceToActions(value, questId, context = {}) {
+  if (!isPlainObject(value)) return value;
+  const quest = getQuestCatalogDefinition(questId);
+  const source = { ...value };
+  const hasActions = Array.isArray(source.actions);
+  if (hasActions) return normalizeMissionActionInstance(source, context);
+
+  const actions = [];
+  const routeNodes = [];
+  const stageSources = getLegacyStageSources(source, quest);
+  const hasStages = stageSources.length > 0;
+  const terminal = context.completed === true || source.status === QUEST_INSTANCE_STATUS.completed;
+  let migrationSource;
+
+  if (hasStages) {
+    for (const stageSource of stageSources) {
+      const stageState = stageSource.state;
+      const definition = stageSource.definition;
+      const templates = Array.isArray(stageState.objectives) && stageState.objectives.length > 0
+        ? stageState.objectives
+        : (Array.isArray(definition?.objectives) ? definition.objectives : []);
+      const previousById = new Map((Array.isArray(stageState.objectives) ? stageState.objectives : []).filter(item => item && typeof item.id === 'string').map(item => [item.id, item]));
+      const nodeStatus = terminal || stageState.status === 'completed'
+        ? MISSION_ROUTE_NODE_STATUSES.completed
+        : stageState.status === 'active'
+          ? MISSION_ROUTE_NODE_STATUSES.active
+          : stageState.status === 'needs_recovery'
+            ? MISSION_ROUTE_NODE_STATUSES.needsRecovery
+            : MISSION_ROUTE_NODE_STATUSES.locked;
+      const node = normalizeMissionRouteNode({ id: stageSource.id, status: nodeStatus, actionIds: [] }, stageSource.index);
+      templates.forEach((objective, index) => {
+        const action = createTranslatedAction(objective, previousById.get(objective?.id), node.id, node.status, actions.length, terminal || node.status === MISSION_ROUTE_NODE_STATUSES.completed);
+        actions.push(action);
+        node.actionIds.push(action.id);
+      });
+      routeNodes.push(node);
+    }
+    migrationSource = {
+      model: Array.isArray(source.stages) ? 'dt24_stages' : 'legacy_chapters',
+      questModelVersion: 2,
+      stages: Array.isArray(source.stages) ? cloneSaveState(source.stages) : null,
+      objectives: Array.isArray(source.objectives) ? cloneSaveState(source.objectives) : null,
+      chapterObjectives: isPlainObject(source.chapterObjectives) ? cloneSaveState(source.chapterObjectives) : null,
+      currentStage: Number.isInteger(source.currentStage) ? source.currentStage : null,
+      currentChapter: Number.isInteger(source.currentChapter) ? source.currentChapter : null
+    };
+  } else {
+    const templates = Array.isArray(source.objectives) && source.objectives.length > 0
+      ? source.objectives
+      : (Array.isArray(quest?.objectives) ? quest.objectives : []);
+    const previousById = new Map((Array.isArray(source.objectives) ? source.objectives : []).filter(item => item && typeof item.id === 'string').map(item => [item.id, item]));
+    const node = normalizeMissionRouteNode({ id: 'root', status: terminal ? 'completed' : MISSION_ROUTE_NODE_STATUSES.active, actionIds: [] }, 0);
+    templates.forEach((objective, index) => {
+      const action = createTranslatedAction(objective, previousById.get(objective?.id), node.id, node.status, actions.length, terminal || node.status === MISSION_ROUTE_NODE_STATUSES.completed);
+      actions.push(action);
+      node.actionIds.push(action.id);
+    });
+    routeNodes.push(node);
+    migrationSource = {
+      model: 'legacy_objectives',
+      questModelVersion: 2,
+      objectives: Array.isArray(source.objectives) ? cloneSaveState(source.objectives) : null,
+      currentChapter: Number.isInteger(source.currentChapter) ? source.currentChapter : null
+    };
+  }
+
+  const translated = { ...source };
+  translated.actions = actions;
+  translated.routeNodes = routeNodes;
+  translated.currentNodeId = routeNodes.find(node => node.status === MISSION_ROUTE_NODE_STATUSES.active)?.id || null;
+  translated.activeActionId = actions.find(action => action.status === MISSION_ACTION_STATUSES.inProgress || action.status === MISSION_ACTION_STATUSES.awaitingTask)?.id || null;
+  translated.completedActionIds = actions.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id);
+  translated.consumedEventIds = normalizeCompletionIds(source.consumedEventIds);
+  translated.discoveredRevealIds = normalizeCompletionIds(source.discoveredRevealIds);
+  translated.consequenceClaims = isPlainObject(source.consequenceClaims) ? cloneSaveState(source.consequenceClaims) : {};
+  translated.recovery = isPlainObject(source.recovery)
+    ? { ...source.recovery }
+    : { status: 'none', reason: null, options: [] };
+  translated.actionModelVersion = 1;
+  translated.migrationSource = migrationSource;
+  translated.status = terminal ? QUEST_INSTANCE_STATUS.completed : (source.status === QUEST_INSTANCE_STATUS.failed ? QUEST_INSTANCE_STATUS.failed : QUEST_INSTANCE_STATUS.active);
+  translated.currentStage = translated.currentNodeId ? routeNodes.findIndex(node => node.id === translated.currentNodeId) : null;
+  delete translated.objectives;
+  delete translated.stages;
+  delete translated.chapterObjectives;
+  return translated;
+}
+
+function normalizeMissionActionInstance(value, context = {}) {
+  const normalized = { ...value };
+  normalized.actions = Array.isArray(normalized.actions) ? normalized.actions.map(normalizeMissionActionState) : [];
+  normalized.routeNodes = Array.isArray(normalized.routeNodes)
+    ? normalized.routeNodes.map(normalizeMissionRouteNode)
+    : [normalizeMissionRouteNode({ id: 'root', status: 'active', actionIds: normalized.actions.map(action => action.id) }, 0)];
+  const actionIds = new Set(normalized.actions.map(action => action.id));
+  normalized.routeNodes = normalized.routeNodes.map(node => ({
+    ...node,
+    actionIds: node.actionIds.filter(id => actionIds.has(id))
+  }));
+  if (normalized.actions.length === 0 && normalized.status !== QUEST_INSTANCE_STATUS.completed) {
+    normalized.recovery = { status: 'needs_review', reason: 'no_translatable_actions', options: [] };
+  }
+  normalized.consumedEventIds = normalizeCompletionIds(normalized.consumedEventIds);
+  normalized.completedActionIds = normalizeCompletionIds(normalized.completedActionIds).filter(id => actionIds.has(id));
+  normalized.discoveredRevealIds = normalizeCompletionIds(normalized.discoveredRevealIds);
+  normalized.consequenceClaims = isPlainObject(normalized.consequenceClaims) ? normalized.consequenceClaims : {};
+  normalized.recovery = isPlainObject(normalized.recovery)
+    ? { status: typeof normalized.recovery.status === 'string' ? normalized.recovery.status : 'none', ...normalized.recovery }
+    : { status: 'none', reason: null, options: [] };
+  normalized.actionModelVersion = 1;
+  const activeNode = normalized.routeNodes.find(node => node.status === MISSION_ROUTE_NODE_STATUSES.active);
+  normalized.currentNodeId = typeof normalized.currentNodeId === 'string' && normalized.routeNodes.some(node => node.id === normalized.currentNodeId)
+    ? normalized.currentNodeId
+    : (activeNode?.id || null);
+  const currentNode = normalized.routeNodes.find(node => node.id === normalized.currentNodeId);
+  if (currentNode && currentNode.status === MISSION_ROUTE_NODE_STATUSES.active) {
+    normalized.actions = normalized.actions.map(action => {
+      if (action.status === MISSION_ACTION_STATUSES.completed) return action;
+      if (action.nodeId !== currentNode.id) return { ...action, status: MISSION_ACTION_STATUSES.blocked };
+      if (action.status === MISSION_ACTION_STATUSES.blocked || action.status === MISSION_ACTION_STATUSES.available) return { ...action, status: MISSION_ACTION_STATUSES.inProgress };
+      return action;
+    });
+  }
+  normalized.completedActionIds = normalized.actions.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id);
+  normalized.activeActionId = normalized.actions.find(action => action.status === MISSION_ACTION_STATUSES.inProgress || action.status === MISSION_ACTION_STATUSES.awaitingTask)?.id || null;
+  if (context.completed === true || normalized.status === QUEST_INSTANCE_STATUS.completed) {
+    normalized.status = QUEST_INSTANCE_STATUS.completed;
+    normalized.currentNodeId = null;
+    normalized.currentStage = null;
+    normalized.routeNodes = normalized.routeNodes.map(node => ({ ...node, status: MISSION_ROUTE_NODE_STATUSES.completed }));
+    normalized.actions = normalized.actions.map(action => ({ ...action, status: MISSION_ACTION_STATUSES.completed, progress: action.target }));
+    normalized.completedActionIds = normalized.actions.map(action => action.id);
+    normalized.activeActionId = null;
+  } else if (normalized.status !== QUEST_INSTANCE_STATUS.failed) {
+    normalized.status = QUEST_INSTANCE_STATUS.active;
+  }
+  return normalized;
+}
+
 function normalizeQuestInstanceState(value, context = {}) {
   if (!isPlainObject(value)) return value;
-  const normalized = { ...value };
-  if (Array.isArray(normalized.objectives)) {
-    normalized.objectives = normalized.objectives.map(normalizeQuestObjectiveState);
-  }
-
-  const hasStages = Array.isArray(normalized.stages);
-  if (hasStages) {
-    normalized.stages = normalized.stages.map(normalizeQuestStageState);
-  }
-
-  const statusWasCompleted = normalized.status === QUEST_INSTANCE_STATUS.completed;
-  const statusWasFailed = normalized.status === QUEST_INSTANCE_STATUS.failed;
-  const stagesAreComplete = hasStages && normalized.stages.length > 0
-    && normalized.stages.every(stage => stage.status === QUEST_INSTANCE_STATUS.completed);
-  const isTerminal = context.completed === true || statusWasCompleted || stagesAreComplete;
-
-  if (isTerminal) {
-    // Terminal state is explicit and self-contained. Collection membership is
-    // reconciled by normalizeQuestPersistence, while this object guarantees
-    // that no stage index can point back into a completed quest.
-    normalized.status = QUEST_INSTANCE_STATUS.completed;
-    normalized.currentStage = null;
-    if (hasStages) {
-      normalized.stages = normalized.stages.map(stage => ({
-        ...stage,
-        status: QUEST_INSTANCE_STATUS.completed
-      }));
-    }
-  } else if (statusWasFailed || context.failed === true) {
-    normalized.status = QUEST_INSTANCE_STATUS.failed;
-    normalized.currentStage = null;
-  } else if (context.active === true || normalized.status === QUEST_INSTANCE_STATUS.active || hasStages) {
-    normalized.status = QUEST_INSTANCE_STATUS.active;
-    if (hasStages && normalized.stages.length > 0) {
-      const declaredStage = Number.isInteger(normalized.currentStage) ? normalized.currentStage : -1;
-      const firstActiveStage = normalized.stages.findIndex(stage => stage.status === QUEST_INSTANCE_STATUS.active);
-      const fallbackStage = firstActiveStage >= 0 ? firstActiveStage : 0;
-      const currentStage = Math.min(
-        normalized.stages.length - 1,
-        Math.max(0, declaredStage >= 0 ? declaredStage : fallbackStage)
-      );
-      normalized.currentStage = currentStage;
-      normalized.stages = normalized.stages.map((stage, index) => ({
-        ...stage,
-        status: index < currentStage
-          ? QUEST_INSTANCE_STATUS.completed
-          : index === currentStage
-            ? QUEST_INSTANCE_STATUS.active
-            : 'locked'
-      }));
-    } else if (!Number.isInteger(normalized.currentStage) || normalized.currentStage < 0) {
-      normalized.currentStage = 0;
-    }
-  }
-
-  normalized.derivedTaskIds = Array.isArray(normalized.derivedTaskIds)
-    ? [...new Set(normalized.derivedTaskIds.filter(id => typeof id === 'string' && id))]
-    : [];
-  return normalized;
+  const translated = translateQuestInstanceToActions(value, context.questId, context);
+  return normalizeMissionActionInstance(translated, context);
 }
 
 function normalizeDerivedTaskState(value) {
   if (!isPlainObject(value)) {
-    return {
-      status: 'needs_review',
-      rawValue: value === undefined ? null : cloneSaveState(value),
-      taskHistory: []
-    };
+    return { status: 'needs_review', rawValue: value === undefined ? null : cloneSaveState(value), taskHistory: [] };
   }
   const normalized = { ...value };
   if (typeof normalized.id !== 'string' || !normalized.id) normalized.status = 'needs_review';
-  if (!['pending', 'accepted', 'completed', 'expired', 'needs_review'].includes(normalized.status)) {
-    normalized.status = 'pending';
-  }
+  if (!['pending', 'accepted', 'completed', 'expired', 'needs_review'].includes(normalized.status)) normalized.status = 'pending';
   if (typeof normalized.sourceQuestId !== 'string' || !normalized.sourceQuestId) normalized.status = 'needs_review';
+  if (typeof normalized.sourceActionId !== 'string' || !normalized.sourceActionId) normalized.status = 'needs_review';
   if (typeof normalized.templateId !== 'string' || !normalized.templateId) normalized.status = 'needs_review';
   if (!Array.isArray(normalized.taskHistory)) normalized.taskHistory = [];
   return normalized;
@@ -695,24 +914,18 @@ function normalizeQuestPersistence(state, warnings = []) {
   if (!Array.isArray(questState.failed)) questState.failed = [];
   if (questState.dailyReset !== null && typeof questState.dailyReset !== 'string') questState.dailyReset = null;
   questState.slotLimits = normalizeQuestSlotLimits(questState.slotLimits, warnings);
-  questState.availableFollowUps = Array.isArray(questState.availableFollowUps)
-    ? [...new Set(questState.availableFollowUps.filter(id => typeof id === 'string' && id))]
-    : [];
-  questState.derivedTasks = Array.isArray(questState.derivedTasks)
-    ? questState.derivedTasks.map(normalizeDerivedTaskState)
-    : [];
+  questState.availableFollowUps = Array.isArray(questState.availableFollowUps) ? [...new Set(questState.availableFollowUps.filter(id => typeof id === 'string' && id))] : [];
+  questState.derivedTasks = Array.isArray(questState.derivedTasks) ? questState.derivedTasks.map(normalizeDerivedTaskState) : [];
   const questIds = new Set([...questState.active, ...questState.completed, ...questState.failed]);
   for (const questId of questIds) {
     if (typeof questId !== 'string' || !isPlainObject(questState[questId])) continue;
     const normalized = normalizeQuestInstanceState(questState[questId], {
+      questId,
       active: questState.active.includes(questId),
       completed: questState.completed.includes(questId),
       failed: questState.failed.includes(questId)
     });
     questState[questId] = normalized;
-
-    // Keep the collection indexes and the instance status as one canonical
-    // state. In particular, a terminal staged instance cannot remain active.
     if (normalized.status === QUEST_INSTANCE_STATUS.completed) {
       questState.active = questState.active.filter(id => id !== questId);
       questState.failed = questState.failed.filter(id => id !== questId);
@@ -725,6 +938,97 @@ function normalizeQuestPersistence(state, warnings = []) {
   }
   state.questModelVersion = CURRENT_QUEST_MODEL_VERSION;
   return state;
+}
+
+function completeMissionInstanceState(questState) {
+  if (!isPlainObject(questState)) return false;
+  questState.status = QUEST_INSTANCE_STATUS.completed;
+  questState.currentNodeId = null;
+  questState.currentStage = null;
+  questState.activeActionId = null;
+  questState.actions = (Array.isArray(questState.actions) ? questState.actions : []).map(action => syncMissionActionPresentationState({ ...action, status: MISSION_ACTION_STATUSES.completed, progress: action.target }));
+  questState.completedActionIds = questState.actions.map(action => action.id);
+  questState.routeNodes = (Array.isArray(questState.routeNodes) ? questState.routeNodes : []).map(node => ({ ...node, status: MISSION_ROUTE_NODE_STATUSES.completed }));
+  return true;
+}
+
+function getMissionEventCompletionId(data = {}) {
+  return [data.completionId, data.claimId, data.eventId].find(value => typeof value === 'string' && value.length > 0) || null;
+}
+
+function missionActionMatchesEvent(action, eventType, data = {}) {
+  if (!action || action.status === MISSION_ACTION_STATUSES.completed || action.status === MISSION_ACTION_STATUSES.blocked) return false;
+  const criterion = action.criterion || {};
+  const normalizedType = eventType === 'task_complete' ? 'task_completed' : eventType;
+  if (criterion.eventType !== normalizedType) return false;
+  if (criterion.category && criterion.category !== data.category) return false;
+  if (criterion.taskId && criterion.taskId !== data.taskId) return false;
+  if (criterion.derivedTaskId && criterion.derivedTaskId !== data.derivedTaskId) return false;
+  if (criterion.theme && !(Array.isArray(data.themes) && data.themes.includes(criterion.theme))) return false;
+  if (criterion.enemyId && criterion.enemyId !== data.enemyId) return false;
+  if (normalizedType === 'level_up' && Number(data.level) < Number(criterion.level)) return false;
+  return true;
+}
+
+function applyMissionEventToAction(action, eventType, data = {}, completionId) {
+  if (!missionActionMatchesEvent(action, eventType, data) || !completionId) return false;
+  if (!Array.isArray(action.consumedEventIds)) action.consumedEventIds = [];
+  if (action.consumedEventIds.includes(completionId)) return false;
+  action.consumedEventIds.push(completionId);
+  action.consumedCompletionIds = [...action.consumedEventIds];
+  if (action.criterion.eventType === 'level_up') action.progress = Math.max(action.progress, Number(data.level) || 0);
+  else if (action.criterion.eventType === 'defeat_boss' || action.criterion.eventType === 'item_equipped') action.progress = action.target;
+  else action.progress = Math.min(action.target, action.progress + 1);
+  if (action.progress >= action.target) action.status = MISSION_ACTION_STATUSES.completed;
+  syncMissionActionPresentationState(action);
+  return true;
+}
+
+function advanceMissionActionInstance(questId, questState, eventType, data = {}) {
+  if (!questState || questState.status === QUEST_INSTANCE_STATUS.completed || !Array.isArray(questState.actions)) return false;
+  const completionId = getMissionEventCompletionId(data);
+  if (!completionId || questState.consumedEventIds.includes(completionId)) return false;
+  const nodeId = questState.currentNodeId;
+  const candidates = questState.actions.filter(action => action.nodeId === nodeId);
+  let updated = false;
+  for (const action of candidates) updated = applyMissionEventToAction(action, eventType, data, completionId) || updated;
+  if (!updated) return false;
+  questState.consumedEventIds.push(completionId);
+  questState.completedActionIds = questState.actions.filter(action => action.status === MISSION_ACTION_STATUSES.completed).map(action => action.id);
+  const currentNode = questState.routeNodes.find(node => node.id === nodeId);
+  const nodeComplete = currentNode && currentNode.actionIds.length > 0 && currentNode.actionIds.every(actionId => questState.completedActionIds.includes(actionId));
+  if (nodeComplete) {
+    currentNode.status = MISSION_ROUTE_NODE_STATUSES.completed;
+    const currentIndex = questState.routeNodes.findIndex(node => node.id === currentNode.id);
+    const nextNode = questState.routeNodes[currentIndex + 1];
+    if (nextNode) {
+      nextNode.status = MISSION_ROUTE_NODE_STATUSES.active;
+      questState.currentNodeId = nextNode.id;
+      questState.actions = questState.actions.map(action => {
+        if (action.status === MISSION_ACTION_STATUSES.completed) return action;
+        return action.nodeId === nextNode.id
+          ? syncMissionActionPresentationState({ ...action, status: MISSION_ACTION_STATUSES.inProgress })
+          : syncMissionActionPresentationState({ ...action, status: MISSION_ACTION_STATUSES.blocked });
+      });
+    } else {
+      completeMissionInstanceState(questState);
+      if (typeof completeQuest === 'function') completeQuest(questId);
+    }
+  }
+  questState.activeActionId = questState.actions.find(action => action.status === MISSION_ACTION_STATUSES.inProgress || action.status === MISSION_ACTION_STATUSES.awaitingTask)?.id || null;
+  return true;
+}
+
+function updateMissionProgress(eventType, data = {}) {
+  if (!gameState.quests || !Array.isArray(gameState.quests.active)) return false;
+  let updated = false;
+  [...gameState.quests.active].forEach(questId => {
+    const questState = gameState.quests[questId];
+    if (!questState) return;
+    updated = advanceMissionActionInstance(questId, questState, eventType, data) || updated;
+  });
+  if (updated) saveGame();
+  return updated;
 }
 
 // ===========================================================================
@@ -1140,7 +1444,9 @@ function isCanonicalQuestState(value) {
     const questState = value[questId];
     if (!isPlainObject(questState)) return false;
     const currentDefinition = typeof QUESTS !== 'undefined' ? QUESTS[questId] : null;
-    return !currentDefinition || Array.isArray(questState.objectives);
+    // Only actions are canonical. Legacy objectives and stages are accepted
+    // by the migration boundary, never by the execution model.
+    return !currentDefinition || Array.isArray(questState.actions);
   });
 }
 
@@ -1337,7 +1643,11 @@ function migrateV2ToV3(state, context = {}) {
   if (context.hasPartialCanonicalQuestState && !context.hasUsableLegacyQuestState) {
     throw new Error('Partial canonical quest state cannot be reconstructed safely without usable legacy activeQuests.');
   }
-  if (!context.hasCanonicalQuestState) migrateQuestState(state, true);
+  const hasTranslatedActionState = isPlainObject(state.quests)
+    && Array.isArray(state.quests.active)
+    && state.quests.active.length > 0
+    && state.quests.active.every(questId => isPlainObject(state.quests[questId]) && Array.isArray(state.quests[questId].actions));
+  if (!context.hasCanonicalQuestState && !hasTranslatedActionState) migrateQuestState(state, true);
   state.guildId = state.guildId ?? null;
   state.guildName = state.guildName ?? null;
   state.guildMembers = Array.isArray(state.guildMembers) ? state.guildMembers : [];
@@ -1347,10 +1657,16 @@ function migrateV2ToV3(state, context = {}) {
   return state;
 }
 
+function migrateQuestModelV2ToV3(state) {
+  normalizeQuestPersistence(state);
+  state.questModelVersion = CURRENT_QUEST_MODEL_VERSION;
+  return state;
+}
+
 function migrateV4ToCurrent(state) {
   if (state.name === 'Aventurero') state.name = 'Adventurer';
   migrateOfficialTaskText(state);
-  normalizeQuestPersistence(state);
+  migrateQuestModelV2ToV3(state);
   return state;
 }
 
@@ -1369,7 +1685,10 @@ const MIGRATIONS = [
 
 function runMigrations(parsed, from, warnings) {
   const hasCanonicalQuestState = Object.prototype.hasOwnProperty.call(parsed, 'quests') && isCanonicalQuestState(parsed.quests);
-  const hasPartialCanonicalQuestState = Object.prototype.hasOwnProperty.call(parsed, 'quests') && !hasCanonicalQuestState;
+  const hasLegacyQuestModel = Number(parsed.questModelVersion) < CURRENT_QUEST_MODEL_VERSION;
+  const hasPartialCanonicalQuestState = Object.prototype.hasOwnProperty.call(parsed, 'quests')
+    && !hasCanonicalQuestState
+    && !hasLegacyQuestModel;
   const hasUsableLegacyQuestState = isUsableLegacyQuestState(parsed.activeQuests);
   let candidate = applySchemaDefaults({ ...parsed, saveVersion: from }, warnings);
   candidate.saveVersion = from;

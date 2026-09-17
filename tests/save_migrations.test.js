@@ -80,11 +80,13 @@ function createHarness(rawSave, storageEntries = {}) {
     getDefaultState: () => DEFAULT_GAME_STATE,
     getTaskAvailability,
     isTaskDue,
+    updateMissionProgress,
     isTaskOverdue,
     createTaskHistoryEntry,
     getWarnings: () => [],
     getSave: () => localStorage.getItem('lifexp_save'),
-    getSnapshotKeys: () => Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter(key => key && key.startsWith('lifexp_premigration_'))
+    getSnapshotKeys: () => Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter(key => key && key.startsWith('lifexp_premigration_')),
+    updateMissionProgress
   };`, context);
   return { api: context.__lifexp, storage, warnings, visibleErrors };
 }
@@ -98,6 +100,7 @@ function loadFixture(fixture, storageEntries) {
 
 function assertCanonicalState(state) {
   assert.equal(state.saveVersion, 4);
+  assert.equal(state.questModelVersion, 3);
   assert.ok(Array.isArray(state.inventory));
   assert.ok(state.equipment && Object.prototype.hasOwnProperty.call(state.equipment, 'weapon'));
   assert.ok(state.itemSystem && state.itemSystem.attunement);
@@ -169,10 +172,13 @@ function testV2ActiveQuestProgressMigration() {
   assert.equal(loaded.result, true);
   assertCanonicalState(loaded.state);
   assert.equal(JSON.stringify(loaded.state.quests.active), JSON.stringify(['quest_progress']));
-  assert.equal(loaded.state.quests.quest_progress.objectives.length, 2);
-  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 2);
-  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_2').progress, 0);
-  assert.equal(loaded.state.quests.quest_progress.objectives.some(objective => objective.id === 'legacy_obj'), false);
+  assert.equal(loaded.state.questModelVersion, 3);
+  assert.equal(loaded.state.quests.quest_progress.actionModelVersion, 1);
+  assert.equal(loaded.state.quests.quest_progress.actions.length, 2);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 2);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_2').progress, 0);
+  assert.equal(loaded.state.quests.quest_progress.actions.some(action => action.id === 'legacy_obj'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(loaded.state.quests.quest_progress, 'objectives'), false);
   assert.equal(loaded.state.migrationMarker, 'preserve-me');
   assert.ok(loaded.warnings.some(message => message.includes('legacy_obj')));
 }
@@ -196,10 +202,11 @@ function testV2WithCanonicalQuestState() {
   const loaded = loadFixture(fixture);
   assert.equal(loaded.result, true);
   assertCanonicalState(loaded.state);
-  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 1);
-  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_2').progress, 1);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 1);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_2').progress, 1);
   const persisted = getPersistedState(loaded);
-  assert.equal(persisted.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 1);
+  assert.equal(persisted.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 1);
+  assert.equal(persisted.questModelVersion, 3);
 }
 
 function testV2PartialCanonicalStateUsesLegacyProgress() {
@@ -219,12 +226,12 @@ function testV2PartialCanonicalStateUsesLegacyProgress() {
   const loaded = loadFixture(fixture);
   assert.equal(loaded.result, true);
   assertCanonicalState(loaded.state);
-  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 2);
-  assert.equal(loaded.state.quests.quest_progress.objectives.find(objective => objective.id === 'obj_2').progress, 0);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 2);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_2').progress, 0);
   assert.ok(loaded.warnings.some(message => message.includes('legacy_obj')));
   const persisted = getPersistedState(loaded);
   assert.equal(persisted.partialQuestMarker, 'preserve-me');
-  assert.equal(persisted.quests.quest_progress.objectives.find(objective => objective.id === 'obj_1').progress, 2);
+  assert.equal(persisted.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 2);
 }
 
 function testV2PartialCanonicalStateWithoutLegacyRollsBack() {
@@ -446,6 +453,111 @@ function testHistoryEntryCapturesScheduleSnapshot() {
   });
 }
 
+
+function testDt24StagesTranslateToRouteNodes() {
+  const fixture = {
+    saveVersion: 4,
+    questModelVersion: 2,
+    tasks: [],
+    quests: {
+      active: ['quest_progress'],
+      completed: [],
+      failed: [],
+      dailyReset: null,
+      quest_progress: {
+        status: 'active',
+        currentStage: 0,
+        stages: [
+          {
+            id: 'stage_one',
+            status: 'active',
+            objectives: [{ id: 'stage_action', type: 'complete_tasks', category: 'casa', count: 2, progress: 1, completed: false, consumedCompletionIds: ['old:1'] }]
+          },
+          {
+            id: 'stage_two',
+            status: 'locked',
+            objectives: [{ id: 'later_action', type: 'reach_level', level: 4, progress: 0, completed: false }]
+          }
+        ]
+      }
+    }
+  };
+  const loaded = loadFixture(fixture);
+  assert.equal(loaded.result, true);
+  const state = loaded.state.quests.quest_progress;
+  assert.equal(state.actionModelVersion, 1);
+  assert.equal(JSON.stringify(state.routeNodes.map(node => node.id)), JSON.stringify(['stage_one', 'stage_two']));
+  assert.equal(state.currentNodeId, 'stage_one');
+  assert.equal(state.actions.find(action => action.id === 'stage_action').progress, 1);
+  assert.equal(state.actions.find(action => action.id === 'later_action').status, 'blocked');
+  assert.equal(Object.prototype.hasOwnProperty.call(state, 'stages'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(state, 'objectives'), false);
+}
+
+function testUnknownActionInstanceIsRecoverable() {
+  const loaded = loadFixture({
+    saveVersion: 4,
+    questModelVersion: 3,
+    tasks: [],
+    quests: {
+      active: ['future_quest'],
+      completed: [],
+      failed: [],
+      dailyReset: null,
+      future_quest: { opaqueProgress: { stage: 4 } }
+    }
+  });
+  assert.equal(loaded.result, true);
+  const state = loaded.state.quests.future_quest;
+  assert.equal(state.recovery.status, 'needs_review');
+  assert.equal(state.recovery.reason, 'no_translatable_actions');
+  assert.equal(JSON.stringify(state.opaqueProgress), JSON.stringify({ stage: 4 }));
+}
+
+function testActionProgressUsesOnlyCanonicalActions() {
+  const fixture = {
+    saveVersion: 4,
+    questModelVersion: 3,
+    tasks: [],
+    quests: {
+      active: ['quest_progress'],
+      completed: [],
+      failed: [],
+      dailyReset: null,
+      quest_progress: {
+        status: 'active',
+        actionModelVersion: 1,
+        currentNodeId: 'root',
+        activeActionId: 'obj_1',
+        actions: [
+          { id: 'obj_1', nodeId: 'root', status: 'in_progress', progress: 0, target: 2, criterion: { eventType: 'task_completed' }, consumedEventIds: [] },
+          { id: 'obj_2', nodeId: 'root', status: 'in_progress', progress: 0, target: 1, criterion: { eventType: 'task_completed', category: 'casa' }, consumedEventIds: [] }
+        ],
+        routeNodes: [{ id: 'root', status: 'active', actionIds: ['obj_1', 'obj_2'] }],
+        consumedEventIds: [],
+        completedActionIds: [],
+        discoveredRevealIds: [],
+        consequenceClaims: {},
+        recovery: { status: 'none', reason: null, options: [] }
+      }
+    }
+  };
+  const loaded = loadFixture(fixture);
+  assert.equal(loaded.result, true);
+  assert.equal(loaded.api.updateMissionProgress('task_completed', { category: 'casa', completionId: 'completion:1' }), true);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 1);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_2').status, 'completed');
+  assert.equal(loaded.api.updateMissionProgress('task_completed', { category: 'casa', completionId: 'completion:1' }), false);
+  assert.equal(loaded.state.quests.quest_progress.actions.find(action => action.id === 'obj_1').progress, 1);
+  const persistedBeforeReload = loaded.api.getSave();
+  assert.equal(loaded.api.loadGame(), true);
+  assert.equal(loaded.api.getSave(), persistedBeforeReload);
+  assert.equal(Object.prototype.hasOwnProperty.call(loaded.state.quests.quest_progress, 'objectives'), false);
+}
+
+testActionProgressUsesOnlyCanonicalActions();
+testDt24StagesTranslateToRouteNodes();
+testUnknownActionInstanceIsRecoverable();
 testV0Migration();
 testV1Migration();
 testV2ActiveQuestProgressMigration();
@@ -462,4 +574,4 @@ testTaskAvailabilityFrequencies();
 testRepeatableAndNonRepeatablePolicies();
 testLegacyTaskWithoutFrequencyNeedsReview();
 testHistoryEntryCapturesScheduleSnapshot();
-console.log('Save migration fixtures: PASS (v0-v4, quest recovery, task history preservation, periodic availability, repeatable/non-repeatable policies, archived tasks, legacy task review, idempotence, corruption, snapshots, declarative content installer contract assertion)');
+console.log('Save migration fixtures: PASS (v0-v4, action translation, DT-24 route translation, action progress idempotence, quest recovery, task history preservation, periodic availability, repeatable/non-repeatable policies, archived tasks, legacy task review, corruption, snapshots, declarative content installer contract assertion)');
