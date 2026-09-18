@@ -1594,9 +1594,8 @@ function applyMissionConsequence(consequence, questId, questState, source, optio
       : { status: 'rejected', reason: 'derived_task_boundary_unavailable', recoverable: true };
   } else if (consequence.type === MISSION_CONSEQUENCE_TYPES.setWorldState) {
     const key = consequence.path || consequence.key;
-    if (!isPlainObject(gameState.worldState)) gameState.worldState = {};
-    const previousValue = gameState.worldState[key];
-    gameState.worldState[key] = cloneSaveState(consequence.value);
+    const previousValue = getWorldStatePathValue(key);
+    setWorldStatePathValue(key, consequence.value);
     result = { status: 'granted', duplicate: JSON.stringify(previousValue) === JSON.stringify(consequence.value), key };
   } else {
     result = { status: 'rejected', reason: 'unsupported_consequence_type', recoverable: false };
@@ -1749,9 +1748,44 @@ function getMissionSourceRequirementValue(source, key) {
   return isPlainObject(source.requirements) ? source.requirements[key] : undefined;
 }
 
+function getWorldStatePathSegments(path) {
+  if (typeof path !== 'string' || !path) return null;
+  const segments = path.split('.');
+  return segments.every(segment => /^[A-Za-z0-9_-]+$/.test(segment)) ? segments : null;
+}
+
 function getWorldStatePathValue(path) {
-  if (typeof path !== 'string' || !path) return undefined;
-  return path.split('.').reduce((value, key) => value === undefined || value === null ? undefined : value[key], gameState.worldState || {});
+  const segments = getWorldStatePathSegments(path);
+  if (!segments) return undefined;
+  const worldState = isPlainObject(gameState.worldState) ? gameState.worldState : {};
+  const canonicalValue = segments.reduce((value, key) => {
+    if (value === undefined || value === null || !Object.prototype.hasOwnProperty.call(value, key)) return undefined;
+    return value[key];
+  }, worldState);
+  if (canonicalValue !== undefined) return canonicalValue;
+  // Saves created before dotted world-state paths were canonicalized may contain
+  // the complete path as a flat key. Read that representation as a fallback so
+  // older progress remains observable while all new writes use nested paths.
+  return Object.prototype.hasOwnProperty.call(worldState, path) ? worldState[path] : undefined;
+}
+
+function setWorldStatePathValue(path, value) {
+  const segments = getWorldStatePathSegments(path);
+  if (!segments) return false;
+  if (!isPlainObject(gameState.worldState)) gameState.worldState = {};
+  let cursor = gameState.worldState;
+  segments.forEach((segment, index) => {
+    if (index === segments.length - 1) {
+      cursor[segment] = cloneSaveState(value);
+      return;
+    }
+    if (!isPlainObject(cursor[segment])) cursor[segment] = {};
+    cursor = cursor[segment];
+  });
+  if (segments.length > 1 && Object.prototype.hasOwnProperty.call(gameState.worldState, path)) {
+    delete gameState.worldState[path];
+  }
+  return true;
 }
 
 function missionSourceValueMatches(actual, expected) {

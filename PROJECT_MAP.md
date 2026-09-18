@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-7a753780d1b6dc92e1f0563d441bc40e62c314e4
+464b7cef9432e96e94e438758fc5f67069d1a311
 
 M0 del sistema de misiones
 
@@ -898,11 +898,22 @@ Changelog operativo
 
 2026-08-21 a 2026-08-25: se integran los contratos de resultados pendientes, recompensas durables, historial/disponibilidad, habilidades y combate. Las deudas no cerradas permanecen en la tabla DT.
 
+## World-state dotted path contract
+
+2026-09-18 - World-state path handling hardened in `engine.js`: `set_world_state` now writes dotted paths as nested objects, matching `getWorldStatePathValue()` and mission-source requirements. Reads retain a fallback for legacy saves that stored the complete dotted path as a flat key; new writes canonicalize that path without changing `saveVersion: 4` or `questModelVersion: 3`. The change is generic and applies to every mission using dotted world-state paths. The isolated contract test and the complete M7 runtime suite pass; M7 content remains a separate block.
+
 ## M7 technical prerequisite — mission source and recovery boundaries
 
-2026-09-18 - M7 technical prerequisite hardened: `registerMissionSources()` now keeps identical re-registration idempotent and refuses conflicting duplicate IDs or mismatched catalog keys without replacing installed source definitions. No M7 content added.
+2026-09-18 - M7 content vertical slice prepared locally: declarative mission network with passive sources, existing and derived tasks, reveals, journal, material reward/use, follow-up, recovery and world-state-gated source. Pending manual placement and player verification.
 
 2026-09-18 - M7 source registry guard verified: identical mission-source definitions are compared structurally and re-registration remains idempotent; conflicting definitions with an existing ID now fail loudly before replacement. No M7 content added.
+
+
+World-state fix validation: new dotted writes are nested; legacy flat dotted keys remain readable and are canonicalized on the next write; existing nested values take precedence; `saveVersion: 4` and `questModelVersion: 3` remain unchanged. The complete M7 runtime suite also passes with the fixed engine.
+
+M7 — Complete vertical slice
+
+Implementada localmente; pendiente de colocacion y verificacion manual. La slice declarativa anade una red pequena y completa con una fuente pasiva inicial, tres nodos de ruta, una tarea existente de Admin, una tarea derivada temporal, revelaciones persistentes, diario, entrega idempotente de un material existente, desbloqueo de uso de material, follow-up, recuperacion y una segunda fuente pasiva condicionada por `worldState`. El contenido visible esta en ingles y no anade enemigos ni combate. `expansion_quests.js` registra `MISSION_SOURCES_V1` mediante la frontera canonica; no cambia `saveVersion` ni `questModelVersion`.
 
 
 - The canonical mission source registry is populated through `registerMissionSources()` in `quests.js`; content installers must not replace the registry or create a second source store.
