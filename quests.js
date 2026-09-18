@@ -30,7 +30,33 @@ const QUEST_STATUS = {
 
 // Source definitions are declarative. Content phases can add entries without
 // changing the mission engine or creating a second quest state store.
-const MISSION_SOURCES = Object.freeze({});
+// Mission sources are registered by content installers through one canonical boundary.
+// The registry stays private to this module's public functions so content cannot
+// replace the mission source store or create a second source state.
+const MISSION_SOURCES = {};
+
+function registerMissionSources(sourceDefinitions) {
+  if (!isPlainObject(sourceDefinitions)) return false;
+  let changed = false;
+  Object.entries(sourceDefinitions).forEach(([sourceId, source]) => {
+    if (!isPlainObject(source)) return;
+    const keyId = typeof sourceId === 'string' && sourceId.trim() ? sourceId.trim() : null;
+    const declaredId = typeof source.id === 'string' && source.id.trim() ? source.id.trim() : null;
+    const id = declaredId || keyId;
+    if (!id || (declaredId && keyId && declaredId !== keyId)) return;
+
+    const normalized = { ...source, id };
+    const existing = MISSION_SOURCES[id];
+    if (existing) {
+      // Re-registering the exact same definition is safe and idempotent.
+      // A different definition must never replace content already installed.
+      return;
+    }
+    MISSION_SOURCES[id] = normalized;
+    changed = true;
+  });
+  return changed;
+}
 
 // ===========================================================================
 // QUEST DATABASE
@@ -324,6 +350,10 @@ function getAvailableQuests() {
     // Retired definitions remain resolvable for legacy saves but cannot be
     // newly accepted from the active quest catalogue.
     if (q.archived === true || q.catalogStatus === 'retired') return false;
+
+    // Source-only quests must be discovered through their declared source or
+    // follow-up path; they must never leak through the general catalogue.
+    if (q.sourceOnly === true) return false;
 
     // Not already active or completed (unless repeatable)
     if (gameState.quests.active.includes(q.id)) return false;

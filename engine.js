@@ -1845,18 +1845,25 @@ function getMissionSourceAvailability(source) {
   const sourceState = getMissionSourceState(source.id, false);
   const missionId = getMissionSourceMissionId(source);
   const repeatable = source.repeatable === true;
+  const isRecoveryForActiveMission = source.type === MISSION_SOURCE_TYPES.recovery
+    && typeof source.questId === 'string'
+    && source.questId === missionId
+    && gameState.quests.active.includes(source.questId);
   if (sourceState?.status === MISSION_SOURCE_STATUSES.accepted && !repeatable) return { available: false, status: sourceState.status, reason: 'already_accepted' };
   if (sourceState?.status === MISSION_SOURCE_STATUSES.consumed && !repeatable) return { available: false, status: sourceState.status, reason: 'already_consumed' };
   if (sourceState?.expiresAt && todayStr() > sourceState.expiresAt) return { available: false, status: MISSION_SOURCE_STATUSES.expired, reason: 'source_expired' };
   if (!isMissionSourceConditionMet(source)) return { available: false, status: 'locked', reason: 'requirements_not_met' };
-  if (gameState.quests.active.includes(missionId)) return { available: false, status: 'active', reason: 'mission_already_active' };
-  if (gameState.quests.completed.includes(missionId) && !repeatable) return { available: false, status: 'completed', reason: 'mission_already_completed' };
+  if (gameState.quests.active.includes(missionId) && !isRecoveryForActiveMission) return { available: false, status: 'active', reason: 'mission_already_active' };
+  if (gameState.quests.completed.includes(missionId) && !repeatable && !isRecoveryForActiveMission) return { available: false, status: 'completed', reason: 'mission_already_completed' };
   return { available: true, status: MISSION_SOURCE_STATUSES.available, reason: null };
 }
 
 function getAvailableMissionSources(type = null) {
   return Object.values(getMissionSourceCatalog()).filter(source => {
     if (type && source?.type !== type) return false;
+    // Recovery sources belong to an active mission's investigation panel. They
+    // must not appear as global leads before that mission reveals them.
+    if (!type && source?.type === MISSION_SOURCE_TYPES.recovery) return false;
     return getMissionSourceAvailability(source).available;
   });
 }

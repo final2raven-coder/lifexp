@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-771f4fc108256b2badc52f926103248fcd7dc5ef
+7a753780d1b6dc92e1f0563d441bc40e62c314e4
 
 M0 del sistema de misiones
 
@@ -898,3 +898,13 @@ Changelog operativo
 
 2026-08-21 a 2026-08-25: se integran los contratos de resultados pendientes, recompensas durables, historial/disponibilidad, habilidades y combate. Las deudas no cerradas permanecen en la tabla DT.
 
+## M7 technical prerequisite — mission source and recovery boundaries
+
+2026-09-18 - M7 technical prerequisite hardened: `registerMissionSources()` now keeps identical re-registration idempotent and refuses conflicting duplicate IDs or mismatched catalog keys without replacing installed source definitions. No M7 content added.
+
+
+- The canonical mission source registry is populated through `registerMissionSources()` in `quests.js`; content installers must not replace the registry or create a second source store.
+- Recovery sources remain hidden from the global mission-lead list and become available only through an active mission's investigation surface.
+- `getMissionSourceAvailability()` permits a recovery source to target its own active mission while continuing to block ordinary sources for already-active missions.
+- Quests with `sourceOnly: true` are excluded from the general available-quest catalogue and must be reached through a declared source or follow-up path.
+- This is a technical prerequisite for M7 content; no M7 narrative or new content is included in this block.
