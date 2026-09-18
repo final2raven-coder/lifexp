@@ -35,6 +35,23 @@ const QUEST_STATUS = {
 // replace the mission source store or create a second source state.
 const MISSION_SOURCES = {};
 
+function areMissionSourceDefinitionsEqual(left, right) {
+  if (left === right) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((value, index) => areMissionSourceDefinitionsEqual(value, right[index]));
+  }
+  if (isPlainObject(left) || isPlainObject(right)) {
+    if (!isPlainObject(left) || !isPlainObject(right)) return false;
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    if (leftKeys.length !== rightKeys.length) return false;
+    return leftKeys.every(key => Object.prototype.hasOwnProperty.call(right, key)
+      && areMissionSourceDefinitionsEqual(left[key], right[key]));
+  }
+  return false;
+}
+
 function registerMissionSources(sourceDefinitions) {
   if (!isPlainObject(sourceDefinitions)) return false;
   let changed = false;
@@ -50,6 +67,9 @@ function registerMissionSources(sourceDefinitions) {
     if (existing) {
       // Re-registering the exact same definition is safe and idempotent.
       // A different definition must never replace content already installed.
+      if (!areMissionSourceDefinitionsEqual(existing, normalized)) {
+        throw new Error(`Conflicting mission source definition for "${id}".`);
+      }
       return;
     }
     MISSION_SOURCES[id] = normalized;
