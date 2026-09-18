@@ -157,6 +157,10 @@ engine.js
 
 gameState, schema del save, migraciones v0->v4, submodelo persistente de quests DT-24, tareas, disponibilidad, frecuencias configurables por tarea, historial, XP, stats, navegacion y resultados pendientes
 
+material_interactions.js
+
+Frontera canonica de usos de materiales: descubrimiento idempotente mediante `discoverUse(itemId, useId)` y reconciliacion mediante `reconcile()`; no persiste por si misma y depende de la transaccion exterior del motor
+
 combat.js
 
 Encuentros, dificultad, formaciones, objetivos, turnos, habilidades autorizadas y recompensas de combate
@@ -307,6 +311,7 @@ quests.js
 item_flavor.js
 data_tasks.js
 engine.js
+material_interactions.js
 expansion_items.js
 expansion_enemies.js
 expansion_quests.js
@@ -460,6 +465,10 @@ Las misiones de guild pertenecen al grupo `guild_order` y tienen un limite indep
 La aceptacion usa siempre los cupos declarativos de `gameState.quests.slotLimits`; no existe un limite global compartido ni una excepcion por ID. Una mision de guild puede abrir contenido posterior, como investigaciones y nuevas lineas de mision, pero esas relaciones se definiran como contenido en sus fases correspondientes.
 
 Las misiones son contenido fantastico visible en ingles y deben estar relacionadas con el estado descubierto del juego: objetos, enemigos, eventos, arco narrativo, mejoras del hogar o preparacion. Sus requisitos, tareas derivadas y recompensas se planifican en F4, F5, F11 y F12; no se mezclan con la politica de cupos.
+
+6.4.1 Usos de materiales
+
+`gameState.materialInteractions` es el estado persistente canonico para usos descubiertos. `LifeXPMaterialInteractions.discoverUse(itemId, useId)` resuelve aliases mediante `getMissionItemId()` cuando existe, exige un item resoluble de tipo `material`, registra un claim estable y es idempotente. `LifeXPMaterialInteractions.reconcile()` rehidrata la correspondencia entre `ledger` y `discoveredUses` sin borrar referencias desconocidas ni guardar por su cuenta. La persistencia y el rollback pertenecen a la transaccion exterior de `updateMissionProgress()`; el modulo se carga antes de `main.js` y se incluye en la cache del Service Worker.
 
 6.5 Combate y habilidades
 
@@ -639,7 +648,7 @@ Implementada localmente; pendiente de colocacion y verificacion manual
 
 M5 - Consequences, object uses and follow-ups
 
-Implementada localmente; pendiente de colocacion y verificacion manual
+Implementada localmente; contrato tecnico de usos de materiales entregado para colocacion; pendiente de verificacion manual
 
 `engine.js` anade `worldState`, normaliza `consequenceClaims` con estados `granted`, `pending` y `rejected`, valida referencias antes de guardar y resuelve de forma declarativa las consecuencias de acciones, nodos de ruta y quest. `grant_reward` delega en las fronteras canonicas de recompensas e inventario; `unlock_item_use` exige que el material este legitimamente descubierto; `make_follow_up_available` deja el follow-up visible sin aceptarlo automaticamente; `create_derived_task` materializa tareas con IDs estables e idempotentes; `set_world_state` persiste cambios declarativos. `retryMissionConsequences()` reintenta claims recuperables. El flujo se integra en `updateMissionProgress()` y conserva rollback de memoria, notices y bytes exactos del save si falla la transaccion. `quests.js` valida el contrato y elimina un follow-up solo cuando el jugador lo acepta. `ui_quests.js` presenta avisos y detalles sin revelar contenido no descubierto. No se anaden misiones, narrativa ni contenido nuevo y no se cambia `saveVersion: 4` ni `questModelVersion: 3`.
 
@@ -827,6 +836,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+
+2026-09-18 - M5 material interaction boundary: se entrega localmente `material_interactions.js` como frontera canonica e idempotente para descubrir usos de materiales. Se integra en el orden de carga, la cache y el mapa. El modulo no persiste por su cuenta; `updateMissionProgress()` conserva la transaccion, los claims y el rollback. Pendiente de colocacion y verificacion manual.
 
 2026-09-17 - M5 Mission consequences, object uses and follow-ups: implementacion local de consecuencias declarativas e idempotentes para recompensas, usos de materiales, follow-ups, tareas derivadas y `worldState`. `updateMissionProgress()` es el flujo canonico para acciones, nodos y quest; `consequenceClaims` conserva `granted`, `pending` y `rejected`, y `retryMissionConsequences()` permite recuperar resultados pendientes o rechazados. Se verifica rollback de memoria y bytes del save, validacion previa de referencias, entrega de objetos, aceptacion explicita de follow-ups y no duplicacion. Sin contenido nuevo, sin cambio de `saveVersion` y pendiente de colocar y verificar manualmente.
 
