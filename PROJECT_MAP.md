@@ -37,7 +37,7 @@ main
 
 Commit actual de main
 
-464b7cef9432e96e94e438758fc5f67069d1a311
+7a753780d1b6dc92e1f0563d441bc40e62c314e4
 
 M0 del sistema de misiones
 
@@ -898,22 +898,11 @@ Changelog operativo
 
 2026-08-21 a 2026-08-25: se integran los contratos de resultados pendientes, recompensas durables, historial/disponibilidad, habilidades y combate. Las deudas no cerradas permanecen en la tabla DT.
 
-## World-state dotted path contract
-
-2026-09-18 - World-state path handling hardened in `engine.js`: `set_world_state` now writes dotted paths as nested objects, matching `getWorldStatePathValue()` and mission-source requirements. Reads retain a fallback for legacy saves that stored the complete dotted path as a flat key; new writes canonicalize that path without changing `saveVersion: 4` or `questModelVersion: 3`. The change is generic and applies to every mission using dotted world-state paths. The isolated contract test and the complete M7 runtime suite pass; M7 content remains a separate block.
-
 ## M7 technical prerequisite — mission source and recovery boundaries
 
-2026-09-18 - M7 content vertical slice prepared locally: declarative mission network with passive sources, existing and derived tasks, reveals, journal, material reward/use, follow-up, recovery and world-state-gated source. Pending manual placement and player verification.
+2026-09-18 - M7 technical prerequisite hardened: `registerMissionSources()` now keeps identical re-registration idempotent and refuses conflicting duplicate IDs or mismatched catalog keys without replacing installed source definitions. No M7 content added.
 
 2026-09-18 - M7 source registry guard verified: identical mission-source definitions are compared structurally and re-registration remains idempotent; conflicting definitions with an existing ID now fail loudly before replacement. No M7 content added.
-
-
-World-state fix validation: new dotted writes are nested; legacy flat dotted keys remain readable and are canonicalized on the next write; existing nested values take precedence; `saveVersion: 4` and `questModelVersion: 3` remain unchanged. The complete M7 runtime suite also passes with the fixed engine.
-
-M7 — Complete vertical slice
-
-Implementada localmente; pendiente de colocacion y verificacion manual. La slice declarativa anade una red pequena y completa con una fuente pasiva inicial, tres nodos de ruta, una tarea existente de Admin, una tarea derivada temporal, revelaciones persistentes, diario, entrega idempotente de un material existente, desbloqueo de uso de material, follow-up, recuperacion y una segunda fuente pasiva condicionada por `worldState`. El contenido visible esta en ingles y no anade enemigos ni combate. `expansion_quests.js` registra `MISSION_SOURCES_V1` mediante la frontera canonica; no cambia `saveVersion` ni `questModelVersion`.
 
 
 - The canonical mission source registry is populated through `registerMissionSources()` in `quests.js`; content installers must not replace the registry or create a second source store.
@@ -921,3 +910,21 @@ Implementada localmente; pendiente de colocacion y verificacion manual. La slice
 - `getMissionSourceAvailability()` permits a recovery source to target its own active mission while continuing to block ordinary sources for already-active missions.
 - Quests with `sourceOnly: true` are excluded from the general available-quest catalogue and must be reached through a declared source or follow-up path.
 - This is a technical prerequisite for M7 content; no M7 narrative or new content is included in this block.
+
+## M7 vertical slice — declarative mission content
+
+2026-09-18 - M7 adds one small, complete mission vertical slice through `expansion_quests.js`: a passive lead, a three-node action route, a derived real-world task, action reveals, a persistent journal trail, a material reward, a declarative material use unlock, an explicit follow-up offer, a recovery source, and a second passive source gated by `worldState`. No new engine path, enemy, combat rule, class, icon, save version, quest model version, inventory model, or canonical task-completion path is added.
+
+- The content installer remains additive: it merges quest definitions into `QUESTS` and registers source definitions through the guarded `registerMissionSources()` boundary.
+- The derived task uses a stable declarative template and is consumed by the next mission action through its canonical `derivedTaskId`; the follow-up quest is only made available and is not accepted automatically.
+- The material consequence references the existing `pagina_arcana` material and the use boundary `m7_use_page_at_refuge`; the material is granted before its use is unlocked, and both operations remain idempotent through the existing transaction and claim ledgers.
+- The conditional source uses the exact dotted world-state requirement key `m7.refuge.signal_resolved`, matching `isMissionSourceConditionMet()`; the corresponding consequence writes the same path.
+- Compatibility: the change is additive and does not alter `saveVersion: 4`, `questModelVersion: 3`, existing inventory, existing quests, or existing saves. Old unresolved content remains governed by the existing migration/recovery behavior.
+- Manual delivery branch: `content/mission-system-vertical-slice`. The final PR must explain what is included, what is not touched, and the three player-facing verification steps without exposing undiscovered content.
+
+M7 validation status before delivery:
+
+- JavaScript syntax must pass for `expansion_quests.js`, `quests.js`, and `engine.js`.
+- Content validation and isolated runtime checks must confirm source registration, source gating, chapter-to-action translation, node transitions, derived-task materialization, reward delivery, material-use unlocking, follow-up availability without automatic acceptance, recovery reactivation, world-state persistence, and duplicate protection.
+- No M7 file is considered ready for manual placement until those checks pass.
+
