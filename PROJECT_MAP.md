@@ -902,6 +902,8 @@ Changelog operativo
 
 2026-09-18 - M7 technical prerequisite hardened: `registerMissionSources()` now keeps identical re-registration idempotent and refuses conflicting duplicate IDs or mismatched catalog keys without replacing installed source definitions. No M7 content added.
 
+2026-09-18 - M7 source registry guard verified: identical mission-source definitions are compared structurally and re-registration remains idempotent; conflicting definitions with an existing ID now fail loudly before replacement. No M7 content added.
+
 
 - The canonical mission source registry is populated through `registerMissionSources()` in `quests.js`; content installers must not replace the registry or create a second source store.
 - Recovery sources remain hidden from the global mission-lead list and become available only through an active mission's investigation surface.
