@@ -15,8 +15,8 @@ const EXPANSION_QUESTS_V1 = {
   m7_refuge_signal: {
     id: 'm7_refuge_signal',
     type: 'story',
-    name: 'The Lantern Beneath the Dust',
-    desc: 'A quiet change in the refuge suggests that an old record is waiting to be understood.',
+    name: 'A Note Worth Keeping',
+    desc: 'While sorting your notes, you find one you do not remember writing. It is specific enough to bother you. Get your week in order, then look at the note properly.',
     minLevel: 1,
     sourceOnly: true,
     origin: 'personal',
@@ -24,21 +24,21 @@ const EXPANSION_QUESTS_V1 = {
     chapters: [
       {
         id: 'm7_chapter_first_mark',
-        name: 'A Mark in the Margin',
-        desc: 'Bring order to the week and see whether the pattern becomes clearer.',
+        name: 'The Note',
+        desc: 'Make a plan for the week. When you are done, spend a minute looking at the note again.',
         objectives: [
           { id: 'm7_action_trace', type: 'complete_tasks', taskId: 'gestiones_5', count: 1, progress: 0 }
         ],
         actions: [
           {
             id: 'm7_action_trace',
-            title: 'Read the first mark',
-            description: 'Prepare the week carefully, then return to the record with a clear mind.',
+            title: 'Take another look',
+            description: 'Complete your weekly planning task. Then read the note once and write down the one detail that seems out of place.',
             reveals: [
               {
                 id: 'm7_reveal_first_mark',
-                title: 'The Margin Answers',
-                body: 'The mark is not a stain. It is a direction, repeated in the same patient hand.'
+                title: 'The handwriting is yours',
+                body: 'The note uses your shorthand and mentions a place you know. You still do not remember making it.',
               }
             ],
             consequences: [
@@ -49,8 +49,8 @@ const EXPANSION_QUESTS_V1 = {
                 status: 'accepted',
                 taskTemplate: {
                   id: 'm7_task_open_register',
-                  name: 'Open the old register',
-                  desc: 'Set aside ten quiet minutes, open the relevant record, and write down the first useful clue you find.',
+                  name: 'Check the place mentioned in the note',
+                  desc: 'Spend ten focused minutes checking the place named in the note. Write down what you find, even if it is only that nothing is there.',
                   cat: 'personal',
                   freq: 'once',
                   stats: { int: 50, vol: 50 },
@@ -64,8 +64,8 @@ const EXPANSION_QUESTS_V1 = {
       },
       {
         id: 'm7_chapter_open_register',
-        name: 'The Open Register',
-        desc: 'Follow the temporary lead before it fades into the ordinary noise of the refuge.',
+        name: 'Check the place',
+        desc: 'Follow the note to the place it mentions. Bring back one concrete detail.',
         objectives: [
           {
             id: 'm7_action_open_register',
@@ -78,13 +78,13 @@ const EXPANSION_QUESTS_V1 = {
         actions: [
           {
             id: 'm7_action_open_register',
-            title: 'Follow the temporary lead',
-            description: 'Complete the practical step created by the first mark, then examine what it reveals.',
+            title: 'Check the place',
+            description: 'Complete the temporary task created by the note. Keep the result simple: record one thing you found or confirmed.',
             reveals: [
               {
                 id: 'm7_reveal_hidden_shelf',
-                title: 'A Space Behind the Record',
-                body: 'The register points to a place that was never meant to be hidden forever.'
+                title: 'A useful page',
+                body: 'Behind the record there is a folded page with a short set of instructions. It looks old, but the advice is practical.',
               }
             ],
             consequences: [
@@ -105,21 +105,21 @@ const EXPANSION_QUESTS_V1 = {
       },
       {
         id: 'm7_chapter_answer',
-        name: 'The Useful Answer',
-        desc: 'Study the recovered page and decide what the refuge should remember.',
+        name: 'Use the page',
+        desc: 'Read the recovered page and try one of its suggestions in a real piece of work.',
         objectives: [
           { id: 'm7_action_answer', type: 'complete_tasks', taskId: 'personal_4', count: 1, progress: 0 }
         ],
         actions: [
           {
             id: 'm7_action_answer',
-            title: 'Understand the recovered page',
-            description: 'Spend time with a book, then return with one idea that can be put to use.',
+            title: 'Try one suggestion',
+            description: 'Read the page, choose one useful suggestion, and use it during your reading session. Keep the part that works.',
             reveals: [
               {
                 id: 'm7_reveal_answer',
-                title: 'A Practical Kind of Magic',
-                body: 'The page does not ask for a grand ritual. It asks to be used, patiently and well.'
+                title: 'It is useful after all',
+                body: 'The page is not a revelation. It is a small method, written clearly enough to try. One part fits the way you already work.',
               }
             ],
             consequences: [
@@ -152,8 +152,8 @@ const EXPANSION_QUESTS_V1 = {
   m7_refuge_followup: {
     id: 'm7_refuge_followup',
     type: 'simple',
-    name: 'The Work That Remains',
-    desc: 'Carry the new understanding into one deliberate act of creation.',
+    name: 'Put It to Use',
+    desc: 'Use the idea from the page in one focused piece of creative work.',
     minLevel: 1,
     sourceOnly: true,
     origin: 'personal',
@@ -164,13 +164,13 @@ const EXPANSION_QUESTS_V1 = {
     actions: [
       {
         id: 'm7_followup_action',
-        title: 'Give the answer a shape',
-        description: 'Spend a focused session making something that carries the discovery forward.',
+        title: 'Make something with it',
+        description: 'Use the method from the page during a 30-minute creative session. The result can be rough; the point is to test the idea.',
         reveals: [
           {
             id: 'm7_followup_reveal',
-            title: 'The Refuge Keeps Its Promise',
-            body: 'A useful discovery becomes part of the refuge when it is given a place in the work that follows.'
+            title: 'A method worth remembering',
+            body: 'You tried the method instead of leaving it on the page. That is enough to keep: an idea becomes useful when it survives contact with ordinary work.',
           }
         ]
       }
@@ -182,8 +182,8 @@ const EXPANSION_QUESTS_V1 = {
   m7_refuge_watch: {
     id: 'm7_refuge_watch',
     type: 'simple',
-    name: 'A Light Left Ready',
-    desc: 'Use what the refuge has learned to prepare one small safeguard for the days ahead.',
+    name: 'Back Up the Note',
+    desc: 'Make a copy of the note and the page so the useful parts do not get lost.',
     minLevel: 1,
     sourceOnly: true,
     origin: 'personal',
@@ -194,13 +194,13 @@ const EXPANSION_QUESTS_V1 = {
     actions: [
       {
         id: 'm7_watch_action',
-        title: 'Prepare the safeguard',
-        description: 'Back up the important record so the refuge can keep what it has learned.',
+        title: 'Save a copy',
+        description: 'Back up the note and the page to the place where you keep important records. Check that the copy is readable.',
         reveals: [
           {
             id: 'm7_watch_reveal',
-            title: 'A Place for What Matters',
-            body: 'The refuge is not protected by keeping every secret. It is protected by making the right knowledge durable.'
+            title: 'Keep the useful parts',
+            body: 'The strange part may remain unexplained. The notes are still worth keeping because they gave you something you can use.',
           }
         ]
       }
@@ -216,8 +216,8 @@ const MISSION_SOURCES_V1 = {
     id: 'm7_initial_lead',
     type: 'passive',
     questId: 'm7_refuge_signal',
-    title: 'A quiet change in the refuge',
-    description: 'Something in the refuge has shifted. A careful hand may find where the change began.',
+    title: 'A note you do not remember making',
+    description: 'While sorting your records, you find a note in your own shorthand. It points to something worth checking.',
     delivery: 'available',
     requirements: { minLevel: 1 }
   },
@@ -226,15 +226,15 @@ const MISSION_SOURCES_V1 = {
     type: 'recovery',
     questId: 'm7_refuge_signal',
     targetActionId: 'm7_action_open_register',
-    message: 'The next mark is difficult to read. Revisit the discovered record and follow the clearest practical lead.',
+    message: 'The note points to a place you can check. Take ten minutes, write down what you find, and continue from there.',
     delivery: 'available'
   },
   m7_world_watch_lead: {
     id: 'm7_world_watch_lead',
     type: 'passive',
     questId: 'm7_refuge_watch',
-    title: 'A safeguard can now be prepared',
-    description: 'The refuge has learned enough to make one small protection last.',
+    title: 'Keep a copy of the notes',
+    description: 'You have enough to keep a copy of the note and the page. Put both somewhere you can find them again.',
     delivery: 'available',
     requirements: {
       minLevel: 1,
