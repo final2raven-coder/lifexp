@@ -133,7 +133,7 @@ function showFollowUpQuestDetails(questId) {
         <div class="quest-detail-kicker">New direction</div>
         <div class="quest-situation-copy">${missionUiEscape(quest.desc || 'A new direction is available.')}</div>
       </section>
-      <button class="btn btn-primary" type="button" onclick="acceptQuest('${safeQuestId}')">Accept follow-up</button>
+      <button class="btn btn-primary" type="button" onclick="acceptQuestFromUi('${safeQuestId}')">Accept follow-up</button>
     </div>
   `;
   const actionBtn = document.getElementById('btn-item-action');
@@ -419,7 +419,7 @@ function showAvailableQuests() {
   const list = available.map(quest => {
     const typeInfo = getQuestTypeInfo(quest.type);
     return `
-      <div class="card" style="cursor:pointer;margin-bottom:8px;" onclick="acceptQuest('${quest.id}')">
+      <div class="card" style="cursor:pointer;margin-bottom:8px;" onclick="acceptQuestFromUi('${quest.id}')">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-size:11px;color:${typeInfo.color};text-transform:uppercase;">${typeInfo.icon} ${typeInfo.name}</div>
@@ -438,9 +438,9 @@ function showAvailableQuests() {
   openModal('modal-item');
 }
 
-function acceptQuest(questId) {
-  if (typeof window.acceptQuestCanonical !== 'function') return;
-  const result = window.acceptQuestCanonical(questId);
+function acceptQuestFromUi(questId) {
+  if (typeof acceptQuest !== 'function') return;
+  const result = acceptQuest(questId);
   if (result && !result.success) {
     if (typeof showToast === 'function') showToast(result.message, 'error');
     return;
