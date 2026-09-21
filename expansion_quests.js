@@ -2,11 +2,16 @@
 // Integracion: cargar despues de quests.js, items.js y enemies.js.
 
 const EXPANSION_QUESTS_V1 = {
-  daily_routine_4:{id:'daily_routine_4',type:'daily',name:'Daily Pulse',desc:'Complete 4 tasks on the same day.',minLevel:1,objectives:[{id:'obj_1',type:'complete_tasks',count:4,category:null,progress:0}],rewards:{xp:75,gold:20},repeatable:true,resetDaily:true},
-  quest_first_week:{id:'quest_first_week',type:'compound',name:'Starting Rhythm',desc:'Build a varied, sustainable first week.',minLevel:1,objectives:[{id:'obj_1',type:'complete_tasks',count:2,category:'casa',progress:0},{id:'obj_2',type:'complete_tasks',count:2,category:'cuerpo',progress:0},{id:'obj_3',type:'complete_tasks',count:1,category:'personal',progress:0}],rewards:{xp:180,gold:70,items:['anillo_constancia']},repeatable:false},
-  quest_clear_path:{id:'quest_clear_path',type:'compound',name:'Clear Path',desc:'Combine a practical errand with an active outing.',minLevel:2,objectives:[{id:'obj_1',type:'complete_tasks',count:3,category:'gestiones',progress:0},{id:'obj_2',type:'complete_tasks',count:2,category:'cuerpo',progress:0}],rewards:{xp:220,gold:85,items:['botas_sendero']},repeatable:false},
-  bounty_threshold:{id:'bounty_threshold',type:'bounty',name:'The Threshold Trembles',desc:'Defeat guardians that appear when you leave matters prepared.',minLevel:5,timeLimit:10,objectives:[{id:'obj_1',type:'defeat_enemy',enemyId:'guardia_del_umbral',count:2,progress:0}],rewards:{xp:240,gold:120,items:['escudo_cotidiano']},repeatable:true},
-  story_first_thread:{id:'story_first_thread',type:'story',name:'The First Thread',desc:'A small anomaly connects your everyday actions to something older.',minLevel:3,chapters:[
+  daily_routine_4:{id:'daily_routine_4',
+    archived: true, catalogStatus: 'retired',type:'daily',name:'Daily Pulse',desc:'Complete 4 tasks on the same day.',minLevel:1,objectives:[{id:'obj_1',type:'complete_tasks',count:4,category:null,progress:0}],rewards:{xp:75,gold:20},repeatable:true,resetDaily:true},
+  quest_first_week:{id:'quest_first_week',
+    archived: true, catalogStatus: 'retired',type:'compound',name:'Starting Rhythm',desc:'Build a varied, sustainable first week.',minLevel:1,objectives:[{id:'obj_1',type:'complete_tasks',count:2,category:'casa',progress:0},{id:'obj_2',type:'complete_tasks',count:2,category:'cuerpo',progress:0},{id:'obj_3',type:'complete_tasks',count:1,category:'personal',progress:0}],rewards:{xp:180,gold:70,items:['anillo_constancia']},repeatable:false},
+  quest_clear_path:{id:'quest_clear_path',
+    archived: true, catalogStatus: 'retired',type:'compound',name:'Clear Path',desc:'Combine a practical errand with an active outing.',minLevel:2,objectives:[{id:'obj_1',type:'complete_tasks',count:3,category:'gestiones',progress:0},{id:'obj_2',type:'complete_tasks',count:2,category:'cuerpo',progress:0}],rewards:{xp:220,gold:85,items:['botas_sendero']},repeatable:false},
+  bounty_threshold:{id:'bounty_threshold',
+    archived: true, catalogStatus: 'retired',type:'bounty',name:'The Threshold Trembles',desc:'Defeat guardians that appear when you leave matters prepared.',minLevel:5,timeLimit:10,objectives:[{id:'obj_1',type:'defeat_enemy',enemyId:'guardia_del_umbral',count:2,progress:0}],rewards:{xp:240,gold:120,items:['escudo_cotidiano']},repeatable:true},
+  story_first_thread:{id:'story_first_thread',
+    archived: true, catalogStatus: 'retired',type:'story',name:'The First Thread',desc:'A small anomaly connects your everyday actions to something older.',minLevel:3,chapters:[
     {id:'ch_1',name:'Subtle Signs',desc:'Gather clues through Admin and Personal tasks.',objectives:[{id:'obj_1',type:'complete_tasks',count:2,category:'gestiones',progress:0},{id:'obj_2',type:'complete_tasks',count:1,category:'personal',progress:0}],rewards:{xp:70,items:['fragmento_historia']}},
     {id:'ch_2',name:'The Pattern',desc:'Observe your surroundings and keep moving.',objectives:[{id:'obj_1',type:'complete_tasks',count:2,category:'cuerpo',progress:0},{id:'obj_2',type:'complete_tasks',count:1,category:'casa',progress:0}],rewards:{xp:100,gold:35}},
     {id:'ch_3',name:'The Warden',desc:'Face what protects the next step.',objectives:[{id:'obj_1',type:'defeat_boss',enemyId:'guardian_del_hilo',count:1,progress:0}],rewards:{xp:180,items:['claridad_practica']}}
@@ -207,6 +212,135 @@ const EXPANSION_QUESTS_V1 = {
     ],
     rewards: { xp: 80, gold: 18 },
     repeatable: false
+  },
+
+  // ========== M8 CONTENT BLOCK 1: EXTERNAL REQUEST ==========
+  // This first M8 network is intentionally small and executable with the
+  // current mission-action contract. More elaborate exclusive choices remain
+  // future content until the runtime contract declares them explicitly.
+  m8_unexpected_request: {
+    id: 'm8_unexpected_request',
+    type: 'story',
+    name: 'A Request at the Door',
+    desc: 'Someone has asked for help. I need to understand what I am agreeing to before I answer.',
+    minLevel: 1,
+    sourceOnly: true,
+    origin: 'passive',
+    slotGroup: 'personal_project',
+    chapters: [
+      {
+        id: 'm8_chapter_request',
+        name: 'Before I Answer',
+        desc: 'The request is simple on the surface, but I do not know the whole situation yet.',
+        objectives: [
+          { id: 'm8_action_consider_request', type: 'complete_tasks', taskId: 'personal_3', count: 1, progress: 0 }
+        ],
+        actions: [
+          {
+            id: 'm8_action_consider_request',
+            title: 'Think before answering',
+            description: 'Use your journaling and reflection session to write down what you know, what you do not know, and what you can realistically offer.',
+            reveals: [
+              {
+                id: 'm8_reveal_request_is_specific',
+                title: 'The request is more specific than it first sounded',
+                body: 'Writing it down makes the limits clearer. I may be able to help, but only if I answer honestly about what I can take on.'
+              }
+            ],
+            consequences: [
+              {
+                id: 'm8_consequence_prepare_reply',
+                type: 'create_derived_task',
+                templateId: 'm8_task_prepare_reply',
+                status: 'accepted',
+                taskTemplate: {
+                  id: 'm8_task_prepare_reply',
+                  name: 'Prepare a clear reply',
+                  desc: 'Write a short reply to the person who asked for help. State what you can do, what you cannot do, and when you can follow up.',
+                  cat: 'social',
+                  freq: 'once',
+                  stats: { pre: 50, vol: 50 },
+                  xp: 35,
+                  availability: { type: 'once', intervalDays: null, limit: 1, repeatable: false }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'm8_chapter_reply',
+        name: 'A Clear Answer',
+        desc: 'Answer without promising more than you can actually do.',
+        objectives: [
+          { id: 'm8_action_prepare_reply', type: 'complete_tasks', derivedTaskId: 'derived_m8_unexpected_request_m8_action_consider_request_m8_task_prepare_reply', count: 1, progress: 0 }
+        ],
+        actions: [
+          {
+            id: 'm8_action_prepare_reply',
+            title: 'Answer clearly',
+            description: 'Complete the temporary reply task and send the answer you can stand behind. Keep the boundary clear instead of agreeing out of pressure.',
+            reveals: [
+              {
+                id: 'm8_reveal_clear_answer',
+                title: 'A clear answer is still an answer',
+                body: 'The situation did not need a grand promise. It needed a response that was honest enough for both sides to use.'
+              }
+            ],
+            consequences: [
+              {
+                id: 'm8_consequence_grant_oathseal',
+                type: 'grant_reward',
+                reward: { items: ['sello_alianza'] }
+              },
+              {
+                id: 'm8_consequence_mark_request_handled',
+                type: 'set_world_state',
+                path: 'm8.request.handled',
+                value: true
+              },
+              {
+                id: 'm8_consequence_offer_followup',
+                type: 'make_follow_up_available',
+                questId: 'm8_request_followup'
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    rewards: { xp: 120, gold: 30 },
+    repeatable: false
+  },
+
+  m8_request_followup: {
+    id: 'm8_request_followup',
+    type: 'simple',
+    name: 'Keep the Thread',
+    desc: 'Follow up on the request without letting it take over everything else.',
+    minLevel: 1,
+    sourceOnly: true,
+    origin: 'personal',
+    slotGroup: 'personal_project',
+    objectives: [
+      { id: 'm8_followup_action', type: 'complete_tasks', taskId: 'gestiones_4', count: 1, progress: 0 }
+    ],
+    actions: [
+      {
+        id: 'm8_followup_action',
+        title: 'Keep the thread',
+        description: 'Use your inbox session to send the follow-up, record what still needs an answer, and leave the rest for later.',
+        reveals: [
+          {
+            id: 'm8_followup_reveal',
+            title: 'The request has a place now',
+            body: 'It is no longer an unfinished thought waiting in the background. I know what I agreed to and what I did not.'
+          }
+        ]
+      }
+    ],
+    rewards: { xp: 70, gold: 15 },
+    repeatable: false
   }
 };
 
@@ -240,6 +374,24 @@ const MISSION_SOURCES_V1 = {
       minLevel: 1,
       worldState: { 'm7.refuge.signal_resolved': true }
     }
+  },
+
+  m8_request_at_the_door: {
+    id: 'm8_request_at_the_door',
+    type: 'passive',
+    questId: 'm8_unexpected_request',
+    title: 'A request at the door',
+    description: 'Someone has asked for help. Read the request before deciding what you can honestly offer.',
+    delivery: 'available',
+    requirements: { minLevel: 1 }
+  },
+  m8_request_recovery: {
+    id: 'm8_request_recovery',
+    type: 'recovery',
+    questId: 'm8_unexpected_request',
+    targetActionId: 'm8_action_consider_request',
+    message: 'Start with the request itself. Write down what is known, what is uncertain, and what you can realistically offer.',
+    delivery: 'available'
   }
 };
 

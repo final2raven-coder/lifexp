@@ -606,6 +606,12 @@ Bloqueada
 
 No empieza hasta cerrar F1-F8; no reutilizar la rama divergida sin revisar
 
+M8
+
+En curso localmente; primer bloque preparado, pendiente de colocacion y verificacion manual
+
+Se retiran del catalogo activo las misiones genericas de conteo del catalogo base y de expansion, conservando sus definiciones para saves existentes. Se anade una primera red declarativa de evento externo con entrada de diario, reflexion, tarea derivada, revelaciones, recompensa util, estado del mundo, follow-up y recuperacion. Este bloque no inventa todavia decisiones excluyentes, almacenamiento de refugio ni alquimia porque esas capacidades no tienen contrato runtime confirmado
+
 F13
 
 Pendiente
@@ -838,6 +844,8 @@ procedimientos reproducibles;
 cambios recientes que afectan al trabajo futuro.
 
 Changelog operativo
+2026-09-21 - M8 content block 1 prepared locally: se retiran del catalogo activo las misiones genericas de conteo, conservando sus definiciones e IDs para saves existentes. Se anade una red declarativa de peticion externa con voz de diario en ingles, tarea de reflexion, tarea derivada de respuesta, revelaciones, recompensa util, estado del mundo, follow-up y recuperacion. No se anaden decisiones excluyentes ni capacidades de refugio o alquimia no declaradas por el runtime. Pendiente de colocar en la rama `content/mission-system-catalogue-expansion-v1` y verificar como jugador.
+
 
 2026-09-18 - Mission source acceptance collision fixed locally: `quests.js` conserva la unica funcion canonica `acceptQuest(questId, options)`; `ui_quests.js` renombra el adaptador visual a `acceptQuestFromUi(questId)` y actualiza sus dos superficies de aceptacion. Se elimina `window.acceptQuestCanonical`, que ocultaba la colision global y descartaba `deferSave`/el resultado canonico. No cambia `saveVersion`, `questModelVersion` ni el formato del save. Pendiente de colocacion y verificacion manual.
 

@@ -136,6 +136,8 @@ const QUESTS = {
   // ========== SIMPLE QUESTS ==========
   quest_first_steps: {
     id: 'quest_first_steps',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'simple',
     name: 'First Steps',
     desc: 'Complete your first task and get familiar with the system.',
@@ -149,6 +151,8 @@ const QUESTS = {
   
   quest_home_master: {
     id: 'quest_home_master',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'simple',
     name: 'Household Mastery',
     desc: 'Prove that you can keep your space in order.',
@@ -162,6 +166,8 @@ const QUESTS = {
   
   quest_body_temple: {
     id: 'quest_body_temple',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'simple',
     name: 'The Body is a Temple',
     desc: 'Take care of your body by completing physical tasks.',
@@ -176,6 +182,8 @@ const QUESTS = {
   // ========== BOUNTIES ==========
   bounty_slimes: {
     id: 'bounty_slimes',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'bounty',
     name: 'Slime Infestation',
     desc: 'Slimes have infested the pipes. Eliminate them.',
@@ -190,6 +198,8 @@ const QUESTS = {
   
   bounty_bandits: {
     id: 'bounty_bandits',
+    archived: true,
+    catalogStatus: 'retired',
     type: 'bounty',
     name: 'Bandits on the Road',
     desc: 'Some bandits are harassing travelers. Deal with them.',
